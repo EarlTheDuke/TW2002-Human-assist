@@ -1414,6 +1414,8 @@ _SWITCH_PLAIN: dict[str, str] = {
     "TIMES_BLOWN_MODE": "With elimination off, times blown up are unlimited.",
     "FIGHTER_REPORT_MODE": "The fighter report lists the sectors where you own fighters.",
     "ECON_WIN_MODE": "Credits on hand never end the game early; there is no instant credits win.",
+    "FULL_GAME_TURNS_MODE": "A full-length game keeps the host's turns per day (250 if left at Original), however many days it runs.",
+    "FULL_GAME_BALANCE_MODE": "Every seat in a full-length game starts with the same credits.",
 }
 
 
@@ -1974,7 +1976,7 @@ _COVERS: dict[str, tuple[str, ...]] = {
     "tax": ("bank_deposit", "bank_withdraw", "bank_transfer", "TAX_RULE_MODE"),
     "turns": (
         "wait", "TURN_REGEN_MODE", "DAY_ROLL_CLOCK_MODE", "LEGACY_DAY_CLOCK_MODE", "LIVE_PACE_MODE",
-        "INACTIVE_USER_MODE", "INACTIVITY_TIMEOUT_MODE",
+        "INACTIVE_USER_MODE", "INACTIVITY_TIMEOUT_MODE", "FULL_GAME_TURNS_MODE", "FULL_GAME_BALANCE_MODE",
     ),
     "hardware": (
         "buy_equip", "scan", "probe", "query_limpets", "remove_limpet", "launch_beacon",

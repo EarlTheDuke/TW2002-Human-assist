@@ -343,7 +343,10 @@ def turns_phrase(settings: dict) -> str:
     """Lobby card line. Original is the pocket this game already used."""
     if settings.get("game_length") == "full":
         shown = int(settings.get("turns_per_day") or K.FULL_LENGTH_TURNS_PER_DAY)
-        return f"Turns per day: {shown:,} (full-length)"
+        line = f"Turns per day: {shown:,} (full-length)"
+        if K.full_game_balance_live():
+            line += ". Every seat starts the same"
+        return line
     override = settings.get("turns_per_day_override")
     if override is None:
         shown = int(settings.get("turns_per_day") or 250)
@@ -459,8 +462,8 @@ def parse_game_form(data: dict, presets: dict[str, int] | None = None) -> GameFo
     max_days = _as_int(data, "max_days", 30, 1, 365)
     length = _game_length(data) if K.full_length_turn_limits_on() else None
     if length == "full":
-        cap = K.full_length_daily_cap(max_days)
-        turns_override = cap
+        # Track K row 216: under the switch the host's choice stays (Original is 250).
+        turns_override = K.full_game_turn_limit(max_days, turns_override)
         day = "24h"
         day_seconds = int(presets["24h"]) if "24h" in presets else int(K.FULL_LENGTH_DAY_SECONDS)
     else:

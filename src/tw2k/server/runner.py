@@ -1709,7 +1709,8 @@ class MatchRunner:
                 # NOTE 131. Flag off returns the override unchanged, including None.
                 turns_override = K.full_length_turns_override(spec.config, turns_override)
                 credits, turns_per_day, fighters = K.opening_loadout(
-                    base_credits, base_tpd, i, override, turns_override)
+                    base_credits, base_tpd, i, override, turns_override,
+                    even=K.full_game_even_start(spec.config))
                 ship.fighters = fighters
                 player = Player(
                     id=ag.player_id,

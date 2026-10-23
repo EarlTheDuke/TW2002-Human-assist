@@ -649,7 +649,11 @@ def full_length_turns_override(config: object, existing: int | None) -> int | No
         return existing
     if getattr(config, "game_length", None) != "full":
         return existing
-    return full_length_daily_cap(int(getattr(config, "max_days", None) or FULL_LENGTH_REFERENCE_DAYS))
+    days = int(getattr(config, "max_days", None) or FULL_LENGTH_REFERENCE_DAYS)
+    if full_game_turns_live():
+        # Track K row 216. The lobby already wrote the host's choice into the override.
+        return full_game_turn_limit(days, existing)
+    return full_length_daily_cap(days)
 
 
 # NOTE 136. A playtest can move the day mark so a 24-hour day can roll without
@@ -665,7 +669,8 @@ def playtest_clock_nudge_on() -> bool:
 
 def opening_loadout(spec_credits: int, spec_turns: int, slot: int,
                     credits_override: int | None = None,
-                    turns_override: int | None = None) -> tuple[int, int, int]:
+                    turns_override: int | None = None,
+                    even: bool = False) -> tuple[int, int, int]:
     """Credits, turns per day, and fighters for seat `slot`.
 
     Legacy keeps the ±1000 credit skew. Live uses the measured pocket and
@@ -683,7 +688,8 @@ def opening_loadout(spec_credits: int, spec_turns: int, slot: int,
             turns = LIVE_STARTING_TURNS
         credits, fighters = LIVE_STARTING_CREDITS, LIVE_STARTING_FIGHTERS
     else:
-        skew = (slot * 317) % 2001 - 1000
+        # Track K row 217: `even` drops the per-seat skew. False is unchanged.
+        skew = 0 if even else (slot * 317) % 2001 - 1000
         credits, turns, fighters = int(spec_credits) + skew, int(spec_turns), STARTING_FIGHTERS
     if credits_override is not None:
         credits = int(credits_override)
@@ -4862,6 +4868,14 @@ V311_PROFILE_HELPERS: dict[str, tuple[str, str]] = {
         "ECON_WIN_MODE",
         "NOTE 178 GAP 14.6: no instant credits win; the original game has no such end (ours-only system)",
     ),
+    "full_game_turns_live": (
+        "FULL_GAME_TURNS_MODE",
+        "Track K: a full-length game keeps the sysop's daily turn limit for any length and honours the host's choice",
+    ),
+    "full_game_balance_live": (
+        "FULL_GAME_BALANCE_MODE",
+        "Track K: every seat in a full-length game opens with the same credits (no per-seat skew)",
+    ),
 }
 
 
@@ -6240,3 +6254,38 @@ ECON_WIN_MODE = "legacy"  # "legacy" | "v311"
 def econ_win_off_live() -> bool:
     """True when credits on hand never end the game (no instant economic win)."""
     return ECON_WIN_MODE == "v311" or v311_profile()
+
+
+# Track K, row 216. v3.11 has one sysop turns-per-day setting; it does not shrink
+# when the game runs longer. Legacy full-length games divide 7,500 turns across the
+# days (a 365-day game gets 50 a day) and replace the host's turns choice. On, a
+# full-length game keeps the host's turns per day (Original is 250) for any length.
+FULL_GAME_TURNS_MODE = "legacy"  # "legacy" | "v311"
+
+
+def full_game_turns_live() -> bool:
+    """True when a full-length game keeps the host's daily turn limit for any length."""
+    return FULL_GAME_TURNS_MODE == "v311" or v311_profile()
+
+
+def full_game_turn_limit(max_days: int, chosen: int | None) -> int:
+    """Daily turns for a full-length game. `chosen` is the host's turns override."""
+    if full_game_turns_live():
+        return int(chosen) if chosen is not None else int(FULL_LENGTH_TURNS_PER_DAY)
+    return full_length_daily_cap(max_days)
+
+
+# Track K, row 217. A new v3.11 trader starts with the same package as everyone
+# else. The legacy classic package adds a +/-1,000 credit skew by seat. On, every
+# seat in a full-length game opens with the same credits. Fast test games keep it.
+FULL_GAME_BALANCE_MODE = "legacy"  # "legacy" | "v311"
+
+
+def full_game_balance_live() -> bool:
+    """True when every seat in a full-length game opens with the same credits."""
+    return FULL_GAME_BALANCE_MODE == "v311" or v311_profile()
+
+
+def full_game_even_start(config: object) -> bool:
+    """True when this game is full-length and the balance switch is on."""
+    return full_game_balance_live() and getattr(config, "game_length", None) == "full"
