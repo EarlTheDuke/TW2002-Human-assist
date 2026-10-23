@@ -10,9 +10,9 @@ A row is Match when the original rule is what a normal game does now. Match-behi
 
 | Grade | v5 | v6 |
 |---|---|---|
-| Match | 50 | 72 |
+| Match | 50 | 73 |
 | Match-behind-flag | 17 | 86 |
-| Partial | 53 | 9 |
+| Partial | 53 | 8 |
 | Different | 38 | 2 |
 | Missing | 11 | 0 |
 | Ben-decision | 2 | 2 |
