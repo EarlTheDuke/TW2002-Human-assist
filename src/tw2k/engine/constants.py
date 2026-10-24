@@ -3912,17 +3912,156 @@ def tw2002_live_profile() -> bool:
 
 # port-attack-defense-v1. Off, an attack aimed at "port" is still "target not found".
 # On, the attack asks first. Yes costs 5 alignment and the fighters you send.
-# Class 6 is the one measured port: rating 98, barrage 598 (REPORT2 section 8).
-# Other classes have no measured barrage, so the ship is not destroyed for them.
+# The class maps are measured samples, not the only rating a live port of that
+# class can have. Ven GameA (TW Test Game 2, Slot A, TW2002 v3.34b) on
+# 2026-10-24 recorded different defs inside one class (Peleus 86, Anaxagoras
+# Primus 60). Generation does not stamp a def onto the port. A named captured
+# port uses its own row in PORT_ATTACK_GAMEA_SAMPLES. Any other port uses the
+# primary sample below. Capture: docs/playtests/twgs-live/gap215-port-attack-2026-10-24.md
+# CONFIRMED lasers: class 1 H'Catha 46/337, class 4 Duriron Minor 110/1419,
+# class 6 Khancuhn Primus 98/598 (REPORT2), class 7 Balmer 98/1121.
+# DEF_ONLY fallbacks have a def and no laser: class 2 New Cesium 55,
+# class 3 Peleus 86, class 5 Aesculapius 59.
+# Engine class 8 is StarDock. Canonical class 8 Vergil Minor (def 99) and the
+# Fed prior (def 91 / laser 701) stay on the sample list and are not written
+# into these maps. Class 0 and StarDock were BLOCKED in that capture.
 PORT_ATTACK_MODE = "legacy"  # "legacy" | "live"
 PORT_ATTACK_ALIGNMENT = -5
-PORT_DEFENSE_RATING = {6: 98}
-PORT_LASER_BARRAGE = {6: 598}
+PORT_DEFENSE_RATING = {
+    1: 46,   # H'Catha @478. Leipzig @708 was 49.
+    2: 55,   # New Cesium @160. Mastro @173 was 71. No laser measured.
+    3: 86,   # Peleus @436. Anaxagoras Primus @913 was 60. No laser measured.
+    4: 110,  # Duriron Minor @122.
+    5: 59,   # Aesculapius @404. Mirador Outpost @121 was 44. No laser measured.
+    6: 98,   # Khancuhn Primus. REPORT2 pair, same numbers as before.
+    7: 98,   # Balmer @688.
+}
+PORT_LASER_BARRAGE = {
+    1: 337,
+    4: 1419,
+    6: 598,
+    7: 1121,
+}
 PORT_ATTACK_CONFIRM = "Attacks on Federation ports are prohibited! Are you sure?"
+# One row per measured port. laser None means that shot was not taken.
+# status FED_PRIOR is the older Fed class 8 report, not this GameA shot.
+# source labels the capture. These rows are samples, not class constants.
+PORT_ATTACK_GAMEA_SAMPLES: tuple[dict, ...] = (
+    {
+        "class": 1, "name": "H'Catha", "sector": 478, "def": 46, "laser": 337,
+        "status": "CONFIRMED", "shield": "No shielding evident, plasma lasers on dock.",
+        "source": "Ven GameA 2026-10-24",
+    },
+    {
+        "class": 1, "name": "Leipzig", "sector": 708, "def": 49, "laser": None,
+        "status": "VARIANCE", "shield": "plasma",
+        "source": "Ven GameA 2026-10-24",
+    },
+    {
+        "class": 2, "name": "New Cesium", "sector": 160, "def": 55, "laser": None,
+        "status": "DEF_ONLY", "shield": "No shielding evident, plasma lasers on dock.",
+        "source": "Ven GameA 2026-10-24",
+    },
+    {
+        "class": 2, "name": "Mastro", "sector": 173, "def": 71, "laser": None,
+        "status": "VARIANCE", "shield": "plasma",
+        "source": "Ven GameA 2026-10-24",
+    },
+    {
+        "class": 3, "name": "Peleus", "sector": 436, "def": 86, "laser": None,
+        "status": "DEF_ONLY", "shield": "Class 2 shielding evident, Halos missile battery.",
+        "source": "Ven GameA 2026-10-24",
+    },
+    {
+        "class": 3, "name": "Anaxagoras Primus", "sector": 913, "def": 60, "laser": None,
+        "status": "VARIANCE", "shield": "plasma",
+        "source": "Ven GameA 2026-10-24",
+    },
+    {
+        "class": 4, "name": "Duriron Minor", "sector": 122, "def": 110, "laser": 1419,
+        "status": "CONFIRMED",
+        "shield": "Captain!@!@!  That's a massive port!  We don't stand a chance!",
+        "source": "Ven GameA 2026-10-24",
+    },
+    {
+        "class": 5, "name": "Aesculapius", "sector": 404, "def": 59, "laser": None,
+        "status": "DEF_ONLY", "shield": "No shielding evident, plasma lasers on dock.",
+        "source": "Ven GameA 2026-10-24",
+    },
+    {
+        "class": 5, "name": "Mirador Outpost", "sector": 121, "def": 44, "laser": None,
+        "status": "VARIANCE", "shield": "plasma",
+        "source": "Ven GameA 2026-10-24",
+    },
+    {
+        "class": 6, "name": "Khancuhn Primus", "sector": 534, "def": 98, "laser": 598,
+        "status": "KNOWN", "shield": "Class 4 shielding, Sunstorm Ion battery",
+        "source": "Ven GameA 2026-10-24",
+    },
+    {
+        "class": 7, "name": "Balmer", "sector": 688, "def": 98, "laser": 1121,
+        "status": "CONFIRMED", "shield": "Class 4 shielding evident, Sunstorm Ion battery.",
+        "source": "Ven GameA 2026-10-24",
+    },
+    {
+        "class": 8, "name": "Vergil Minor", "sector": 119, "def": 99, "laser": None,
+        "status": "DEF_ONLY", "shield": "Class 4 shielding evident, Sunstorm Ion battery.",
+        "source": "Ven GameA 2026-10-24",
+    },
+    {
+        "class": 8, "name": "Fed class 8", "sector": None, "def": 91, "laser": 701,
+        "status": "FED_PRIOR", "shield": "class 3 shielding",
+        "source": "REPORT.md",
+    },
+)
 
 
 def port_attack_live() -> bool:
     return PORT_ATTACK_MODE == "live" or tw2002_live_profile() or v311_profile()
+
+
+def _port_attack_gamea_row(class_id: int, sector_id: int | None, name: str | None) -> dict | None:
+    """The captured port, when this attack names it or an unnamed port sits on its sector.
+
+    Engine class 8 is StarDock, so the canonical class 8 rows are not used.
+    A generated name does not inherit a sample just because the sector number
+    matches a GameA sector. An empty name may, because that sector id is then
+    the only identity the port has.
+    """
+    cls = int(class_id)
+    if cls == 8:
+        return None
+    label = (name or "").strip().casefold()
+    placed = None
+    for row in PORT_ATTACK_GAMEA_SAMPLES:
+        if int(row["class"]) != cls or row.get("status") == "FED_PRIOR":
+            continue
+        row_name = str(row.get("name") or "").strip().casefold()
+        if label and row_name == label:
+            return row
+        sec = row.get("sector")
+        if not label and sector_id is not None and sec is not None and int(sec) == int(sector_id):
+            placed = row
+    return placed
+
+
+def port_attack_sample(
+    class_id: int, sector_id: int | None = None, name: str | None = None,
+) -> tuple[int | None, int | None]:
+    """(defensive rating, laser barrage) for one live port attack.
+
+    A Ven GameA 2026-10-24 row wins when the port is that captured port.
+    A row with no laser does not borrow another port's barrage. Any other
+    port uses PORT_DEFENSE_RATING and PORT_LASER_BARRAGE. Those maps are the
+    primary sample for the class, not the only value live TWGS can print.
+    The live attack path is the caller. PORT_ATTACK_MODE stays legacy, and
+    that path is not entered while the switch is off.
+    """
+    row = _port_attack_gamea_row(class_id, sector_id, name)
+    if row is not None:
+        return row.get("def"), row.get("laser")
+    cls = int(class_id)
+    return PORT_DEFENSE_RATING.get(cls), PORT_LASER_BARRAGE.get(cls)
 
 
 # haggle-detail-v1. Off, the older haggle window is unchanged.
@@ -5796,8 +5935,10 @@ PORT_BLOW_FIGS_PER_RATING = 22
 # The attack itself is still PORT_ATTACK_ALIGNMENT (-5), so a blow is -55,
 # the same -55 the cabal subtracts when a trader dies on a blown port.
 PORT_BLOW_ALIGNMENT = -50
-# Class 6 is the only measured pair (REPORT2 section 8): rating 98, barrage 598.
-# Classes 0-5 and 7-9 have no rating and no barrage in the sources below.
+# The attack lookup reads PORT_DEFENSE_RATING, PORT_LASER_BARRAGE, and
+# PORT_ATTACK_GAMEA_SAMPLES (Ven GameA 2026-10-24). Those are measured samples.
+# A named captured port can disagree with the class fallback. The pages below
+# still have no class table.
 # UNVERIFIED, searched: docs/reference/tw2002/eis_tw2002_v3_docs/Tactical.html
 # (no class table; Starport Construction says destroy a port when the universe
 # is full), stardock_manuals_and_text_docs/TWBible_original_v1x.txt
