@@ -261,7 +261,7 @@ AI_BRAINS = ("heuristic", "llm", "tinybox")
 _COCKPIT_FIELDS = {
     "ai_cockpit", "ai_cockpit_provider", "ai_cockpit_model", "ai_cockpit_count", "ai_cockpit_level",
 }
-_COCKPIT_PROVIDERS = {"scripted", "grok", "openai", "anthropic"}
+_COCKPIT_PROVIDERS = {"scripted", "grok", "openai", "anthropic", "custom"}
 _COCKPIT_LEVELS = {"easy", "normal", "hard"}
 
 
@@ -296,7 +296,7 @@ def _cockpit_provider(raw) -> str:
     if text == "xai":
         text = "grok"
     if text not in _COCKPIT_PROVIDERS:
-        raise FormError("AI cockpit provider must be scripted, grok, openai, or anthropic")
+        raise FormError("AI cockpit provider must be scripted, grok, openai, anthropic, or custom")
     return text
 
 

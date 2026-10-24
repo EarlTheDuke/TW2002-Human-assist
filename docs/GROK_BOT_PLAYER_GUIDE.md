@@ -246,6 +246,8 @@ with httpx.Client(base_url=BASE, headers=H, timeout=70) as c:
 
 This is the human and computer-use cockpit. The harness API above is what the page calls. You do not paste a token if you open the seat link.
 
+The seated AI player in `scripts/ai_cockpit_player.py` is not a client of the endpoints in sections 2–8. It opens this same page (`mode=cu` plus the seat token) and clicks what is on the screen. Rules, environment variables, and the optional model endpoint are in `docs/AI_COCKPIT_CU_PLAYER.md`. TinyBox "LLM (your key)" seats stay on the observation path in `src/tw2k/public/tinybox.py`.
+
 **Open it.** The operator's seat link is `.tw2k/seat_links/<seat>.txt`. That URL is `GET /bot/claim?seat=P3&token=...`. The server checks the token, sets an HttpOnly cookie `tw2k_seat_<seat>` (Path `/harness/`), and redirects to `/bot?seat=P3&mode=cu`. A rejected or missing token is 401. Another seat's token is 403. Cookie writes also send `X-TW2K-Seat`.
 
 **Two layouts.** `/bot?seat=P3` is the three-column cockpit (Where / Act / Know) plus the viewport. `/bot?seat=P3&mode=cu` is the one-screen turn layout: turn banner, credits, net worth, one status line, sector, warps, port, ship, goal, the last events, and the verb pad. The viewport is not shown in `mode=cu`.

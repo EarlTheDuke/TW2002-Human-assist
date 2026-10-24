@@ -44,6 +44,7 @@ The loop stops when the chip says GAME OVER, the stop file exists, or `--max-tur
 | `grok` (alias `xai`) | `XAI_API_KEY` | `XAI_MODEL` (default `grok-4`) |
 | `openai` | `OPENAI_API_KEY` | `OPENAI_MODEL` (default `gpt-4o`) |
 | `anthropic` | `ANTHROPIC_API_KEY` | `ANTHROPIC_MODEL` (default `claude-sonnet-4-5`) |
+| `custom` | `AI_COCKPIT_API_KEY`, else `TW2K_CUSTOM_API_KEY`, else `TW2K_TINYBOX_API_KEY` | `AI_COCKPIT_MODEL`, else `TW2K_CUSTOM_MODEL`. Base URL: `AI_COCKPIT_BASE_URL`, else `TW2K_CUSTOM_BASE_URL`, or `--base-url`. OpenAI-compatible `/chat/completions`. Empty URL, key, or model uses the scripted trader and does not call out. |
 
 `--level` selects a scripted difficulty. Easy wanders for a few sectors, including along a one-way, then keeps the thinnest one-hop pair it has seen and does not buy gear at StarDock. Normal locks a pair worth about 700 credits in a day, or any paying pair after eight priced ports, and buys holds and fighters only. Hard locks that same pair. It opens the course plotter when StarDock was never linked, and it follows that course or buys a ship only when the extra the ports can fill, over the days left, beats the turns the trip spends and the quote plus its trade-in. Otherwise it keeps trading the same way normal does, and it does not fly the same course back into fighters. A live provider ignores the level. The default is hard.
 
@@ -212,6 +213,17 @@ python3 scripts/ai_cockpit_player.py \
   --min-interval 1 \
   --run-dir runs/ai-cockpit
 ```
+
+An OpenAI-compatible endpoint uses the same screen path. The key stays in the environment:
+
+```
+export AI_COCKPIT_BASE_URL='https://example.test/v1'   # or TW2K_CUSTOM_BASE_URL
+export AI_COCKPIT_API_KEY='...'                        # or TW2K_CUSTOM_API_KEY
+export AI_COCKPIT_MODEL='your-model'
+python3 scripts/ai_cockpit_player.py --provider custom --url "$SEAT_URL" --run-dir runs/ai-cockpit
+```
+
+Operator steps and the human-parity rules are in `docs/AI_COCKPIT_CU_PLAYER.md`.
 
 The lobby does not store the key. A live provider that finds an empty variable stops with a message that names the variable and does not echo a key.
 
