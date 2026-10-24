@@ -524,23 +524,30 @@
     const rnd = () => (seed = (seed * 9301 + 49297) % 233280) / 233280;
     let far = "";
     let near = "";
+    const ink = ["#9eb6d8", "#d5e4ff", "#f0e2b0", "#c9fff2"];
     if (glow) {
       far += '<ellipse data-testid="space-glow" cx="200" cy="128" rx="168" ry="86" fill="#0c2748" opacity="0.72"/>';
       far += '<ellipse cx="268" cy="86" rx="78" ry="34" fill="#1a4060" opacity="0.42"/>';
       far += '<ellipse cx="118" cy="170" rx="70" ry="24" fill="#241838" opacity="0.38"/>';
+      far += '<ellipse cx="64" cy="48" rx="46" ry="18" fill="#12305a" opacity="0.35"/>';
+      far += '<circle cx="332" cy="198" r="32" fill="#1c446e"/>';
+      far += '<circle cx="346" cy="188" r="28" fill="#04070f"/>';
+      far += '<circle cx="312" cy="186" r="1.6" fill="#d7f4ff" opacity="0.9"/>';
     }
-    for (let i = 0; i < 28; i++) {
+    for (let i = 0; i < 36; i++) {
       const x = (rnd() * 388 + 6).toFixed(1);
       const y = (rnd() * 246 + 6).toFixed(1);
       const r = (rnd() * 0.7 + 0.25).toFixed(2);
-      far += '<circle cx="' + x + '" cy="' + y + '" r="' + r + '" fill="#9eb6d8" opacity="' + (0.25 + rnd() * 0.4).toFixed(2) + '"/>';
+      far += '<circle cx="' + x + '" cy="' + y + '" r="' + r + '" fill="' + ink[i % ink.length] + '" opacity="' + (0.25 + rnd() * 0.4).toFixed(2) + '"/>';
     }
-    for (let i = 0; i < 22; i++) {
+    for (let i = 0; i < 24; i++) {
       const x = (rnd() * 388 + 6).toFixed(1);
       const y = (rnd() * 246 + 6).toFixed(1);
       const r = (rnd() * 1.15 + 0.45).toFixed(2);
-      near += '<circle cx="' + x + '" cy="' + y + '" r="' + r + '" fill="#e7f2ff" opacity="' + (0.4 + rnd() * 0.5).toFixed(2) + '"/>';
+      const fill = i % 7 === 0 ? "#fff1c2" : "#e7f2ff";
+      near += '<circle cx="' + x + '" cy="' + y + '" r="' + r + '" fill="' + fill + '" opacity="' + (0.4 + rnd() * 0.5).toFixed(2) + '"/>';
     }
+    near += '<g data-testid="star-flare" opacity="0.85"><line x1="78" y1="54" x2="78" y2="70" stroke="#f4fbff" stroke-width="0.6"/><line x1="70" y1="62" x2="86" y2="62" stroke="#f4fbff" stroke-width="0.6"/><circle cx="78" cy="62" r="1.5" fill="#ffffff"/></g>';
     return '<g data-testid="starfield-far" data-layer="far">' + far + '</g><g data-testid="starfield-near" data-layer="near">' + near + "</g>";
   }
   function fighterMarkPath(x, y, rot) {
@@ -729,8 +736,8 @@
   function buildHullFaces(sh, def) {
     return meshes().buildHullFaces(sh, def);
   }
-  function cameraFace(face, yaw, pitch, fit, ox, oy, damage) {
-    return meshes().projectFace(face, yaw, pitch, fit, ox, oy, damage || 0);
+  function cameraFace(face, yaw, pitch, fit, ox, oy, damage, pulse) {
+    return meshes().projectFace(face, yaw, pitch, fit, ox, oy, damage || 0, pulse);
   }
   function shipSolidMarkup(sh, def, ox, oy) {
     return meshes().markup(sh, def, 0.82, 0.5, 1, ox, oy);
@@ -822,9 +829,12 @@
         near.setAttribute("transform", "translate(" + dx.toFixed(1) + " " + (-dy).toFixed(1) + ")");
       }
     }
+    const beat = (canonical || shipScene.hold || shipScene.paused || shipScene.motion !== "drift")
+      ? 1
+      : (0.62 + 0.38 * Math.sin((now || 0) / 170));
     const drawn = [];
     shipScene.faces.forEach((face, index) => {
-      const cam = cameraFace(face, pose.yaw, pose.pitch, shipScene.fit, 200, 124, shipScene.damage || 0);
+      const cam = cameraFace(face, pose.yaw, pose.pitch, shipScene.fit, 200, 124, shipScene.damage || 0, beat);
       const poly = shipScene.polys[index];
       if (!cam) {
         poly.style.display = "none";
@@ -998,11 +1008,13 @@
     if (!svg) return;
     const solid = shipSolidOn();
     const motion = shipMotion();
-    const fit = motion === "static" ? 0.72 : 1;
+    const fit = motion === "static" ? 0.72 : 1.12;
     const tw = !!(sh.transwarp && sh.transwarp.fitted);
     const glow = shipViewHull(sh.class);
     const clusters = fighterClusters(sh.class, plan);
-    const key = [sh.class || "", plan.fighters, plan.triangles, solid ? "s" : "o", tw ? 1 : 0, fit, motion, glow ? 1 : 0].join("|");
+    const photons = Number(sh.photon_missiles || 0) > 0 ? 1 : 0;
+    const scan = sh.scanner ? 1 : 0;
+    const key = [sh.class || "", plan.fighters, plan.triangles, solid ? "s" : "o", tw ? 1 : 0, fit, motion, glow ? 1 : 0, photons, scan].join("|");
     svg.setAttribute("data-view", solid ? "solid" : "outline");
     svg.setAttribute("data-motion", motion);
     svg.setAttribute("data-fit", String(fit));
@@ -1031,6 +1043,7 @@
         shipScene.faces = buildHullFaces(sh, def);
         svg.innerHTML = '<g data-testid="starfield">' + starfield(glow) + "</g>"
           + '<g class="hull-float" data-testid="ship-hull">'
+          + '<ellipse data-testid="hull-shadow" cx="206" cy="176" rx="78" ry="14" fill="#02040c" opacity="0.55"/>'
           + '<g data-testid="fighter-back"></g>'
           + '<g data-testid="ship-body" data-model="solid"></g>'
           + '<g data-testid="fighter-front"></g>'
@@ -1038,6 +1051,9 @@
         const body = svg.querySelector("[data-testid=ship-body]");
         shipScene.polys = shipScene.faces.map(() => {
           const poly = document.createElementNS(SVGNS, "polygon");
+          poly.setAttribute("stroke", "rgba(6,10,20,0.35)");
+          poly.setAttribute("stroke-width", "0.45");
+          poly.setAttribute("stroke-linejoin", "round");
           body.appendChild(poly);
           return poly;
         });
@@ -1135,13 +1151,27 @@
       plate = document.createElement("div");
       plate.id = "hullPlate";
       plate.dataset.testid = "hull-plate";
-      plate.innerHTML = '<b data-testid="hull-plate-name"></b><span data-testid="hull-plate-class"></span>';
+      plate.innerHTML = '<b data-testid="hull-plate-name"></b><span data-testid="hull-plate-class"></span><span data-testid="hull-plate-loadout" hidden></span>';
       ship.appendChild(plate);
     }
     const name = plate.querySelector("[data-testid=hull-plate-name]");
     const cls = plate.querySelector("[data-testid=hull-plate-class]");
     if (name) name.textContent = def.name || "";
     if (cls) cls.textContent = String(sh.class || "").replaceAll("_", " ");
+    let load = plate.querySelector("[data-testid=hull-plate-loadout]");
+    if (!load) {
+      load = document.createElement("span");
+      load.dataset.testid = "hull-plate-loadout";
+      plate.appendChild(load);
+    }
+    const bits = [];
+    if (sh.transwarp && sh.transwarp.fitted) bits.push("TransWarp " + twDriveLabel(sh.transwarp.fitted));
+    if (sh.scanner) bits.push(gearName(sh.scanner));
+    if (Number(sh.photon_missiles || 0) > 0) bits.push(fmt(sh.photon_missiles) + " photons");
+    if (Number(sh.genesis || 0) > 0) bits.push(fmt(sh.genesis) + " genesis");
+    if (Number(sh.cloaks || 0) > 0) bits.push(fmt(sh.cloaks) + " cloaks");
+    load.textContent = bits.join(" · ");
+    load.hidden = bits.length === 0;
     let pause = $("shipPause");
     if (!pause) {
       pause = document.createElement("button");
@@ -1187,14 +1217,18 @@
     svg.setAttribute("data-clusters", String(clusters.length));
     svg.setAttribute("aria-label", def.name + ", " + fmt(plan.fighters) + " fighters");
     svg.setAttribute("data-meshes", (window.TW2KHullMeshes && window.TW2KHullMeshes.version) || "");
+    svg.setAttribute("data-look", (window.TW2KHullMeshes && window.TW2KHullMeshes.look) || "");
+    svg.setAttribute("data-cluster-rule", "200 exact; above that scale=ceil(n/200), triangles=ceil(n/scale), <=4 corner clusters, counts sum to n");
     renderShipScene(sh, def, plan);
     ensureShipChrome(sh, def);
     const row = $("fighterRow");
+    row.title = "One red triangle is one fighter, up to 200. Above 200, scale = ceil(fighters / 200) and the picture draws ceil(fighters / scale) triangles in at most 4 corner clusters. Each cluster count is the fighters those triangles stand for. The counts add up to the bay.";
     if (plan.scale > 1) {
       const word = plan.scale === 1 ? "fighter" : "fighters";
-      row.innerHTML = '<span class="fighter-legend" data-testid="fighter-legend">each triangle = ' + plan.scale + " " + word + "</span>";
+      row.innerHTML = '<span class="fighter-legend" data-testid="fighter-legend">each triangle = ' + plan.scale + " " + word + "</span>"
+        + '<span class="fighter-rule" data-testid="fighter-cluster-rule">Counts add to the bay.</span>';
     } else {
-      row.innerHTML = "";
+      row.innerHTML = '<span class="fighter-rule" data-testid="fighter-cluster-rule">One red triangle is one fighter.</span>';
     }
   }
 
@@ -1833,6 +1867,12 @@
     const name = (SHIPS[key] && SHIPS[key].name) || key.replaceAll("_", " ");
     if (!name) return "";
     return (/^[aeiou]/i.test(name) ? "an " : "a ") + name;
+  }
+  function twDriveLabel(fitted) {
+    const raw = String(fitted || "");
+    if (raw === "type1") return "Type 1";
+    if (raw === "type2") return "Type 2";
+    return raw.replaceAll("_", " ");
   }
   function gearName(key) {
     const names = {
@@ -2565,7 +2605,8 @@
       + countRow("cloaks", "Cloaks", Number(sh.cloaks || 0))
       + countRow("disruptors", "Disruptors", Number(sh.mine_disruptors || 0))
       + '<div class="bar" data-gear="limpet"' + (limpets ? "" : " hidden") + '><span class="r">Limpet attached</span><span class="w">' + fmt(limpets) + "</span></div>"
-      + '<div class="bar" data-gear="tow"><span>' + esc(towText) + "</span></div>";
+      + '<div class="bar" data-gear="tow"><span>' + esc(towText) + "</span></div>"
+      + (sh.transwarp && sh.transwarp.fitted ? '<div class="bar" data-gear="transwarp"><span>TransWarp</span><span class="w">' + esc(twDriveLabel(sh.transwarp.fitted)) + "</span></div>" : "");
     const carried = [
       ["atomic", "Atomic mines", Number(mines.atomic || 0)],
       ["ether", "Ether probes", Number(sh.ether_probes || 0)],
