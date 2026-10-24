@@ -1704,6 +1704,10 @@ def citadel_class_cost(class_id: str, level: int) -> tuple[int, int, int, int, i
     if citadel_table_fix_live():
         colonists = CITADEL_S1_COLONISTS.get((class_id, level), colonists)
     days = citadel_build_days(raw_days)
+    # Class M live stores people, so the S1 thousand becomes 1,000,000 people.
+    # Every other class keeps the S1 figure as handbook thousands. Class L
+    # level 1 stays 400, which the build dialog reads as 400,000 people.
+    # Do not multiply those classes here.
     if class_id == "M" and class_m_fidelity_live():
         colonists *= CLASS_M_PEOPLE_PER_THOUSAND
         days = max(1, int(raw_days))
@@ -6284,18 +6288,38 @@ def planet_interdict_quiet(sector_id: int) -> bool:
     return planet_interdict_safe_live() and int(sector_id) == int(STARDOCK_SECTOR)
 
 
+def citadel_colonists_are_handbook(class_id) -> bool:
+    """True when this planet's citadel colonists are S1 thousands, not people.
+
+    Class M under class_m_fidelity_live stores people (level 1 is 1,000,000).
+    S1 section VII prints every other class in the same handbook unit: class L
+    level 1 is Colo 400, which is 400 thousand and 400,000 people. The Terra
+    dump already divides by 1,000 on the way onto that planet.
+    """
+    token = str(getattr(class_id, "value", class_id))
+    return (
+        colonist_clarity_on()
+        and colonist_handbook_transfer(token)
+        and not colonist_stored_is_people(token)
+    )
+
+
 def citadel_colonist_quote(
     level: int, need_stored: int, have_stored: int, *, people: bool, haul_holds: int = CITADEL_HAUL_HOLDS,
 ) -> dict[str, int | str]:
-    """Need, have, and the unit, plus one sentence a form can print."""
+    """Need, have, and the unit, plus one sentence a form can print.
+
+    The sentence names people beside the handbook thousands. Class L level 1
+    is "400 (thousands)=400,000 people", not 400 people. S1 section VII.
+    """
     need = colonist_quote(need_stored, people=people)
     have = colonist_quote(have_stored, people=people)
     haul = max(1, int(haul_holds))
     short = max(0, int(need["thousands"]) - int(have["thousands"]))
     trips = (short + haul - 1) // haul if short else 0
     plain = (
-        f"Level {int(level)} needs {int(need['thousands']):,} (thousands) colonists = {int(need['people']):,}; "
-        f"you have {int(have['thousands']):,} (thousands)"
+        f"Level {int(level)} needs {int(need['thousands']):,} (thousands)={int(need['people']):,} people; "
+        f"you have {int(have['thousands']):,} (thousands)={int(have['people']):,} people"
     )
     if trips:
         plain += f"; about {trips} more Terra trips with {haul} holds"
@@ -6309,6 +6333,25 @@ def citadel_colonist_quote(
         "haul_holds": haul,
         "plain": plain,
     }
+
+
+def citadel_colonist_need_line(class_id, need_stored: int, have_stored: int) -> str:
+    """Colonist clause of a citadel refusal. Class M keeps the people count."""
+    if citadel_colonists_are_handbook(class_id):
+        quote = citadel_colonist_quote(0, int(need_stored), int(have_stored), people=False)
+        return (
+            f"need {int(quote['need']):,} (thousands)={int(quote['need_people']):,} people "
+            f"on planet (have {int(quote['have']):,} (thousands)={int(quote['have_people']):,} people)"
+        )
+    return f"need {int(need_stored)} colonists on planet (have {int(have_stored)})"
+
+
+def citadel_colonist_kept_phrase(class_id, stored: int) -> str:
+    """How a started citadel names the colonists it required and kept."""
+    if citadel_colonists_are_handbook(class_id):
+        quote = citadel_colonist_quote(0, int(stored), int(stored), people=False)
+        return f"{int(quote['need']):,} (thousands)={int(quote['need_people']):,} people"
+    return f"{int(stored)} colonists"
 
 
 # NOTE 177 GAP 10.1 (ruling, V311_SOURCE_CONFLICTS.md). bc24 CFS_CEO_RULE keeps

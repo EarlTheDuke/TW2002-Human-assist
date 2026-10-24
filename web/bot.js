@@ -1594,9 +1594,13 @@
       }
       if (kind === "build_citadel" && p.next) {
         const n = p.next;
-        txt += n.fuel_ore != null
-          ? ` · L${n.level}: ${fmt(n.colonists)} colonists, ${fmt(n.fuel_ore)} fuel, ${fmt(n.organics)} organics, ${fmt(n.equipment)} equipment, ${n.days} day(s)`
-          : ` · L${n.level}: ${fmt(n.credits)} cr + ${fmt(n.colonists)} colonists (have ${fmt(n.colonists_have)}), ${n.days} day(s), paid from ${n.pay_from}`;
+        if (n.plain) {
+          txt += ` · ${n.plain}`;
+        } else if (n.fuel_ore != null) {
+          txt += ` · L${n.level}: ${fmt(n.colonists)} colonists, ${fmt(n.fuel_ore)} fuel, ${fmt(n.organics)} organics, ${fmt(n.equipment)} equipment, ${n.days} day(s)`;
+        } else {
+          txt += ` · L${n.level}: ${fmt(n.credits)} cr + ${fmt(n.colonists)} colonists (have ${fmt(n.colonists_have)}), ${n.days} day(s), paid from ${n.pay_from}`;
+        }
       }
       if (kind === "deploy_genesis") txt += ` · ${p.hops_from_stardock ?? "?"} hops from StarDock (min ${p.min_hops ?? "?"})`;
       if (kind === "land_planet" && p.planet_id && (p.planet_id.contested || []).includes(Number(vals.planet_id))) {

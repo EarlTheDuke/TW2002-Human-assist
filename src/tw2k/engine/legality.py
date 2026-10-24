@@ -136,7 +136,7 @@ def _class_citadel_legal(planet, level: int) -> tuple[str | None, dict[str, Any]
     if have_eq < equipment:
         return f"need {equipment} equipment on planet (have {have_eq})", nxt
     if avail_col < colonists:
-        return f"need {colonists} colonists on planet (have {avail_col})", nxt
+        return K.citadel_colonist_need_line(planet.class_id, colonists, avail_col), nxt
     return None, nxt
 
 
@@ -170,7 +170,7 @@ def _fidelity_citadel_legal(planet, level: int) -> tuple[str | None, dict[str, A
     if have_eq < equipment:
         missing.append(f"need {equipment} equipment on planet (have {have_eq})")
     if avail_col < colonists:
-        missing.append(f"need {colonists} colonists on planet (have {avail_col})")
+        missing.append(K.citadel_colonist_need_line(planet.class_id, colonists, avail_col))
     return ("; ".join(missing) or None), nxt
 
 

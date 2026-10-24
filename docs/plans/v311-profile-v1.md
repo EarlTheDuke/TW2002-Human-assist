@@ -283,6 +283,8 @@ Rows 116 and 117. With the profile on, `terra_colonists` take of 30 holds puts 3
 
 `COLONIST_UNITS_MODE` stays `"legacy"`. The profile turns `colonist_units_live()` on. A non-M drop converts with `people // TERRA_LIVE_PER_HOLD` and a non-M pickup multiplies back. A remainder is "colonists move by the thousand". Class M is unchanged. Cargo holds are `ceil(people / colonists_per_hold())` for the free-hold cap, a jettison (alignment is one per hold), the ship `cargo_holds` listing, and the observation cargo line.
 
+S1 section VII class L level 1 is Colo 400. That figure is handbook thousands, so the build dialog says `400 (thousands)=400,000 people`. A dump of about 31,000 Terra people onto that world is about 31 thousands and does not open level 1. The earlier reading "class L level 1 is 400 people" was wrong. Class M level 1 stays 1,000,000 people under `class_m_fidelity_live`. No new switch. Rows 225-228 are not used here.
+
 `COLONIST_NW_UNITS_MODE` stays `"legacy"`. The profile turns `colonist_nw_units()` on. People still in the hold are scored as handbook thousands. A non-M planet is left as stored when the units switch is also on, so 30 handbook colonists stay 30. Turning only the net-worth switch on, with Terra still packing people and the units switch off, divides that planet pool once so the old 1,000x drop is not scored at `COLONIST_PRICE` per person.
 
 ## Scoring and the end of the game (NOTE 158)
