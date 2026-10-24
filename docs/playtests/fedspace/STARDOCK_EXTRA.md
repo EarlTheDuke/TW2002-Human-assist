@@ -24,6 +24,8 @@ The live tavern screen and the clone constants disagree. The clone numbers were 
 | Grimy password | 0 | `GRIMY_PASSWORD_COST` 2000 |
 | Underground name change | 247, no experience on that screen | UNVERIFIED/DIFFERENT. The measured total unknown is 100 (`name-change.txt`), behind `UG_NAME_MODE`. `UG_NAME_CHANGE` stays false |
 
+The 19 Oct day-1 screen is a later visit (`docs/playtests/twgs-live/stardock-menus.txt`). It quotes a StarDock tip at 23 credits and a paid password at 160. Those two sit behind `GRIMY_TIP_MODE`. This table stays the earlier screen. The underground ladder of 2,500 then 600, and a password topic at 1,500, are not in that switch.
+
 ## Quasar reminder
 
 `LLM_QUASAR_NUDGE_MODE` off leaves the LLM turn text unchanged. On, one line is added only for an LLM seat landed on its own or corporate planet when the citadel is at least `QUASAR_MIN_LEVEL` (3), fuel ore is at least 500, and either cannon percent is still 0. `BOT_WAR_QUASAR_ORE_FLOOR` stays 2000.

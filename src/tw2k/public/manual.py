@@ -1475,6 +1475,7 @@ _SWITCH_PLAIN: dict[str, str] = {
     "SHIELD_POINT_MODE": "Class 0 and StarDock shields cost 131 credits a point.",
     "TAVERN_BAR_PRICE_MODE": "A tavern drink is 80 credits and a plate of food is 24.",
     "CINEPLEX_PRICE_MODE": "The Cineplex charges 100 credits for Vulcan Thunder. The other titles were not priced.",
+    "GRIMY_TIP_MODE": "Grimy charges 23 credits for a StarDock tip and 160 credits for the password after an underground or mafia ask.",
     "FED_HUNT_MODE": "An evil ship that meets a Federal is destroyed, unless it is an Imperial StarShip.",
     "CIM_MODE": "CIM lists sectors and ports you have explored, and a path. A port line stays hidden when hostile fighters hold that sector.",
     "BOUNTY_GOOD_MODE": "A bounty on a good trader costs alignment and no experience.",
@@ -1664,8 +1665,15 @@ def _stardock_services(f: dict) -> str:
         + f"<p>The tavern is {_on(K.tavern_on())}. An announcement costs {_n(K.TAVERN_ANNOUNCE_COST)} credits. "
         f"A drink costs {_n(K.tavern_drink_cost())} credits and a plate of food costs {_n(K.tavern_food_cost())} credits. "
         "Talk and graffiti are free. "
-        f"Grimy charges {_n(K.GRIMY_TRACE_COST)} credits to trace a trader and "
-        f"{_n(K.GRIMY_PASSWORD_COST)} credits for a password.</p>"
+        f"Grimy charges {_n(K.grimy_trace_cost())} credits to trace a trader and "
+        f"{_n(K.grimy_password_cost())} credits for a password. "
+        + (
+            f"A StarDock tip costs {_n(K.GRIMY_STARDOCK_TIP_COST)} credits. "
+            if K.grimy_tips_live() else
+            "A StarDock tip is not sold. "
+        )
+        + "The switch is GRIMY_TIP_MODE.</p>"
+        + f"<p>{_profile('Grimy tip prices', K.grimy_tips_live(), only_v311=False)}</p>"
         + f"<p>The underground opens when your alignment is {_n(K.UG_MAX_ALIGNMENT)} or lower. "
         f"A contract starts at {_n(K.UG_CONTRACT_MIN)} credits, "
         f"{_n(K.UG_CREDITS_PER_ALIGN)} credits per alignment point.</p>"
@@ -2100,7 +2108,7 @@ _COVERS: dict[str, tuple[str, ...]] = {
         "tricron", "cineplex",
         "SHIP_RENAME_MODE", "BUST_CLEAR_MODE", "UG_NAME_MODE", "FEDERATION_HALL_MODE", "BOUNTY_GOOD_MODE",
         "SHIELD_POINT_MODE", "TAVERN_BAR_PRICE_MODE", "CINEPLEX_PRICE_MODE",
-        "TRICRON_MODE",
+        "TRICRON_MODE", "GRIMY_TIP_MODE",
     ),
     "communications": (
         "hail", "broadcast", "radio", "MAIL_MODE", "RADIO_CHANNEL_MODE", "FEDCOMM_MODE", "COMMS_V311_MODE",

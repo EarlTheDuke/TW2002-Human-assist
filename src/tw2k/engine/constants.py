@@ -3246,6 +3246,38 @@ GRIMY_TRACE_LIES = False                # tv8 UNVERIFIED
 GRIMY_DOCK_LOG_MAX = 10                 # tv9 UNVERIFIED
 GRIMY_DOCK_ACTIONS = ("trade", "rob", "steal", "planet_trade", "port_upgrade")  # tv9
 GRIMY_PASSWORD_COST = 2_000             # tv10 UNVERIFIED
+# NOTE 129. docs/playtests/twgs-live/stardock-menus.txt, "Grimy, this visit, declined".
+# Topic trader is the dock-log trace (Bible: a few thousand credits) and stays
+# GRIMY_TRACE_COST. Topic stardock is a different ask. That day-1 screen quoted
+# 23 credits and was declined. Topics underground and mafia still sell the
+# password. The paid follow-up after declining underground was 160 credits
+# (300 on hand, then 140). The underground info quotes of 2,500 then 600, and
+# PASSWORD as its own topic at 1,500, are not this sale. No second-ask formula
+# is stored. Stored default stays legacy. The string "1" does not turn this on.
+# TW2002_LIVE_PROFILE and V311_PROFILE do.
+GRIMY_TIP_MODE = "legacy"  # "legacy" | "live" | "v311"
+GRIMY_STARDOCK_TIP_COST = 23
+GRIMY_STARDOCK_TIP_LINE = "Would ye pay me 23 credits for it?"
+GRIMY_PASSWORD_PAID_COST = 160
+
+
+def grimy_tips_live() -> bool:
+    """True when a StarDock tip is 23 credits and the paid password is 160."""
+    return GRIMY_TIP_MODE in ("live", "v311") or tw2002_live_profile() or v311_profile()
+
+
+def grimy_trace_cost() -> int:
+    """Credits for a trader trace. The 19 Oct screen did not price that ask."""
+    return int(GRIMY_TRACE_COST)
+
+
+def grimy_password_cost() -> int:
+    """Credits for the password sold on an underground or mafia ask."""
+    if grimy_tips_live():
+        return int(GRIMY_PASSWORD_PAID_COST)
+    return int(GRIMY_PASSWORD_COST)
+
+
 GRIMY_CURSES_PER_DAY = 1                # tv13 SOURCE-CONFLICT
 GRIMY_CURSE_TURNS = 1                   # tv13 UNVERIFIED
 GRIMY_RUDE_MARKUP_PCT = 0               # tv13 UNVERIFIED
@@ -5218,8 +5250,11 @@ V311_PROFILE_HELPERS: dict[str, tuple[str, str]] = {
         "TRICRON_MODE",
         "NOTE 129 GAP 11.8: one Tri-Cron match, ante 100, 10 rounds, payback 2 to 1, jackpot 5,000 (tricron.txt)",
     ),
+    "grimy_tips_live": (
+        "GRIMY_TIP_MODE",
+        "NOTE 129: a StarDock tip is 23 credits and the paid underground password is 160",
+    ),
 }
-
 
 # NOTE 151 GAP 12.4. Cabal twgs.html and the modern manual print 30 days until an
 # inactive user is deleted. Gypsy's v2.03 sample prints 7. Off, nobody is deleted

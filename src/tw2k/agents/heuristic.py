@@ -137,10 +137,10 @@ class HeuristicAgent(BaseAgent):
         from ..engine.constants import (
             BOT_TAVERN_RESERVE,
             BOT_TAVERN_TRACE_GAP_DAYS,
-            GRIMY_PASSWORD_COST,
-            GRIMY_TRACE_COST,
             STARDOCK_SECTOR,
             bots_tavern_on,
+            grimy_password_cost,
+            grimy_trace_cost,
             tavern_on,
         )
         from .tavern_brain import join_underground, trace_due, trace_fits_income, visit_due
@@ -158,7 +158,7 @@ class HeuristicAgent(BaseAgent):
         if join_underground(
             alignment=alignment,
             credits=int(obs.credits),
-            password_price=int(GRIMY_PASSWORD_COST),
+            password_price=int(grimy_password_cost()),
             already=bool(tavern.get("password_known")),
         ) and "grimy_ask" in legal:
             self._tavern_day = day
@@ -176,7 +176,7 @@ class HeuristicAgent(BaseAgent):
         self._note_tavern_income(obs)
         profit = int(self._tavern_income)
         spent = int(getattr(self, "_tavern_spent", 0))
-        cost = int(GRIMY_TRACE_COST)
+        cost = int(grimy_trace_cost())
         reserve = int(BOT_TAVERN_RESERVE)
         gap = int(BOT_TAVERN_TRACE_GAP_DAYS)
         income_ok = bool(rivals) and trace_fits_income(cost=cost, spent=spent, profit=profit)
