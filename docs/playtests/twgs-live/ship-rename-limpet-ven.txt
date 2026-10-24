@@ -1,0 +1,95 @@
+Ship rename + limpet removal capture - Ven (VENGEANCE), 2026-10-24 ~10:40 AM PT (America/Los_Angeles).
+Method: read-only (TWSTATS, tw2002.exe / tedit.exe strings, EIS docs, prior live transcript).
+NOT done: no telnet into Slot A, no new character, no shipyard R, no limpet plant/dock fee accept,
+no TEDIT GUI, no twgs.exe stop/start, no ports 8031-8037/8041, AFK game / GrokAFK24 untouched.
+
+Engine: Trade Wars 2002 ver 3.34b under TWGS v2.20b (from AFK note). Slot A ACTIVE = TW Test Game 2 / GameA.
+twgs.exe pid 8160 listening 0.0.0.0:23. TWSTATS Active Players=0 at probe time.
+
+================================================================================
+1) SHIP RENAME (Shipyard "Change Ship Registration" / Reregister Ship)
+================================================================================
+
+MEASURED credits: SHIP_RENAME_COST = 5000
+  Live GameA OUTPUT\TWSTATS.TXT [Costs] (mtime path under
+  C:\Games\TWGS\program files\EIS\TWGS\Game\GameA\OUTPUT\TWSTATS.TXT):
+    Reregister Ship=5,000 cr
+  Same line in GameK and in live_twgs backups:
+    GameA_backup, GameA_pre_extern_0730, GameA_pre_killtest_20261017_1011,
+    GameA_VS_pre_restore_20261024_061632.
+  Cabal TEDIT sample (tw2002_reference\cabal_strategy_site\twgs.html General Editor Three):
+    <E> Reregister Ship : $5,000
+  (Matches live. Guess 5000 CONFIRMED for this install / BigBang defaults.)
+
+MEASURED name max: SHIP_RENAME_NAME_MAX = 30
+  tw2002.exe prompt strings:
+    What do you want to name your ship? (30 chars)
+    What do you want to name your ship? (30 letters)   [initial christen]
+    What do you want to name this ship? (30 chars)     [buy/extra ship]
+  Live transcript (live_twgs\transcript.txt ~L1477):
+    Choose a name carefully as you will have it for a while!
+    What do you want to name your ship? (30 letters)
+
+Rename fee prompt template (tw2002.exe; {N} filled from CostRegister / Reregister Ship):
+    You enter the Federation Ship Registrar's Office and sit down.
+    A clerk looks you over suspiciously and then holds out his hand.
+    "That'll be {N} creds to process a different ship name."
+    "Still interested?"
+    What do you want to name your ship? (30 chars)
+    ...
+    "You don't have the credits!"
+    "Don't waste my time then!"
+  EIS ShipyardMenu.html (no number): "For a hefty fee, you can get revised registration papers..."
+
+TURNS spent: NOT measured live (no before/after turn counter on a real R).
+  Binary rename flow has no turn-debit line between fee accept and name prompt.
+  Interactive unblock: log a funded test char into Slot A (or spare), open Shipyards R,
+  note turns before fee Y and after name confirm. Starter has only 300 cr; needs >=5000.
+
+================================================================================
+2) LIMPET REMOVAL FEE (StarDock and/or Class 0 dock)
+================================================================================
+
+MEASURED credits on THIS live GameA / BigBang defaults: LIMPET_REMOVAL_COST = 5000
+  Live GameA TWSTATS.TXT [Costs]:
+    Limpet Removal=5,000 cr
+  Identical on GameK and all GameA backups listed above.
+  TEDIT / binary keys: CostLimpetRemoval, label "Limpet Removal" (sysop-editable).
+
+CONFLICT with older TEDIT sample (not this live game):
+  cabal_strategy_site\twgs.html General Editor Three:
+    <D> Limpet Removal : $1,250
+  That 1250 is the UNVERIFIED guess currently in constants.LIMPET_REMOVAL_COST.
+  Cabal's other hardware costs in that same sample also disagree with this GameA
+  BigBang card (e.g. Genesis 80k vs live 20k, Armid 4k vs live 1k, Limpet Mine 40k vs 10k).
+  Live TWGS 3.34b GameA setting that fills the dock prompt is 5,000 — not 1,250.
+
+Dock fee prompt template (tw2002.exe; {N} = CostLimpetRemoval):
+    A port official runs up to you as you dock and informs you that
+    their sensors have detected a Limpet tracking mine somewhere on
+    your ship.  Do you want to pay the {N} credit fee for search
+    and removal? :
+    (Y/N)
+    After an intensive scanning search, they find and remove the Limpet
+    tracking mine.  Unfortunately, they can't tell who it belonged to.
+    The port official frowns at you (you haven't the funds!) and storms
+    away in search of more profitable work.
+  Single CostLimpetRemoval field — same fee for StarDock and Class 0 (no separate
+  Class 0 constant in TEDIT/TWSTATS). Interactive Class 0 vs StarDock screen compare
+  not run (would need an attached limpet + dock at each).
+
+TURNS: NOT measured live. Prompt is credit-only; no turn string in the removal chain.
+
+================================================================================
+3) SAFETY / WHAT WAS LEFT ALONE
+================================================================================
+
+- Did not connect telnet :23 or create/login a character.
+- Did not touch GWC ports 8031-8037/8041 or wt_live / qc_bridge lobbies.
+- Did not stop twgs.exe or launch TEDIT GUI.
+- GrokAFK24 / AFK Slot A left as-is (players=0 at probe; still do not disturb).
+
+Interactive unblock (if parent wants on-screen credit debit + turns):
+  1) New test character on Slot A (or activate spare slot) with >=5000 credits at StarDock.
+  2) Shipyards -> R: capture fee line, longest accepted name (try 30 and 31), turns before/after.
+  3) Attach a foreign limpet, dock StarDock and a Class 0: capture fee line and turns each time.

@@ -23,7 +23,7 @@ n102-sector1,STARDOCK_SECTOR,skipped (Old FAQ v2),,,,,Sector 1 overload
 n103-quick-backtrack,the two keys in the cockpit,"> quick stats, < adjacent backtrack. / unbound (UNVERIFIED). Non-adjacent < plots on 3.34b and refuses here (DIFFERENT)",,,,,"Quick-stats and backtrack keys"
 n97-haggle-good,HAGGLE_EXP_GOOD,+1,,,,,Good haggle experience
 n97-haggle-great,HAGGLE_EXP_GREAT,"+2, when the accepted price reaches the hidden bound",,,,,"Great haggle experience"
-n97-ship-rename,SHIP_RENAME_COST; SHIP_RENAME_NAME_MAX,"5000 credits, 30 characters, 0 turns",,,,,"Ship rename"
+n97-ship-rename,SHIP_RENAME_COST; SHIP_RENAME_NAME_MAX,"5000 credits CONFIRMED, 30 characters CONFIRMED, turns not measured",,,,,"Ship rename"
 n110-computer-b,"none, cockpit key, not an engine constant","Under the v3.11 profile, Computer B is Begin Self Destruct. N aborts. Y reuses the existing self-destruct. < stays the previous-sector key. A legacy Computer menu still uses B for backtrack",,,,,"Computer menu B"
 n112-shield-price,"a shield price, only if the screen prints one",no saved unit price. The flat 10 stays. The fighter wave is 160 to 239,,,,,Shield unit price
 n112-ship-odds,docs/plans/ship-odds-exchange-v1.md,already queued under NOTE 96. No new switch,,,,,Ship-odds loss split
@@ -42,7 +42,7 @@ n117-jettison,"_COLONIST_CAP, only if the screen prints a cap","250 alignment in
 n117-tax-align,"an alignment figure, only if the screen prints one",no alignment change on the daily tax,,,,,Tax alignment
 n117-port-upgrade,"an alignment figure, only if the screen prints one",no alignment change on a port upgrade,,,,,Port-upgrade alignment
 n117-colonist-kill,"an alignment figure, only if the screen prints one",destroying a planet is already -1 alignment and +50 experience,,,,,Colonist-kill alignment
-n117-limpet,LIMPET_REMOVAL_COST,"1250, marked UNVERIFIED",,,,,"Limpet removal fee"
+n117-limpet,LIMPET_REMOVAL_COST,"stored 1250; live card 5000 SOURCE-CONFLICT",,,,,"Limpet removal fee"
 n117-tw-type1,SHIP_TW_TYPE1_COST,"stored 12500; live card 50000 SOURCE-CONFLICT",,,,,"Type I TWarp price"
 n117-tw-type2,SHIP_TW_TYPE2_COST,"stored 20000; live card 80000 SOURCE-CONFLICT",,,,,"Type II TWarp price"
 n117-tw-upgrade,SHIP_TW_UPGRADE_COST,"stored 9000; live card 10000 SOURCE-CONFLICT",,,,,"TWarp upgrade price"

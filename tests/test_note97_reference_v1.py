@@ -1,6 +1,7 @@
 """NOTE 97. The reference reads the engine tables, and the two unsettled switches stay put.
 
-No new helper row. Haggle stays +1/+2. A rename stays 5,000 credits, 30 characters, and 0 turns.
+No new helper row. Haggle stays +1/+2. A rename stays 5,000 credits and 30 characters.
+Turns on a rename were not measured. The handler stays credit-only.
 StarDock is labelled Class 9 only while the live class map is on. Its stored id stays 8.
 """
 
