@@ -1,9 +1,8 @@
-"""Ven 2026-10-24 GameA TWSTATS [Costs]: photon missile.
+"""Ven 2026-10-24 GameA TWSTATS capture.
 
 docs/playtests/twgs-live/twstats-costs-ven.txt
-Stored price stays 12,000. The live card is hardware_price_live().
-SOURCE-CONFLICT with the cabal sample (photon 160,000).
-Atomic detonators stay off this switch.
+Photon Missile and Atomic Detonator lines are pinned. Every other label in
+[Version], [Settings], and [Costs] must be present. No new price switch.
 """
 
 from __future__ import annotations
@@ -20,8 +19,193 @@ from tw2k.server.reference import _prices
 
 ROOT = Path(__file__).resolve().parents[1]
 CAPTURE = ROOT / "docs" / "playtests" / "twgs-live" / "twstats-costs-ven.txt"
-COST_LINE = re.compile(r"^([A-Za-z0-9' /.]+)=([0-9,]+) cr$")
 
+VERBATIM = """\
+# GameA TWSTATS.TXT — Costs / BigBang card (read-only Ven probe)
+# Source: C:\\Games\\TWGS\\program files\\EIS\\TWGS\\Game\\GameA\\OUTPUT\\TWSTATS.TXT
+# Machine: VENGEANCE (89b0d9d2-d2d4-4d5b-8b34-9abf7cd9f545)
+# File mtime (Ven local): 2026-10-24 06:27:19 AM
+# Captured: 2026-10-24 ~10:48 AM America/Los_Angeles
+# Version header: Major=3 Minor=34 Revision=b
+# Touched nothing: AFK Slot A / GrokAFK24 / ports 8031-8037/8041 / twgs.exe
+#
+# Full [Costs] section + nearby Settings lines that touch hardware prices/timing.
+
+[Version]
+Major Version=3
+Minor Version=34
+Revision=b
+
+[Settings]  # hardware-adjacent only
+Photon Missile Duration=20 Sec
+FedSpace Photons=False
+Photons Disable Players=True
+Cloak Fail Percent=3%
+Multiple Photons=False
+
+[Costs]
+Tavern Announcement=100 cr
+Limpet Removal=5,000 cr
+Reregister Ship=5,000 cr
+Citadel Transport Unit=50,000 cr
+Citadel Transport Upgrade=25,000 cr
+Genesis Torpedo=20,000 cr
+Armid Mine=1,000 cr
+Limpet Mine=10,000 cr
+Beacon=100 cr
+Type I TWarp=50,000 cr
+Type II TWarp=80,000 cr
+TWarp Upgrade=10,000 cr
+Psychic Probe=10,000 cr
+Planet Scanner=30,000 cr
+Atomic Detonator=15,000 cr
+Corbomite=1,000 cr
+Ether Probe=3,000 cr
+Photon Missile=40,000 cr
+Cloaking Device=25,000 cr
+Mine Disruptor=6,000 cr
+Holographic Scanner=25,000 cr
+Density Scanner=2,000 cr
+"""
+
+COSTS = {
+    "Tavern Announcement": 100,
+    "Limpet Removal": 5_000,
+    "Reregister Ship": 5_000,
+    "Citadel Transport Unit": 50_000,
+    "Citadel Transport Upgrade": 25_000,
+    "Genesis Torpedo": 20_000,
+    "Armid Mine": 1_000,
+    "Limpet Mine": 10_000,
+    "Beacon": 100,
+    "Type I TWarp": 50_000,
+    "Type II TWarp": 80_000,
+    "TWarp Upgrade": 10_000,
+    "Psychic Probe": 10_000,
+    "Planet Scanner": 30_000,
+    "Atomic Detonator": 15_000,
+    "Corbomite": 1_000,
+    "Ether Probe": 3_000,
+    "Photon Missile": 40_000,
+    "Cloaking Device": 25_000,
+    "Mine Disruptor": 6_000,
+    "Holographic Scanner": 25_000,
+    "Density Scanner": 2_000,
+}
+
+SETTINGS = {
+    "Photon Missile Duration": "20 Sec",
+    "FedSpace Photons": "False",
+    "Photons Disable Players": "True",
+    "Cloak Fail Percent": "3%",
+    "Multiple Photons": "False",
+}
+
+VERSION = {
+    "Major Version": "3",
+    "Minor Version": "34",
+    "Revision": "b",
+}
+
+QUEUED = (
+    "Type I TWarp=50,000 cr",
+    "Type II TWarp=80,000 cr",
+    "TWarp Upgrade=10,000 cr",
+    "Citadel Transport Unit=50,000 cr",
+    "Citadel Transport Upgrade=25,000 cr",
+)
+
+NOTE_PATHS = (
+    ROOT / "docs/plans/GAP_MAP.md",
+    ROOT / "docs/reference/tw2002/GAP_MAP.md",
+    ROOT / "docs/plans/gap-map-refresh-v6.md",
+    ROOT / "docs/plans/live-twgs-test-queue-v1.md",
+    ROOT / "docs/plans/V311_SOURCE_CONFLICTS.md",
+    ROOT / "docs/plans/hardware-price-v1.md",
+    ROOT / "docs/plans/v311-profile-v1.md",
+)
+
+COST_LINE = re.compile(r"^([^=]+)=([0-9,]+) cr$")
+PAIR_LINE = re.compile(r"^([^=]+)=(.+)$")
+
+
+def _sections(text: str) -> dict[str, dict[str, str]]:
+    found: dict[str, dict[str, str]] = {}
+    section: str | None = None
+    for raw in text.splitlines():
+        line = raw.strip()
+        if not line or line.startswith("#"):
+            continue
+        if line.startswith("[") and "]" in line:
+            section = line[1:line.index("]")].strip()
+            found.setdefault(section, {})
+            continue
+        if section is None:
+            continue
+        match = PAIR_LINE.match(line)
+        assert match, line
+        found[section][match.group(1)] = match.group(2)
+    return found
+
+
+def test_capture_body_is_the_ven_file() -> None:
+    text = CAPTURE.read_text(encoding="utf-8")
+    assert text.startswith(VERBATIM)
+    for line in text[len(VERBATIM):].splitlines():
+        assert line == "" or line.startswith("#"), line
+    assert "Photon Missile=40,000 cr" in text
+    assert "Atomic Detonator=15,000 cr" in text
+
+
+def test_photon_and_atomic_lines_and_every_other_label() -> None:
+    sections = _sections(CAPTURE.read_text(encoding="utf-8"))
+    assert set(sections) == {"Version", "Settings", "Costs"}
+    assert sections["Version"] == VERSION
+    assert sections["Settings"] == SETTINGS
+    costs = {
+        label: int(raw.replace(",", "").removesuffix(" cr"))
+        for label, raw in sections["Costs"].items()
+    }
+    assert costs == COSTS
+    assert costs["Photon Missile"] == 40_000
+    assert costs["Atomic Detonator"] == 15_000
+    for label, raw in sections["Costs"].items():
+        assert COST_LINE.match(f"{label}={raw}")
+
+
+def test_stored_prices_stay_and_no_new_switch() -> None:
+    assert K.PHOTON_MISSILE_COST == 12_000
+    assert K.ATOMIC_DETONATOR_COST == 60_000
+    assert K.SHIP_TW_TYPE1_COST == 12_500
+    assert K.SHIP_TW_TYPE2_COST == 20_000
+    assert K.SHIP_TW_UPGRADE_COST == 9_000
+    assert K.PLANET_TRANSPORTER_COST_FIRST == 50_000
+    assert K.PLANET_TRANSPORTER_COST_EXTRA == 25_000
+    assert K.HARDWARE_PRICE_MODE == "legacy"
+    photon = getattr(K, "photon_missile_cost", None)
+    detonator = getattr(K, "atomic_detonator_cost", None)
+    if photon is not None:
+        assert photon() == K.PHOTON_MISSILE_COST
+    if detonator is not None:
+        assert detonator() == K.ATOMIC_DETONATOR_COST
+    assert not hasattr(K, "TWARP_PRICE_MODE")
+    assert not hasattr(K, "CITADEL_TRANSPORT_PRICE_MODE")
+
+
+def test_unbuilt_rows_are_queued_notes() -> None:
+    for path in NOTE_PATHS:
+        body = path.read_text(encoding="utf-8")
+        assert "DIFFERENT" in body
+        assert "queued" in body.lower()
+        for label in QUEUED:
+            assert label in body, (path.name, label)
+    hardware = (ROOT / "docs/playtests/ships/SHIP_TRANSWARP.md").read_text(encoding="utf-8")
+    assert "Type I TWarp=50,000 cr" in hardware
+    assert "DIFFERENT" in hardware
+    tow = (ROOT / "docs/playtests/ships/SHIP_TOW.md").read_text(encoding="utf-8")
+    assert "Type II TWarp=80,000 cr" in tow
+    assert "TWarp Upgrade=10,000 cr" in tow
+    assert "queued" in tow.lower()
 
 def _capture() -> str:
     return CAPTURE.read_text(encoding="utf-8")

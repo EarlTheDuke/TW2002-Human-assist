@@ -48,6 +48,19 @@ Ben can rule on these. Each row is one that NOTEs 143, 148, 150, 151, 157, or 15
 | Times blown up | Unlimited, or a later lockout | Cabal `twgs.html` prints Tournament Mode Off and Maximum times blown up Unlimited. `TWGS_v2_Revision_History.html` later adds pod and death lockouts. | `TIMES_BLOWN_MODE` (NOTE 164, row 202) says unlimited on the legacy destroy line when elimination is off. Off, that line still prints death `#N/3`. The later lockout was not switched. `DEATH_DELAY_MODE` remains the timeout. Two pods a day and out-until-midnight stay the stored death path. |
 | High score | TriCron HiScore 0, or the trader list | Cabal `twgs.html` prints TriCron HiScore 0 for that game. EIS `CompDisplays.html` lists traders in order of experience, with a title or the experience value, the corporation, and the ship. | `TRADER_RANK_LIST_MODE` is the list. NOTE 158 did not add a TriCron score. |
 
+## Ven 2026-10-24 — hardware prices still queued
+
+Read-only. `docs/playtests/twgs-live/twstats-costs-ven.txt`. GameA `TWSTATS.TXT` v3.34b `[Costs]`. Photon Missile=40,000 cr and Atomic Detonator=15,000 cr are on that card. Stored `PHOTON_MISSILE_COST` 12,000 and `ATOMIC_DETONATOR_COST` 60,000 stay. This note does not switch them.
+
+| Row | Competing numbers | Sources | Current choice |
+|---|---|---|---|
+| 4.15 Type I TWarp | 12,500, or 50,000 | Stored `SHIP_TW_TYPE1_COST` is the cabal twgs.html TEDIT sample 12,500. Live GameA TWSTATS prints Type I TWarp=50,000 cr. | Stored 12,500 stays. DIFFERENT. Queued. No new switch. |
+| 4.15 Type II TWarp | 20,000, or 80,000 | Stored `SHIP_TW_TYPE2_COST` is 20,000. OldFAQ v2 prints 80,000 and is unused. Live GameA TWSTATS prints Type II TWarp=80,000 cr. | Stored 20,000 stays. DIFFERENT. Queued. No new switch. |
+| 4.15 TWarp upgrade | 9,000, or 10,000, or OldFAQ 40,000 | Stored `SHIP_TW_UPGRADE_COST` is 9,000. OldFAQ v2 prints 40,000 and is unused. Live GameA TWSTATS prints TWarp Upgrade=10,000 cr. | Stored 9,000 stays. DIFFERENT. Queued. No new switch. |
+| Citadel transport | 50,000 and 25,000 | Live GameA TWSTATS prints Citadel Transport Unit=50,000 cr and Citadel Transport Upgrade=25,000 cr. The planet transporter already charges `PLANET_TRANSPORTER_COST_FIRST` 50,000 and `PLANET_TRANSPORTER_COST_EXTRA` 25,000. | Those planet charges stay. The Hardware Emporium labels are not a shop switch. DIFFERENT. Queued. |
+
+Disagreement with the later shop-price section: ship TransWarp quotes follow `hardware_price_live` there (SOURCE-CONFLICT). This section keeps the capture's queued reading, plus Photon Missile=40,000 cr and Atomic Detonator=15,000 cr, which that later section does not list.
+
 ## NOTE 177 - rulings under Ben's delegation (lean v3.11 original: Bible / TWGS default over sysop or TEDIT samples)
 
 | Row | Competing readings | Sources | Ruling |
