@@ -1209,7 +1209,10 @@ def test_hard_skips_a_dock_trip_and_a_ship_that_cannot_pay_back() -> None:
         "Scout Marauder: 5,625 cr. Holds 25, fighters 150, shields 100, 2 turns per warp, "
         "no photons, no TransWarp. Trade-in sells your ship for 10,325 cr and you fly the new one."
     )
-    assert medium._yard_pays({"ship": "Holds 0/20"}, scout) is False
+    # NOTE 172c: the headline is the net cost after trade-in. A faster, bigger
+    # hull at 5,625 net pays back; the same hull at 95,625 does not.
+    assert medium._yard_pays({"ship": "Holds 0/20"}, scout) is True
+    assert medium._yard_pays({"ship": "Holds 0/20"}, scout.replace("5,625", "95,625")) is False
 
 
 def test_a_known_pair_is_not_left_for_an_unseen_sector() -> None:
