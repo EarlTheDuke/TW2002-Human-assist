@@ -6182,7 +6182,8 @@
       const gone = LA("self_destruct");
       if (!gone) return confirmWords("Self Destruct", "Self-destruct is not in this game. Your ship stays.");
       if (!gone.legal) return confirmWords("Self Destruct", plainReason(gone.reason));
-      return confirmWords("Self Destruct", "You lose half your experience and half your alignment. The ship is gone. You are out for the rest of today and all of tomorrow.", () => act("self_destruct", {}, "self-destruct"));
+      const told = (gone.params && gone.params.note) || "You lose half your experience and half your alignment. The ship is gone. You are out for the rest of today and all of tomorrow.";
+      return confirmWords("Self Destruct", told, () => act("self_destruct", {}, "self-destruct"));
     }
     if (k === "J") {
       const dump = LA("jettison");

@@ -1,6 +1,15 @@
 # Rulings for Ben (NOTE 163)
 
-Docs only. These are the 14 rows in `V311_REMAINING.md` that still need a call. Reply `R1: A, R2: B`, and so on. Skip a line to leave today as it is.
+Adopted 2026-10-24 by the Commander under Ben's proactive grant. The Suggested reply is the decision. A normal game was not moved. Where a recommend needed a switch, the stored default stays legacy and `V311_PROFILE=v311` turns it on.
+
+What changed in the engine:
+
+- R5 B added `SELF_DESTRUCT_PENALTY_MODE` row 235. Row 228 stays `ATTACK_TURN_MODE` (#164). Off, self-destruct still halves experience and alignment of either sign. On, experience is cut in half, a negative alignment is cut in half, and a non-negative alignment stays. The sit-out stays.
+- R10 A stopped the profile from selecting `CFS_CEO_USE_MODE`. Only the C.E.O. buys a FlagShip. A member may board. The switch still blocks boarding when set to v311 by itself.
+- R14 A stopped the profile from selecting `ECON_WIN_MODE`. The 100,000,000 credit finish stays. The switch still drops that finish when set to v311 by itself.
+- R1 left `TERRA_COLONIST_MODE` as documented. R7 did not flip `CLASS_M_FIDELITY_MODE`.
+
+The rest of this file is the question Ben was shown. The Suggested reply below is now the adopted answer.
 
 Where two sources print different numbers, the lean is TWGS v3.11. The MBBS manual breaks a tie. A later live game (v3.34b) is not a v3.11 source. "Today" means a normal game, with every switch at its stored default. "The full profile" means `V311_PROFILE=v311`.
 
@@ -116,13 +125,15 @@ A. Leave them in the program, and leave them out of the v3.11 profile. Alliances
 
 In play, A is a v3.11 game that still knows when to stop. Today alliances are off and the planet bonus is on. The full profile turns that bonus off and leaves alliances off. The day limit and the credit finish stay either way. Recommend A.
 
-## Suggested reply
+## Suggested reply — adopted
 
 R1: A. R2: A. R3: A. R4: A. R5: B. R6: A. R7: A. R8: A. R9: B. R10: A. R11: A. R12: A. R13: A. R14: A.
 
 ## NOTE 177 rulings (Commander, under Ben's delegation: lean toward the original v3.11)
 
-- 10.1 Corporate FlagShip: only the C.E.O. buys one and only the C.E.O. boards one. Switch `CFS_CEO_USE_MODE`, row 213. Source: Gypsy's guide.
+R10 A supersedes the boarding half of the 10.1 line below. The purchase rule stays.
+
+- 10.1 Corporate FlagShip: only the C.E.O. buys one. A member may board (R10 A). `CFS_CEO_USE_MODE` is the Gypsy use-rule and is not selected by the profile.
 - 6.10 Destroying a planet: 50 alignment, as the Bible prints. Switch `PLANET_BLOW_ALIGN_MODE`, row 214. The cabal -1 stays the legacy value.
 - 8.1 Ferrengi odds: the Bible ship chart, 1.2 / 1.4 / 1.4 and an Assault Trader volley of 2,000. Switch `FERRENGI_ODDS_MODE`, row 200 (NOTE 164). This corrects the first NOTE 177 reading, which missed the Bible table. Stored FERRSPEC stays the legacy value.
 

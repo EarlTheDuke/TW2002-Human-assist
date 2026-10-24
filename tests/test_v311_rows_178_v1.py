@@ -1,8 +1,10 @@
-"""NOTE 178. Larger gap rows.
+"""NOTE 178, then R14 A.
 
-14.6 gains ECON_WIN_MODE, row 215: the instant credits win is ours only, so under
-V311_PROFILE=v311 credits on hand never end the game. Legacy keeps the 100M win.
-5.7 and 11.11 are docs reclassifications; 12.3 and 12.4 are skipped (see refresh-v6).
+14.6 keeps ECON_WIN_MODE. R14 A keeps the 100,000,000 credit finish and the
+day cap, so the profile does not turn the switch on. Setting the switch
+itself to v311 still drops the instant credits win. Legacy keeps the 100M win.
+5.7 and 11.11 are docs reclassifications. 12.3 is R12 A (turns stay). 12.4
+stays Partial.
 """
 from __future__ import annotations
 
@@ -20,14 +22,16 @@ def _world(credits: int):
     return p, q
 
 
-def test_switch_defaults_legacy_and_only_v311_turns_it_on(monkeypatch):
+def test_switch_defaults_legacy_and_the_profile_leaves_the_credit_finish(monkeypatch):
     assert K.ECON_WIN_MODE == "legacy"
     assert K.econ_win_off_live() is False
     monkeypatch.setattr(K, "V311_PROFILE", "1")
     assert K.econ_win_off_live() is False
     monkeypatch.setattr(K, "V311_PROFILE", "v311")
+    assert K.econ_win_off_live() is False
+    assert "econ_win_off_live" not in K.V311_PROFILE_HELPERS
+    monkeypatch.setattr(K, "ECON_WIN_MODE", "v311")
     assert K.econ_win_off_live() is True
-    assert K.V311_PROFILE_HELPERS["econ_win_off_live"][0] == "ECON_WIN_MODE"
 
 
 def _ends_on_credits(monkeypatch, mode: str) -> bool:

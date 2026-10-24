@@ -1,12 +1,48 @@
 # COMMANDER_NEXT
 
-Standing mailbox for TW2K Dev Commander. Docs only. Engine, tests, ports, and live games stay where they are.
+Standing mailbox for TW2K Dev Commander.
 
 Report Page: https://cursor.com/canvas/store-edda9433-2d33-4b62-8d22-af10c2ff3895/b7c0b37a-f606-4a76-a69c-426bc1689683
 
 Playtest wrap: `docs/playtests/multibot-2026-10-24-sat-grok-l3/README.md`
 
-Open and mergeable against `feature/grokbot-player` on 2026-10-24: #147–#179, #181, and #182. #180 is on tip at `1e72eae` (colonist-units Class M→L thousands). #181 already holds the October GAP leftover grades (1.5 Ben-decision, 1.6 Partial, 2.15 Partial, 4.8 Partial, 6.3 Ben-decision). This fold does not re-grade those cells, and it does not rewrite `docs/plans/gap-map-refresh-v6.md`.
+Tip: `feature/grokbot-player` @ `75686f34` before this adoption. That tip already contains #180, the handbook curve (#183), the port-attack samples (#185), attack turns row 228 (#164), ship capacity row 229 (#163), the photon-cloak card row 230 (#161), Tri-Cron row 231 (#160), Grimy tips row 232 (#155), StarDock doors row 233 (#153), the interdictor damp row 234 (#171), the limpet and rename capture (#154), the full TWSTATS capture (#157), the October Missing-cell close (#173), and the leftover grades (#181). `SELF_DESTRUCT_PENALTY_MODE` is row 235.
+
+## Standing queue
+
+1. Remaining step before the next Class L ferry is a wt_live redeploy. Player of Games will request that redeploy when about to ferry.
+2. Hotter L3 retest start bank is **2M** credits. Decided by the Commander under Ben's proactive grant.
+3. Ops note: Computer Use seats 1–3 min/action; double-queue re-fire observed. Plan around that for the next multi-bot.
+4. DONE. GAP 6.3 handbook curve is Match-behind-flag on the tip (#183). Do not regress.
+5. DONE. GAP 2.15 stays Partial. The confirmed Ven GameA samples are Match-behind-flag on the tip (#184 recorded, #185 wired). Do not regress.
+6. DONE. R1–R14 from `docs/plans/V311_RULINGS_FOR_BEN.md` are adopted. Grades are in `docs/plans/gap-map-refresh-v6.md`.
+
+## Blockers
+
+- The Class L ferry waits on the wt_live redeploy. Player of Games requests it.
+- Ben-decision still open: GAP 1.5 StarDock location. StarDock stays in sector 1. R1–R14 did not pick a sector.
+- The serial restack of #163, #161, #160, #155, #153, #171, #154, #157, #173, and #181 landed on `75686f34` before this adoption. Older track PRs #103, #99, #82, #37, #28, and #25 were not in that merge order.
+
+## Adopted R1–R14
+
+| Reply | Row | Grade | Switch |
+|---|---|---|---|
+| R1 A | 1.6 Terra 100,000 / 1 per hold | Match | `TERRA_COLONIST_MODE` left as documented |
+| R2 A | 1.15 Fed tow more than 50 | Match-behind-flag | `FED_TOW_LIMIT_MODE` row 168, already wired |
+| R3 A | 2.5 two price lists | Match-behind-flag | left |
+| R4 A | 4.1 Genesis 25,000 | Match | `GENESIS_TORPEDO_COST` is 25000. Live card 20,000 stays on the hardware switch |
+| R5 B | 5.14 self-destruct | Match-behind-flag | `SELF_DESTRUCT_PENALTY_MODE` row 235, new, default legacy. Row 228 stays `ATTACK_TURN_MODE` |
+| R6 A | 5.20 FedSpace more than 50 | Match-behind-flag | `FEDSAFE_FIGHTER_CAP_MODE` row 167, already wired |
+| R7 A | 6.2 Class M L1 printed 1,000 | Match | `CLASS_M_FIDELITY_MODE` was not flipped |
+| R8 A | 8.1 Bible Ferrengi odds | Match-behind-flag | `FERRENGI_ODDS_MODE` row 200 |
+| R9 B | 9.8 rob x6 / steal /21 | Match | stored factors |
+| R10 A | 10.1 CEO buys, member may board | Match | `CFS_CEO_USE_MODE` taken off the profile |
+| R11 A | 11.11 no bubbles, no Gold | Match-behind-flag | already |
+| R12 A | 12.3 turns stay | Match | `PLANET_REALTIME_PROD_MODE` stays off |
+| R13 A | 12.6 no lockout | Match-behind-flag | `TIMES_BLOWN_MODE` row 202 |
+| R14 A | 14.6 alliances off, credit finish stays | Match-behind-flag | `ECON_WIN_MODE` taken off the profile |
+
+`CLASS_M_FIDELITY_MODE` still multiplies class M colonists by 1,000 when the profile is on (NOTE 19). R7 A did not turn that on or off. The adopted citadel figure is the printed 1,000, which a normal game uses.
 
 ## 2026-10-24 — Sat Grok L3 wrap (`82578bfe`)
 
@@ -27,14 +63,6 @@ CONFIRMED lasers: class 1 H'Catha sector 478, 337 battle points (def 46); class 
 
 A 0-fighter commit aborts after the def and shield text. Def rating is per port (class 3 Peleus 86 vs Anaxagoras Primus sector 913 def 60). Non-Fed class 8 (def 99, class 4 Sunstorm) differs from the Fed class 8 prior (def 91 / laser 701). `PORT_DEFENSE_RATING` and `PORT_LASER_BARRAGE` still hold class 6 only, so GAP 2.15 stays Partial. No engine change in this fold.
 
-## Standing queue
+## Standing queue (superseded)
 
-1. Tip already has #180 (`1e72eae`, colonist-units Class M→L thousands). Remaining step is a wt_live redeploy before the next Class L ferry. Player of Games will request that redeploy when about to ferry.
-2. Ops note: Computer Use seats 1–3 min/action; double-queue re-fire observed. Plan around that for the next multi-bot.
-3. Hotter L3 retest at 2M–5M start once Ben picks the start bank (after #180 on live).
-4. DONE 2026-10-24. GAP 2.15 Ven GameA port-attack ratings. Capture: `docs/playtests/twgs-live/gap215-port-attack-2026-10-24.md`. CONFIRMED lasers: class 1 H'Catha 337, class 4 Duriron Minor 1419, class 6 Khancuhn Primus 598 (prior REPORT2), class 7 Balmer 1121. Grade stays Partial; those numbers are not in `PORT_DEFENSE_RATING` / `PORT_LASER_BARRAGE`. EIS :23 was not touched.
-
-## Blockers
-
-- Remaining step before the next Class L ferry is the wt_live redeploy. Player of Games will request that redeploy when about to ferry. Open stack still to merge: #147–#179, #181, and #182.
-- Ben rulings still open: GAP 4.1 Genesis 25k vs 80k, GAP 1.15 Fed tow 98 vs 50, GAP 6.3 max colonists.
+The queue at the top of this file replaces the list that used to sit here. The capture notes below stay as history. GAP 2.15 numbers were not invented in this note; they are the measured samples already on the tip.

@@ -4705,13 +4705,32 @@ def port_stock_fidelity_live() -> bool:
 
 # ship-exit-v1. Off, Jettison and Self-destruct stay "not in this game".
 # On, jettison dumps cargo and self-destruct costs half your experience
-# and alignment and keeps you out today and tomorrow.
+# and alignment and keeps you out today and tomorrow. R5 B changes only
+# the alignment half, and only through SELF_DESTRUCT_PENALTY_MODE.
 SHIP_EXIT_MODE = "legacy"  # "legacy" | "tw2002"
 
 
 def ship_exit_on() -> bool:
     """True when Jettison and Self-destruct are real commands."""
     return SHIP_EXIT_MODE == "tw2002" or tw2002_live_profile() or v311_profile()
+
+
+# R5 B, row 235. The MBBS manual: self-destruct loses 50 percent of experience
+# and the ship, and a bad alignment is cut in half. It prints no new number
+# for a good alignment. The official screen gives no amounts and says you
+# have no turns the next day. Off, the button still uses the ship-destroyed
+# sentence (half experience and half alignment, either sign) plus the sit-out.
+# On, experience is still cut in half, a negative alignment is cut in half,
+# and a non-negative alignment stays. Sit-out stays: out for the rest of
+# today and all of tomorrow. A pod and a Ship Destroyed by someone else are
+# not this switch. Stored default stays legacy. The string "1" does not
+# turn it on.
+SELF_DESTRUCT_PENALTY_MODE = "legacy"  # "legacy" | "v311"
+
+
+def self_destruct_mbbs_live() -> bool:
+    """True when self-destruct uses the MBBS alignment rule (R5 B)."""
+    return SELF_DESTRUCT_PENALTY_MODE == "v311" or v311_profile()
 
 
 # combat-clarity-v1. Off, a same-sector rival's fighters and shields stay out of
@@ -5245,10 +5264,6 @@ V311_PROFILE_HELPERS: dict[str, tuple[str, str]] = {
         "BOUNTY_GOOD_MODE",
         "NOTE 163 GAP 9.5: a bounty on a good trader costs 1 alignment per 250 credits and no experience",
     ),
-    "cfs_ceo_use_live": (
-        "CFS_CEO_USE_MODE",
-        "NOTE 177 GAP 10.1: only a C.E.O. may board a Corporate FlagShip (Gypsy: only C.E.O.'s can use them)",
-    ),
     "planet_blow_align_live": (
         "PLANET_BLOW_ALIGN_MODE",
         "NOTE 177 GAP 6.10: destroying a planet costs 50 alignment (Bible), not 1",
@@ -5268,10 +5283,6 @@ V311_PROFILE_HELPERS: dict[str, tuple[str, str]] = {
     "fighter_report_live": (
         "FIGHTER_REPORT_MODE",
         "NOTE 164 GAP 13.4: the fighter report lists owned fighters and omits a count of 0",
-    ),
-    "econ_win_off_live": (
-        "ECON_WIN_MODE",
-        "NOTE 178 GAP 14.6: no instant credits win; the original game has no such end (ours-only system)",
     ),
     "full_game_turns_live": (
         "FULL_GAME_TURNS_MODE",
@@ -5349,6 +5360,11 @@ V311_PROFILE_HELPERS: dict[str, tuple[str, str]] = {
     "stardock_doors_live": (
         "STARDOCK_DOORS_MODE",
         "NOTE 129 GAP 1.8: the where-to list includes the Libram, and B opens the singles bar without a charge",
+    ),
+    # R5 B GAP 5.14. Row 235. Rows 229-234 are already taken.
+    "self_destruct_mbbs_live": (
+        "SELF_DESTRUCT_PENALTY_MODE",
+        "R5 B GAP 5.14: self-destruct loses half experience, halves a negative alignment, and leaves a non-negative alignment",
     ),
 }
 
@@ -6878,16 +6894,21 @@ def citadel_colonist_kept_phrase(class_id, stored: int) -> str:
     return f"{int(stored)} colonists"
 
 
-# NOTE 177 GAP 10.1 (ruling, V311_SOURCE_CONFLICTS.md). bc24 CFS_CEO_RULE keeps
-# "only the C.E.O. buys a FlagShip". Gypsy_Big_Dummies_Guide: "Only C.E.O.'s can
-# use Corporate Flagships so they are not available for trade." On, a corp mate
-# who is not the C.E.O. cannot board a parked Corporate FlagShip. Legacy lets him.
+# NOTE 177 GAP 10.1. bc24 CFS_CEO_RULE keeps "only the C.E.O. buys a FlagShip".
+# Gypsy's use-rule is this switch. R10 A adopted the purchase rule and a member
+# at the helm, so the profile does not turn this on. On, a corp mate who is not
+# the C.E.O. cannot board a parked Corporate FlagShip. Legacy lets him.
 CFS_CEO_USE_MODE = "legacy"  # "legacy" | "v311"
 
 
 def cfs_ceo_use_live() -> bool:
-    """True when only a C.E.O. may board a Corporate FlagShip he does not own."""
-    return CFS_CEO_USE_MODE == "v311" or v311_profile()
+    """True when only a C.E.O. may board a Corporate FlagShip he does not own.
+
+    R10 A leaves this off the profile. Only the C.E.O. buys one
+    (CFS_CEO_RULE purchase). A member may be handed the helm. Set the
+    switch itself to v311 for the Gypsy use-rule. The profile does not.
+    """
+    return CFS_CEO_USE_MODE == "v311"
 
 
 # NOTE 177 GAP 6.10 (ruling). Bible (S3): destroying a planet "takes your
@@ -6911,15 +6932,20 @@ def planet_blow_alignment_loss() -> int:
 
 
 # NOTE 178 GAP 14.6. The instant "economic dominance" win at VICTORY_CREDITS_THRESHOLD
-# credits on hand is ours only: v3.11 has no credits win (Bible, Big Dummies Guide; the
-# end-rule line already says the original game has no end date). On, credits on hand
-# never end the game. Elimination and the day cap stay. Legacy keeps the instant win.
+# credits on hand is ours only. R14 A keeps that finish, and the day cap, so this
+# beta can end. The profile does not turn this on. On, credits on hand never end
+# the game. Elimination and the day cap stay. Legacy keeps the instant win.
 ECON_WIN_MODE = "legacy"  # "legacy" | "v311"
 
 
 def econ_win_off_live() -> bool:
-    """True when credits on hand never end the game (no instant economic win)."""
-    return ECON_WIN_MODE == "v311" or v311_profile()
+    """True when credits on hand never end the game (no instant economic win).
+
+    R14 A keeps the credit finish so this beta can end. The profile does
+    not turn this on. Set the switch itself to v311 to drop the 100,000,000
+    credit finish.
+    """
+    return ECON_WIN_MODE == "v311"
 
 
 # Track K, row 216. v3.11 has one sysop turns-per-day setting; it does not shrink

@@ -1460,7 +1460,16 @@ def _destroy_ship_tw2002(
         dest = K.STARDOCK_SECTOR
         if exp_before > 0:
             player.experience = exp_before - int(exp_before * K.SD_EXP_LOSS)
-        player.alignment = align_before - int(align_before * K.SD_ALIGN_LOSS)
+        # R5 B: self-destruct halves a negative alignment and leaves a
+        # non-negative alignment. A pod and any other Ship Destroyed still
+        # take half of either sign (the cabal ship-destroyed sentence).
+        spare_good_align = (
+            str(reason) == "self_destruct"
+            and K.self_destruct_mbbs_live()
+            and align_before >= 0
+        )
+        if not spare_good_align:
+            player.alignment = align_before - int(align_before * K.SD_ALIGN_LOSS)
         _strip_ship(player, K.SD_RESTART_HULL)
         player.ship.fighters = K.reentry_fighter_grant()
         _place(universe, player, dest)

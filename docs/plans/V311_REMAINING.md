@@ -2,11 +2,11 @@
 
 NOTE 161 listed the open rows. NOTE 163, now on the tip, matched 6.7, 6.11, 9.2, 9.5, and 13.4. NOTE 162 moved the grades that were already true, and built the printed pieces that were not. NOTE 164 adds four switches. Two of those switches sit on rows NOTE 163 already graded, and those rows are counted once. Each row is listed once.
 
-The grades are the 171 rows in the every-row list of `docs/plans/gap-map-refresh-v6.md`. Row 181 is NavPoints (`NAVPOINT_MODE`, NOTE 159). NOTE 162 uses rows 182-186. Row 187 is `BOUNTY_GOOD_MODE` from NOTE 163. NOTE 164 uses rows 200-203.
+The grades are the 171 rows in the every-row list of `docs/plans/gap-map-refresh-v6.md`. Row 181 is NavPoints (`NAVPOINT_MODE`, NOTE 159). NOTE 162 uses rows 182-186. Row 187 is `BOUNTY_GOOD_MODE` from NOTE 163. NOTE 164 uses rows 200-203. Row 228 is `ATTACK_TURN_MODE` (#164). Row 235 is `SELF_DESTRUCT_PENALTY_MODE` (R5 B).
 
-**161 of 171 rows match the original rule (94.2%).** That count is Match 73 plus Match-behind-flag 88. A Match-behind-flag row is coded, and its switch stays off until `V311_PROFILE` is `v311`. A normal game, with every switch at the stored default, matches 73 of 171 (42.7%). The other rows are Partial 7, Different 1, Missing 0, and Ben-decision 2. Eight rows are still Partial or Different.
+**167 of 171 rows match the original rule (97.7%).** That count is Match 76 plus Match-behind-flag 91. A Match-behind-flag row is coded, and its switch stays off until `V311_PROFILE` is `v311`. A normal game, with every switch at the stored default, matches 76 of 171 (44.4%). The other rows are Partial 3, Different 0, Missing 0, and Ben-decision 1. Four rows are still not a full match.
 
-Nine rows this file had left open are Match or Match-behind-flag on this tip: 2.5, 5.7, 5.14, 5.20, 6.10, 9.8, 10.1, 11.11, and 14.6. They are listed under Matched on this tip. 6.11 and 13.4 stay one grade each. `CORP_SHIP_DISBAND_MODE` and `FIGHTER_REPORT_MODE` are extra behaviours on those rows.
+R1–R14 from `V311_RULINGS_FOR_BEN.md` are adopted. 6.11 and 13.4 stay one grade each. `CORP_SHIP_DISBAND_MODE` and `FIGHTER_REPORT_MODE` are extra behaviours on those rows. GAP 6.3 stays Match-behind-flag (#183). GAP 2.15 stays Partial; the confirmed samples stay Match-behind-flag (#185).
 
 `docs/plans/V311_SOURCE_CONFLICTS.md` is on this tip. NOTE 164 updates the Ferrengi odds row and the times-blown row there.
 ## Matched in NOTE 163
@@ -44,24 +44,31 @@ These nine were still on the open lists. The v6 every-row grade is Match or Matc
 
 - **2.5 Price scale vs ship cost.** Match-behind-flag. Ports stay on the economy chart and ships stay on the Bible chart. `PORT_MAX_STOCK_MODE` row 223 holds a product maximum of 950 to 2,720. No source prints one scale. `economy.port_sell_price`, `universe._make_port`.
 - **5.7 Ship versus ship.** Match. The exchange is the S4/S6 Safety Rating model and the printed expected value: shields, then fighters (S3 Scout 2:1, S2 1:1, S7 fighters-to-use). No source prints a random term (S7, unable to determine the random factors), so the loss split is that expected value under every profile. `combat._resolve_ship_attack_tw2002`. `tests/test_combat_exchange_sources_v1.py`.
-- **5.14 Exp and alignment on death.** Match. NOTE 177. A pod costs `POD_EXP_LOSS` 10 percent experience and no alignment. Ship Destroyed costs `SD_EXP_LOSS` and `SD_ALIGN_LOSS`, half of each. `combat._destroy_ship_tw2002`.
-- **5.20 Combat in FedSpace.** Match. NOTE 177. Attacking a fedsafe trader in FedSpace summons Captain Zyrain and pods the attacker (`fed.protect_fedspace_attack`, `FED_PROTECT_PUNISH` pod, stored `FED_MODE` tw2002). Attacking a Federal costs `FED_ATTACK_ALIGN_PENALTY` 10 alignment and the pod. `victory.is_fedsafe` leaves an evil trader unprotected.
+- **5.14 Exp and alignment on death.** Match-behind-flag. R5 B. A pod costs `POD_EXP_LOSS` 10 percent experience and no alignment. A Ship Destroyed that is not the button still costs half of each. Self-destruct is `SELF_DESTRUCT_PENALTY_MODE` row 235. `combat._destroy_ship_tw2002`.
+- **5.20 Combat in FedSpace.** Match-behind-flag. R6 A. `FEDSAFE_FIGHTER_CAP_MODE` row 167. More than 50 fighters removes protection. 50 is still safe. `fed.protect_fedspace_attack`. `victory.is_fedsafe`.
 - **6.10 Planet killer.** Match-behind-flag. NOTE 177. `PLANET_BLOW_ALIGN_MODE` row 214 takes 50 alignment on the blow. Legacy keeps the cabal −1. Experience stays +50. Killing a trader on the planet is `PLANET_ZDY_MODE`. Colonist-kill alignment is still unprinted. `V311_SOURCE_CONFLICTS.md`, NOTE 177, "Destroying a planet".
 - **9.8 Rob and steal caps.** Match. NOTE 177. Rob max is experience times `ROB_CREDIT_FACTOR` 6. Steal max is experience divided by `STEAL_HOLD_DIVISOR` 21. `rob_steal.max_rob_credits`.
-- **10.1 Create a corporation.** Match-behind-flag. NOTE 177. Filing a charter stays in, and `CORP_CREATE_COST` stays 0. `CFS_CEO_RULE` stays purchase. `CFS_CEO_USE_MODE` row 213 lets only the C.E.O. board a FlagShip. `corpships.board_block`. `V311_SOURCE_CONFLICTS.md`, NOTE 177, "Corporate FlagShip".
+- **10.1 Create a corporation.** Match. R10 A. Filing a charter stays in, and `CORP_CREATE_COST` stays 0. `CFS_CEO_RULE` stays purchase. A member may board. `CFS_CEO_USE_MODE` is not selected by the profile. `corpships.board_block`.
 - **11.11 Big Bang options.** Match-behind-flag. Density, the one-way share, the 30 percent two-way lanes, and the 95 percent initial starports are `BIG_BANG_DENSITY_MODE`, `ONE_WAY_SHARE_MODE`, `TWO_WAY_WARP_MODE`, and `BIG_BANG_BUILT_MODE` row 221. Bubbles are Gold-only, so v3.11 has none. `universe.generate_universe`.
-- **14.6 Ours-only systems.** Match-behind-flag. `ECON_WIN_MODE` row 215 turns the instant credits win off. `ALLIANCE_OFF_MODE` row 222 refuses an in-game pact. `play_to_day_cap` stays. `victory.check_victory`.
+- **14.6 Ours-only systems.** Match-behind-flag. R14 A. `ALLIANCE_OFF_MODE` row 222 refuses an in-game pact. The planet bonus stays off. The day cap and the 100,000,000 credit finish stay. `ECON_WIN_MODE` is not selected. `victory.check_victory`.
 
 ## Needs Ben's ruling
 
-A Ben-decision grade, or a Partial whose number is still a choice Ben has not closed. Where the pair is already written, the section name is the one in `V311_SOURCE_CONFLICTS.md`.
+- **1.5 StarDock location.** Ben-decision. StarDock stays in sector 1. `constants.STARDOCK_SECTOR`. Nothing in R1–R14 picks a sector.
 
-- **1.5 StarDock location.** Ben-decision. StarDock stays in sector 1. `constants.STARDOCK_SECTOR`.
-- **1.6 Terra colonists.** Partial. Daily regen is `TERRA_REGEN_PER_DAY` 750, and a load costs `TERRA_LOAD_TURNS` 1. The stored pool opens at `TERRA_MAX_COLONISTS` 100,000, one person per hold. `TERRA_COLONIST_MODE` row 25 opens at `TERRA_LIVE_START` 30,000 with `TERRA_LIVE_PER_HOLD` 1,000. `class0.handle_terra_colonists`. Small.
-- **1.15 FedSpace fighter limit.** Partial. The stored tow is `FED_TOW_FIGHTER_LIMIT` 98, so a ship with 99 or more fighters is towed. `FED_TOW_LIMIT_MODE` row 168 uses 50 when it is on. `V311_SOURCE_CONFLICTS.md`, NOTE 151, "FedSpace fighter tow" (Bible over 50, Gypsy 99 or more). `fed.run_tows`. Small.
-- **4.1 Genesis price.** Partial. Genesis works. `GENESIS_TORPEDO_COST` is 25,000. `GENESIS_TORPEDO_COST_LIVE` is 20,000. A sample settings screen prints 80,000. That pair is not a row in `V311_SOURCE_CONFLICTS.md`. Small.
-- **6.2 Class-table citadel costs.** Partial. The class goods are on (`CITADEL_COST_MODE` via `citadel_fidelity_rules`). Build days are `CITADEL_DAYS_MODE` row 2. Class M level 1 in `CITADEL_CLASS_COSTS` is 1,000 colonists, 300 fuel, 200 organics, 250 equipment, and 4 days. `CLASS_M_FIDELITY_MODE` multiplies that colonist figure by 1,000. That figure is Ben's NOTE 19 choice, the same hold as row 6.3. Small.
-- **6.3 Class M caps and the bell curve.** Ben-decision. `PLANET_MAX_COLONISTS` for class M stays 30,000 until Ben chooses. The handbook calls daily output a bell that peaks at half that cap. S1 prints no bell-curve shape, so `planets._worked` holds output at that peak above half. Population above half dies off under `PLANET_PROD_MODE` row 26. `constants.planet_prod_live`.
+## Adopted from the suggested reply
+
+These left the Ben list. The grade is the every-row line in `gap-map-refresh-v6.md`.
+
+- **1.6 Terra colonists.** Match. R1 A. Stored pool `TERRA_MAX_COLONISTS` 100,000, one person per hold. `TERRA_COLONIST_MODE` is unchanged.
+- **1.15 FedSpace fighter limit.** Match-behind-flag. R2 A. `FED_TOW_LIMIT_MODE` row 168. Bible more than 50 when on. Stored Gypsy stays 98.
+- **2.5 Price scale.** Match-behind-flag. R3 A. Left as it was.
+- **4.1 Genesis price.** Match. R4 A. `GENESIS_TORPEDO_COST` is 25,000. The live card 20,000 stays on `HARDWARE_PRICE_MODE` and is not the adopted price.
+- **5.14 Self-destruct.** Match-behind-flag. R5 B. `SELF_DESTRUCT_PENALTY_MODE` row 235.
+- **5.20 FedSpace fighters.** Match-behind-flag. R6 A. `FEDSAFE_FIGHTER_CAP_MODE` row 167. More than 50.
+- **6.2 Class M level 1.** Match. R7 A. Printed 1,000 colonists. `CLASS_M_FIDELITY_MODE` was not flipped.
+- **6.3 Handbook curve.** Match-behind-flag. Already on the tip (#183). Not reopened.
+- **8.1 through 14.6.** R8 A, R9 B, R10 A, R11 A, R12 A, R13 A, R14 A. R10 stopped selecting `CFS_CEO_USE_MODE`. R14 stopped selecting `ECON_WIN_MODE`. The others already matched.
 
 ## Can't verify without the real game
 
@@ -69,11 +76,10 @@ A Ven or TWGS screen still has to print the missing number. Guessing it would in
 
 - **12.4 Nightly Extern.** Partial. `runner.tick_day` already runs the jobs the sources name: retreats, Ferrengi, the corp penalty, the Class 0 sweep, Terra regen, empty-ship repossession, Fed tows, port regen, bust clearing, photon waves, cloak fails, NavHaz, alien hops, planet production, citadels, treasury, and tax. Collisions and special-port rebuilds are `PLANET_COLLISION_MODE` and `SPECIAL_PORT_DEFENCE_MODE`. `INACTIVE_USER_MODE` row 177 deletes a disconnected human after 30 quiet wall-clock days and stays off. `V311_SOURCE_CONFLICTS.md`, NOTE 151, "Days until an inactive user is deleted" (30, or Gypsy's 7). `INACTIVITY_TIMEOUT_MODE` row 178 sleeps a quiet lobby game after 14,400 seconds and stays off. A job past that list has no name. A live Extern would have to print it. Medium.
 
-## Still Partial or Different
+## Still Partial
 
 - **2.15 Attack a port.** Partial; confirmed samples Match-behind-flag. Ven GameA v3.34b on 2026-10-24 (`docs/playtests/twgs-live/gap215-port-attack-2026-10-24.md`). When `PORT_ATTACK_MODE` is live, class fallbacks are class 1 H'Catha def 46 / laser 337, class 4 Duriron Minor def 110 / laser 1419, class 6 Khancuhn Primus def 98 / laser 598, class 7 Balmer def 98 / laser 1121. DEF_ONLY fallbacks: class 2 def 55, class 3 def 86, class 5 def 59, with no laser. A captured port name uses that port's def (Peleus 86, Anaxagoras Primus sector 913 def 60). Non-Fed class 8 Vergil Minor def 99 is stored and not applied to engine class 8 (StarDock). Class 0 and class 9 stay BLOCKED. Lasers for classes 2, 3, 5, and non-Fed 8 are still open. `PORT_ATTACK_MODE` row 30 and `PORT_ATTACK_ALL_CLASSES_MODE` row 138 stay legacy. `runner._handle_port_attack`. Medium.
 - **4.8 Armid price.** Partial. Detonation is the stored half-count at 20 (`hardware.armid_detonation_hits`). The shop price is `HARDWARE_PRICE_MODE` row 14: stored `ARMID_MINE_COST` 100, live card `ARMID_MINE_COST_LIVE` 1,000. The unit price is sysop-set. Small.
-- **12.3 Real-time movement.** Different. Ships move by turns. `DAY_ROLL_CLOCK_MODE` rolls the day while a seat holds the turn. `PLANET_REALTIME_PROD_MODE` stays off, because the original produces at Extern. No speed table is printed. Large.
 
 ## NOTE 164 matched
 
