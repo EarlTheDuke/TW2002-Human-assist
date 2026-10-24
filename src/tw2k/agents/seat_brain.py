@@ -4842,7 +4842,7 @@ class SeatBrain:
         if join_underground(
             alignment=alignment,
             credits=int(v.credits),
-            password_price=int(K.GRIMY_PASSWORD_COST),
+            password_price=int(K.grimy_password_cost()),
             already=bool(tavern.get("password_known")),
         ) and v.ok("grimy_ask") and "underground" in {str(c) for c in v.choices("grimy_ask", "topic")}:
             self.mem.tavern_day = int(v.day)
@@ -4856,7 +4856,7 @@ class SeatBrain:
         picking = self._trade_quote(v) is not None
         profit = int(self.mem.tavern_income)
         spent = int(getattr(self, "_tavern_spent", 0))
-        cost = int(K.GRIMY_TRACE_COST)
+        cost = int(K.grimy_trace_cost())
         reserve = int(K.BOT_TAVERN_RESERVE)
         gap = int(K.BOT_TAVERN_TRACE_GAP_DAYS)
         income_ok = bool(rivals) and trace_fits_income(cost=cost, spent=spent, profit=profit)

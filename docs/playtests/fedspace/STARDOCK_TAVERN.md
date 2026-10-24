@@ -60,6 +60,8 @@ Sources under `C:\Users\sugar\tw2002_reference\`. Target TWGS 3.11; MBBS is the 
 
 `TAVERN_TURN_COST` 0, `TAVERN_TEXT_MAX` 160, `TAVERN_ANNOUNCE_SIGNED` True, `TAVERN_TALK_COST` 0, `TAVERN_GRAFFITI_COST` 0, `TAVERN_DRINK_COST` 20, `TAVERN_FOOD_COST` 20, `TAVERN_PRICE_SCALING` flat, `GRIMY_TRACE_COST` 3000, `GRIMY_TRACE_PICK` hashed, `GRIMY_CHARGE_ON_MISS` False, `GRIMY_TRACE_LIES` False, `GRIMY_DOCK_LOG_MAX` 10, `GRIMY_DOCK_ACTIONS` trade/rob/steal/planet_trade/port_upgrade, `GRIMY_PASSWORD_COST` 2000, `GRIMY_CURSE_TURNS` 1, `GRIMY_RUDE_MARKUP_PCT` 0, `UG_PASSWORD_MATCH` loose, `UG_MURDER_POD` False, `UG_MURDER_COUNTS_DEATH` True, `UG_CONTRACT_MIN` 1000, `UG_CONTRACT_PAYOUT_ON` ship_destroyed, `UG_CONTRACT_ON_ELIMINATION` sink, `UG_SHOW_CONTRACTS` totals.
 
+NOTE 129 day-1 screen (`docs/playtests/twgs-live/stardock-menus.txt`, "Grimy, this visit, declined"). Topic `trader` is the trace and stays 3,000. Topic `stardock` quoted 23 credits. Topics `underground` and `mafia` still sell the password. The paid follow-up was 160 credits (300 on hand, then 140). `GRIMY_TIP_MODE` stays `legacy`, so a stored game keeps 3,000 and 2,000. Live and v311 charge 23 and 160. The underground quotes of 2,500 then 600, and PASSWORD as a topic at 1,500, are not charged.
+
 ## OURS constants
 
 `UG_PASSWORD_SOURCE` seeded, `UG_VERB_VISIBILITY` known, `TAVERN_CONVERSATION_KEEP` 20, `TAVERN_CONVERSATION_SHOW` 10, `TAVERN_WALL_KEEP` 10, `TAVERN_WALL_SHOW` 5, `UG_NAME_CHANGE` False (the live offer is `UG_NAME_MODE`), `TRICRON_MODE` legacy, `BOT_TAVERN_POLICY` off.

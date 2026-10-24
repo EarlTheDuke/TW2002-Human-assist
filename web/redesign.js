@@ -5068,7 +5068,8 @@
     const costs = (a.params || {}).cost_by || {};
     const fields = [{ n: "topic", label: "topic", choices: topics.map((topic) => ({ value: topic, label: topic })) }];
     if (targets.length) fields.push({ n: "target", label: "target", required: false, choices: targets.map((id) => ({ value: id, label: commanderName(id) })) });
-    const note = "A trader trace costs " + fmt(costs.trader || 0) + " cr. Underground or mafia costs " + fmt(costs.underground || costs.mafia || 0) + " cr.";
+    let note = "A trader trace costs " + fmt(costs.trader || 0) + " cr. Underground or mafia costs " + fmt(costs.underground || costs.mafia || 0) + " cr.";
+    if (costs.stardock) note += " StarDock costs " + fmt(costs.stardock) + " cr.";
     dockForm("grimyAsk", "ASK GRIMY", note, fields, saved, (values) => {
       const args = { topic: values.topic };
       if (values.topic === "trader" && values.target) args.target = values.target;
