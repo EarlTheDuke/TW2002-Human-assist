@@ -241,7 +241,7 @@ class EventKind(str, Enum):
     UG_CONTRACT = "ug_contract"
     UG_CLAIM = "ug_claim"
     UG_RENAME = "ug_rename"  # NOTE 162. Never emitted while UG_NAME_MODE is legacy.
-    TRICRON = "tricron"  # stardock-leftovers-v1. Never emitted under STARDOCK_EXTRA_MODE legacy.
+    TRICRON = "tricron"  # NOTE 129. Never emitted while TRICRON_MODE is legacy.
     CINEPLEX = "cineplex"  # flavor only. Never emitted under STARDOCK_EXTRA_MODE legacy.
     SHIP_TRANSWARP = "ship_transwarp"
     SHIP_TRANSWARP_FUSE = "ship_transwarp_fuse"

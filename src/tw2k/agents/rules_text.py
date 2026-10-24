@@ -116,7 +116,7 @@ def tavern_block() -> str:
             f"can buy a new name for {int(K.UG_NAME_UNKNOWN_COST)} credits. "
             "Decline and the credits stay. A higher experience is not priced.\n"
         )
-    if K.stardock_extra_on():
+    if K.tricron_live():
         text += (
             f"Tri-Cron is {int(K.TRICRON_ROUNDS)} rounds of three crons placed 2-3-1. "
             f"The ante is {int(K.TRICRON_ANTE)} credits, the house pays 2 to 1, "

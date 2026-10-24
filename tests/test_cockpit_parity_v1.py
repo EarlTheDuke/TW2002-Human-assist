@@ -34,6 +34,7 @@ def test_every_verb_has_a_button() -> None:
         ("federation_hall", K.federation_hall_live()),
         ("underground_rename", K.ug_name_live()),
         ("cim", K.cim_live()),
+        ("tricron", K.tricron_live()),
     ):
         if live:
             continue

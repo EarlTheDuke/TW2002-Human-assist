@@ -1491,6 +1491,7 @@ _SWITCH_PLAIN: dict[str, str] = {
     "LAND_CLAIM_MODE": "Landing on an unowned planet does not claim it; use Claim planet (v3.11 Claim Ownership).",
     "TRADE_PRIVATE_MODE": "Your port trades, with their quantities and prices, are not shown to other traders in the sector.",
     "PHOTON_CLOAK_SETTINGS_MODE": "FedSpace refuses a photon. Players in that sector have their fighters offline for the wave, and that ship waits out the wave before firing again.",
+    "TRICRON_MODE": "The tavern deals one Tri-Cron match: 10 rounds, ante 100 credits, payback 2 to 1.",
 }
 
 
@@ -1704,6 +1705,14 @@ def _stardock_services(f: dict) -> str:
             "with the C.E.O. marked, and ranks them by experience. "
             "The hardware counter shows a line for each item it sells.",
             "Federation Hall is closed, and the hardware counter is only the buy list.",
+        )
+        + "<p>Tri-Cron is one tavern match. The switch is TRICRON_MODE.</p>"
+        + _gated(
+            K.tricron_live(),
+            f"one match is {_n(K.TRICRON_ROUNDS)} rounds of three crons, "
+            f"the ante is {_n(K.TRICRON_ANTE)} credits, the house pays 2 to 1, "
+            f"and the jackpot opens at {_n(K.TRICRON_OPENING_JACKPOT)} credits.",
+            "the tavern does not deal Tri-Cron.",
         )
         + "<p>The bank takes deposits, withdrawals and transfers. The tax section states the interest.</p>"
         + f"<p>Police HQ is in sector {_n(K.STARDOCK_SECTOR)}. "
@@ -2091,6 +2100,7 @@ _COVERS: dict[str, tuple[str, ...]] = {
         "tricron", "cineplex",
         "SHIP_RENAME_MODE", "BUST_CLEAR_MODE", "UG_NAME_MODE", "FEDERATION_HALL_MODE", "BOUNTY_GOOD_MODE",
         "SHIELD_POINT_MODE", "TAVERN_BAR_PRICE_MODE", "CINEPLEX_PRICE_MODE",
+        "TRICRON_MODE",
     ),
     "communications": (
         "hail", "broadcast", "radio", "MAIL_MODE", "RADIO_CHANNEL_MODE", "FEDCOMM_MODE", "COMMS_V311_MODE",

@@ -292,14 +292,20 @@ def test_tv19_tv21_name_change_still_unbuilt():
     assert "underground_rename" not in _kinds(universe, "A")
 
 
-def test_tv20_tricron_follows_the_extra_mode(monkeypatch):
-    assert K.TAVERN_TRICRON == "on"
+def test_tv20_tricron_stays_off_until_the_switch(monkeypatch):
+    monkeypatch.setattr(K, "V311_PROFILE", "legacy")
+    monkeypatch.setattr(K, "TRICRON_MODE", "legacy")
+    assert K.TRICRON_MODE == "legacy"
+    assert K.tricron_live() is False
     universe = _world()
     _seat(universe, "A", "Ada")
-    assert "tricron" in _kinds(universe, "A")
-    monkeypatch.setattr(K, "STARDOCK_EXTRA_MODE", "legacy")
-    monkeypatch.setattr(K, "CITADEL_FIDELITY_MODE", "legacy")
     assert "tricron" not in _kinds(universe, "A")
+    monkeypatch.setattr(K, "TRICRON_MODE", "v311")
+    assert "tricron" in _kinds(universe, "A")
+    monkeypatch.setattr(K, "V311_PROFILE", "v311")
+    monkeypatch.setattr(K, "TRICRON_MODE", "legacy")
+    assert K.tricron_live() is True
+    assert "tricron" in _kinds(universe, "A")
 
 
 def test_tv23_and_tv32_legal_equals_handler():

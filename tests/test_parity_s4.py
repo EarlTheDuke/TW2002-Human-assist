@@ -403,7 +403,8 @@ def test_every_verb_matches_engine(label: str, fx) -> None:
                and (k != "ship_rename" or K.ship_rename_live())
                and (k != "federation_hall" or K.federation_hall_live())
                and (k != "underground_rename" or K.ug_name_live())
-               and (k != "cim" or K.cim_live())]
+               and (k != "cim" or K.cim_live())
+               and (k != "tricron" or K.tricron_live())]
     assert set(las) == set(offered)
     assert all(la.detail == "precise" for la in las.values()), [k for k, la in las.items() if la.detail != "precise"]
     for kind in offered:

@@ -81,6 +81,9 @@ def _form_post(page) -> dict:
 def world(tmp_path_factory):
     sync = pytest.importorskip("playwright.sync_api").sync_playwright
     pw = sync().start()
+    import tw2k.engine.constants as K
+    saved_mode = K.TRICRON_MODE
+    K.TRICRON_MODE = "v311"
     host = CuHost(tmp_path_factory.mktemp("dock"), TOK)
     host.__enter__()
     universe = host.runner.state.universe
@@ -115,6 +118,7 @@ def world(tmp_path_factory):
         browser.close()
         host.__exit__(None, None, None)
         pw.stop()
+        K.TRICRON_MODE = saved_mode
 
 
 def test_order_shows_the_price_and_posts(world) -> None:

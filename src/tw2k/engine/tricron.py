@@ -1,10 +1,13 @@
 """Tri-Cron, the Lost Trader's Tavern game. No engine calls.
 
-Live TWGS screen (transcript): ante 100, 10 rounds, payback 2 to 1, jackpot
-starts at 5,000, champion score 5,000. Each round deals three crons (0-9).
-The player assigns them in the Grimy order 2-3-1 (tens, ones, hundreds),
-which the original Bible names as the best combination. The house uses the
-same order. The fee is added to the jackpot before the match is scored.
+Confirmed screen: docs/playtests/twgs-live/tricron.txt (19 Oct 2026).
+Ante 100, 10 rounds, three crons from 0 to 9, positions 1 (hundreds),
+2 (tens) and 3 (ones), the greater total wins, payback 2 to 1, jackpot
+5,000, champion score 5,000. One win on that screen paid "You win 100
+credits!" (balance 128 to 228). The omitted placement is 2-3-1, the
+combination STARDOCK_TAVERN.md tv11 and the Bible already name. The house
+uses the same order. The ante is added to the jackpot before the match
+is scored. A tie is not a greater total, so it does not pay.
 """
 
 from __future__ import annotations
