@@ -545,7 +545,10 @@ def test_lhc_siege_report_on_both_sides(monkeypatch, tmp_path) -> None:
 def test_lhd_two_pods_then_destroyed_until_the_next_day(monkeypatch, tmp_path, profile) -> None:
     """LH-d. Two pods in a day, the third loss is out, and the next day opens the lock or the clock."""
     _profile(monkeypatch, profile)
-    u, (alice, bob) = _world(9917)
+    # Profile on reads Death Delay as Yes and Deaths Per Day as 0, which locks
+    # the first death. Two restarts are allowed so this still reaches Ship Destroyed.
+    extra = {"deaths_per_day": 2} if profile else {}
+    u, (alice, bob) = _world(9917, **extra)
     here, there = _pair(u)
     _quiet(u, here)
     _quiet(u, there)
@@ -589,9 +592,9 @@ def test_lhd_two_pods_then_destroyed_until_the_next_day(monkeypatch, tmp_path, p
 
 @pytest.mark.parametrize("profile", [False, True])
 def test_lhd_death_delay_holds_the_pod(monkeypatch, tmp_path, profile) -> None:
-    """LH-d. A death delay of one midnight holds the pod only while the profile reads it."""
+    """LH-d. Default Death Delay Yes holds the first pod until the next day, and only while the profile reads it."""
     _profile(monkeypatch, profile)
-    u, (alice, bob) = _world(9918, death_delay=1)
+    u, (alice, bob) = _world(9918, death_delay=True)
     here, there = _pair(u)
     _quiet(u, here)
     _quiet(u, there)

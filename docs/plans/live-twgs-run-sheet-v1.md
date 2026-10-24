@@ -35,11 +35,19 @@ Setup: the new test character is logged out. You are in TEDIT on the private tes
 
 item_id: n96-death-delay-max
 
-Keys: TEDIT, Death Delay. Try 0, then 1, then 2, then the largest whole number the field accepts.
+CLOSED. 24 Oct 2026, Ven GameA / Slot A. TEDIT was not opened. Death Delay is Yes/No. The prompt is "Enable Death Delay?". The default is Yes. TWSTATS reads Death Delay=True. There is no numeric maximum. S7 #16's day count is not this field. Gold is what can turn it off.
+
+Settles: `GameConfig.death_delay`. Leave Death Delay on before Group F unless that group is recording No.
+
+### Deaths Per Day maximum
+
+item_id: n96-deaths-per-day-max
+
+BLOCKED. Deaths Per Day is a separate number. The prompt is "How many deaths per day?". The default is 0. TWSTATS reads Deaths Per Day=0. The largest whole number the field accepts was not measured. Slot A may lock the game. Do not invent a maximum. Open TEDIT on a spare game when one is free. Try 0, then 1, then 2, then the largest whole number the field accepts.
 
 Read: the highest accepted value, and the message if the field refuses.
 
-Settles: `GameConfig.death_delay`. Leave the field at 1 or more before Group F, unless you are recording the 0 case in that group.
+Settles: `GameConfig.deaths_per_day`. TEDIT maximum unmeasured.
 
 ## Group B. Computer, one cheap ship, one safe sector
 
@@ -249,17 +257,17 @@ Settles: `FERRENGI_ALIGN_ON_KILL` (10, and only when alignment is already above 
 
 Turns: the death-delay midnights, then the same wait again with the delay at 0. Credits: two replacement ships. A Merchant Cruiser is 41,300 in this game. Pay the live shipyard price and record it.
 
-Setup: Group A has already set Death Delay. This destroys the ship. Do it only when the character can buy another ship.
+Setup: Group A left Death Delay on. Deaths Per Day is the allowance, default 0. This destroys the ship. Do it only when the character can buy another ship.
 
 ### Flying pod sentence
 
 item_id: n96-flying-pod
 
-Keys: with death delay at 1 or more, lose the ship. Wait out the sentence until the pod can move. Then lose the pod. Set death delay to 0 and repeat.
+Keys: with Deaths Per Day at 0, lose the ship. The wait is until the next day, not an S7 count of days. Then set Deaths Per Day to 1, lose the ship, buy back, and lose it again. Then set Death Delay to No and lose the ship.
 
-Read: whether a new sentence starts when the flying pod is destroyed, and how many midnights pass.
+Read: whether the first death waits, whether the second death waits, and whether No takes the day's turns.
 
-Settles: `death_delay_days`.
+Settles: `death_delay_days`. S7's flying-pod sentence is not the v3 TEDIT field.
 
 ## Group G. Port shots, not kills
 

@@ -184,92 +184,128 @@ def _pilot(universe) -> Player:
 
 def test_death_delay_off_lets_the_pod_fly() -> None:
     universe = generate_universe(GameConfig(
-        seed=3, universe_size=20, enable_ferrengi=False, enable_planets=False, death_delay=2,
+        seed=3, universe_size=20, enable_ferrengi=False, enable_planets=False, death_delay=True,
     ))
     player = _pilot(universe)
+    assert K.DEATH_DELAY_MODE == "legacy"
     assert K.death_delay_live() is False
+    turns = int(player.turns_today)
     _destroy_ship(universe, "P", reason="mines")
     assert player.ship.ship_class.value == "escape_pod"
     assert player.death_delay_left == 0
-    assert "death_delay" not in GameConfig(seed=1).model_dump()
+    assert player.turns_today == turns
+    dumped = GameConfig(seed=1).model_dump()
+    assert "death_delay" not in dumped
+    assert "deaths_per_day" not in dumped
     waited = apply_action(universe, "P", Action(kind=ActionKind.WAIT))
     assert waited.ok, waited.error
 
 
-def test_death_delay_locks_the_pod_for_n_midnights(monkeypatch) -> None:
+def test_default_yes_waits_until_the_next_day(monkeypatch) -> None:
     monkeypatch.setattr(K, "DEATH_DELAY_MODE", "live")
+    assert K.DEATH_DELAY_MODE == "live"
     universe = generate_universe(GameConfig(
-        seed=4, universe_size=20, enable_ferrengi=False, enable_planets=False, death_delay=2,
+        seed=4, universe_size=20, enable_ferrengi=False, enable_planets=False,
     ))
     player = _pilot(universe)
+    assert K.death_delay_enabled(universe.config) is True
+    assert K.deaths_per_day_allowance(universe.config) == 0
     _destroy_ship(universe, "P", reason="mines")
-    assert player.death_delay_left == 2
-    assert apply_action(universe, "P", Action(kind=ActionKind.WAIT)).error == "death delay"
-    assert all(not row.legal and row.reason == "death delay" for row in legal_actions(universe, "P") if row.kind == "wait")
-    tick_day(universe)
+    assert player.ship.ship_class.value == "escape_pod"
+    assert player.deaths_today == 1
     assert player.death_delay_left == 1
     assert apply_action(universe, "P", Action(kind=ActionKind.WAIT)).error == "death delay"
+    assert all(
+        not row.legal and row.reason == "death delay"
+        for row in legal_actions(universe, "P") if row.kind == "wait"
+    )
+    _destroy_ship(universe, "P", reason="combat", killer_id="O", by_other=True)
+    assert player.death_delay_left == 1
     tick_day(universe)
     assert player.death_delay_left == 0
     assert apply_action(universe, "P", Action(kind=ActionKind.WAIT)).ok
 
 
-def test_profile_uses_the_game_setting(monkeypatch) -> None:
+def test_one_death_per_day_allows_one_restart(monkeypatch) -> None:
+    monkeypatch.setattr(K, "DEATH_DELAY_MODE", "live")
+    universe = generate_universe(GameConfig(
+        seed=6, universe_size=20, enable_ferrengi=False, enable_planets=False, deaths_per_day=1,
+    ))
+    player = _pilot(universe)
+    _destroy_ship(universe, "P", reason="mines")
+    assert player.death_delay_left == 0
+    assert apply_action(universe, "P", Action(kind=ActionKind.WAIT)).ok
+    player.ship.ship_class = ShipClass.MERCHANT_CRUISER
+    _destroy_ship(universe, "P", reason="mines")
+    assert player.deaths_today == 2
+    assert player.death_delay_left == 1
+    assert apply_action(universe, "P", Action(kind=ActionKind.WAIT)).error == "death delay"
+    tick_day(universe)
+    assert player.death_delay_left == 0
+    player.ship.ship_class = ShipClass.MERCHANT_CRUISER
+    _destroy_ship(universe, "P", reason="mines")
+    assert player.deaths_today == 1
+    assert player.death_delay_left == 0
+
+
+def test_two_deaths_per_day_lets_both_restarts_fly(monkeypatch) -> None:
+    monkeypatch.setattr(K, "DEATH_DELAY_MODE", "live")
+    universe = generate_universe(GameConfig(
+        seed=8, universe_size=20, enable_ferrengi=False, enable_planets=False, deaths_per_day=2,
+    ))
+    player = _pilot(universe)
+    _destroy_ship(universe, "P", reason="mines")
+    player.ship.ship_class = ShipClass.MERCHANT_CRUISER
+    _destroy_ship(universe, "P", reason="mines")
+    assert player.deaths_today == 2
+    assert player.death_delay_left == 0
+    assert apply_action(universe, "P", Action(kind=ActionKind.WAIT)).ok
+
+
+def test_profile_default_locks_and_no_does_not(monkeypatch) -> None:
     monkeypatch.setattr(K, "V311_PROFILE", "v311")
     assert K.DEATH_DELAY_MODE == "legacy"
     unset = generate_universe(GameConfig(seed=5, universe_size=20, enable_ferrengi=False, enable_planets=False))
     pilot = _pilot(unset)
     _destroy_ship(unset, "P", reason="mines")
-    assert pilot.death_delay_left == 0
+    assert pilot.death_delay_left == 1
+    assert apply_action(unset, "P", Action(kind=ActionKind.WAIT)).error == "death delay"
+    tick_day(unset)
     assert apply_action(unset, "P", Action(kind=ActionKind.WAIT)).ok
 
-    held = generate_universe(GameConfig(
-        seed=6, universe_size=20, enable_ferrengi=False, enable_planets=False, death_delay=1,
+    off = generate_universe(GameConfig(
+        seed=9, universe_size=20, enable_ferrengi=False, enable_planets=False, death_delay=False,
     ))
-    held.players["P"] = Player(id="P", name="Pat", sector_id=1, credits=5_000, ship=Ship(fighters=20, shields=10))
-    held.sectors[1].occupant_ids.append("P")
-    _destroy_ship(held, "P", reason="mines")
-    assert held.players["P"].death_delay_left == 1
-    assert apply_action(held, "P", Action(kind=ActionKind.WAIT)).error == "death delay"
-    tick_day(held)
-    assert apply_action(held, "P", Action(kind=ActionKind.WAIT)).ok
+    held = _pilot(off)
+    turns = int(held.turns_today)
+    held.pods_today = int(K.PODS_PER_DAY)
+    held.pods_day = int(off.day)
+    _destroy_ship(off, "P", reason="mines")
+    assert held.ship.ship_class.value == "scout_marauder"
+    assert held.death_delay_left == 0
+    assert held.turns_today == turns
+    assert apply_action(off, "P", Action(kind=ActionKind.WAIT)).ok
 
 
-def test_a_pod_destroyed_while_knocked_out_adds_another_sentence(monkeypatch) -> None:
-    monkeypatch.setattr(K, "DEATH_DELAY_MODE", "live")
-    universe = generate_universe(GameConfig(
-        seed=7, universe_size=20, enable_ferrengi=False, enable_planets=False, death_delay=2,
-    ))
-    player = _pilot(universe)
-    _destroy_ship(universe, "P", reason="mines")
-    assert player.death_delay_left == 2
-    _destroy_ship(universe, "P", reason="combat", killer_id="O", by_other=True)
-    assert player.ship.ship_class.value == "scout_marauder"
-    assert player.death_delay_left == 4
-    tick_day(universe)
-    assert player.death_delay_left == 3
-    assert apply_action(universe, "P", Action(kind=ActionKind.WAIT)).error == "death delay"
-
-
-def test_a_flying_pod_does_not_start_a_new_sentence(monkeypatch) -> None:
-    monkeypatch.setattr(K, "DEATH_DELAY_MODE", "live")
-    universe = generate_universe(GameConfig(
-        seed=8, universe_size=20, enable_ferrengi=False, enable_planets=False, death_delay=1,
-    ))
-    player = _pilot(universe)
-    _destroy_ship(universe, "P", reason="mines")
-    tick_day(universe)
-    assert player.death_delay_left == 0
-    _destroy_ship(universe, "P", reason="combat", killer_id="O", by_other=True)
-    assert player.death_delay_left == 0
-    assert apply_action(universe, "P", Action(kind=ActionKind.WAIT)).error != "death delay"
-
-
-def test_death_delay_rejects_a_negative_day() -> None:
+def test_death_delay_is_yes_or_no_and_deaths_per_day_has_no_stored_ceiling() -> None:
     assert GameConfig().death_delay is None
-    assert GameConfig(death_delay=0).death_delay == 0
     assert GameConfig(death_delay="").death_delay is None
-    assert GameConfig(seed=1, death_delay=3).model_dump()["death_delay"] == 3
-    for bad in (-1, True, "two"):
+    assert GameConfig(death_delay=True).death_delay is True
+    assert GameConfig(death_delay="yes").death_delay is True
+    assert GameConfig(death_delay=False).death_delay is False
+    assert GameConfig(death_delay="No").death_delay is False
+    assert GameConfig().deaths_per_day is None
+    assert GameConfig(deaths_per_day=0).deaths_per_day is None
+    assert GameConfig(deaths_per_day=1).deaths_per_day == 1
+    assert GameConfig(deaths_per_day=2).deaths_per_day == 2
+    assert GameConfig(deaths_per_day=1_000_000).deaths_per_day == 1_000_000
+    dumped = GameConfig(seed=1, death_delay=False, deaths_per_day=2).model_dump()
+    assert dumped["death_delay"] is False
+    assert dumped["deaths_per_day"] == 2
+    assert "death_delay" not in GameConfig(seed=1).model_dump()
+    for bad in (0, 1, 2, -1, "two"):
         with pytest.raises(ValidationError):
             GameConfig(death_delay=bad)
+    for bad in (-1, True, "two"):
+        with pytest.raises(ValidationError):
+            GameConfig(deaths_per_day=bad)
