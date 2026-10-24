@@ -14,7 +14,7 @@
         "exit": "jump",
         "yaw": 1.35,
         "pitch": 0.18,
-        "fit": 0.92
+        "fit": 1.15
       },
       {
         "id": "escape_pod.chase.02",
@@ -26,7 +26,7 @@
         "exit": "fade",
         "yaw": 0.28,
         "pitch": 0.48,
-        "fit": 0.84
+        "fit": 1.1
       },
       {
         "id": "escape_pod.headon.03",
@@ -38,7 +38,7 @@
         "exit": "flash",
         "yaw": -1.35,
         "pitch": 0.2,
-        "fit": 0.76
+        "fit": 1.0
       },
       {
         "id": "escape_pod.top.04",
@@ -50,7 +50,7 @@
         "exit": "fade",
         "yaw": 0.45,
         "pitch": 1.05,
-        "fit": 0.7
+        "fit": 0.92
       },
       {
         "id": "escape_pod.side.05",
@@ -62,7 +62,7 @@
         "exit": "fold",
         "yaw": 1.75,
         "pitch": 0.1,
-        "fit": 0.9
+        "fit": 1.12
       },
       {
         "id": "escape_pod.gate.06",
@@ -74,7 +74,7 @@
         "exit": "gate",
         "yaw": 0.62,
         "pitch": 0.22,
-        "fit": 0.78
+        "fit": 1.02
       },
       {
         "id": "escape_pod.headon.07",
@@ -86,7 +86,7 @@
         "exit": "fade",
         "yaw": -1.2,
         "pitch": 0.28,
-        "fit": 0.74
+        "fit": 0.96
       },
       {
         "id": "escape_pod.top.08",
@@ -98,7 +98,7 @@
         "exit": "flash",
         "yaw": 0.85,
         "pitch": 1.12,
-        "fit": 0.66
+        "fit": 0.88
       },
       {
         "id": "escape_pod.side.09",
@@ -110,7 +110,7 @@
         "exit": "fade",
         "yaw": 2.05,
         "pitch": 0.26,
-        "fit": 0.88
+        "fit": 1.08
       },
       {
         "id": "escape_pod.chase.10",
@@ -122,7 +122,7 @@
         "exit": "flash",
         "yaw": 0.5,
         "pitch": 0.34,
-        "fit": 0.86
+        "fit": 1.12
       }
     ],
     "merchant_cruiser": [
@@ -136,7 +136,7 @@
         "exit": "jump",
         "yaw": 1.35,
         "pitch": 0.18,
-        "fit": 0.92
+        "fit": 1.15
       },
       {
         "id": "merchant_cruiser.chase.02",
@@ -148,7 +148,7 @@
         "exit": "fade",
         "yaw": 0.28,
         "pitch": 0.48,
-        "fit": 0.84
+        "fit": 1.1
       },
       {
         "id": "merchant_cruiser.headon.03",
@@ -160,7 +160,7 @@
         "exit": "flash",
         "yaw": -1.35,
         "pitch": 0.2,
-        "fit": 0.76
+        "fit": 1.0
       },
       {
         "id": "merchant_cruiser.top.04",
@@ -172,7 +172,7 @@
         "exit": "fade",
         "yaw": 0.45,
         "pitch": 1.05,
-        "fit": 0.7
+        "fit": 0.92
       },
       {
         "id": "merchant_cruiser.side.05",
@@ -184,7 +184,7 @@
         "exit": "fold",
         "yaw": 1.75,
         "pitch": 0.1,
-        "fit": 0.9
+        "fit": 1.12
       },
       {
         "id": "merchant_cruiser.gate.06",
@@ -196,7 +196,7 @@
         "exit": "gate",
         "yaw": 0.62,
         "pitch": 0.22,
-        "fit": 0.78
+        "fit": 1.02
       },
       {
         "id": "merchant_cruiser.headon.07",
@@ -208,7 +208,7 @@
         "exit": "fade",
         "yaw": -1.2,
         "pitch": 0.28,
-        "fit": 0.74
+        "fit": 0.96
       },
       {
         "id": "merchant_cruiser.top.08",
@@ -220,7 +220,7 @@
         "exit": "flash",
         "yaw": 0.85,
         "pitch": 1.12,
-        "fit": 0.66
+        "fit": 0.88
       },
       {
         "id": "merchant_cruiser.side.09",
@@ -232,7 +232,7 @@
         "exit": "fade",
         "yaw": 2.05,
         "pitch": 0.26,
-        "fit": 0.88
+        "fit": 1.08
       },
       {
         "id": "merchant_cruiser.chase.10",
@@ -244,7 +244,7 @@
         "exit": "flash",
         "yaw": 0.5,
         "pitch": 0.34,
-        "fit": 0.86
+        "fit": 1.12
       }
     ],
     "scout_marauder": [
@@ -258,7 +258,7 @@
         "exit": "jump",
         "yaw": 1.35,
         "pitch": 0.18,
-        "fit": 0.92
+        "fit": 1.15
       },
       {
         "id": "scout_marauder.chase.02",
@@ -270,7 +270,7 @@
         "exit": "fade",
         "yaw": 0.28,
         "pitch": 0.48,
-        "fit": 0.84
+        "fit": 1.1
       },
       {
         "id": "scout_marauder.headon.03",
@@ -282,7 +282,7 @@
         "exit": "flash",
         "yaw": -1.35,
         "pitch": 0.2,
-        "fit": 0.76
+        "fit": 1.0
       },
       {
         "id": "scout_marauder.top.04",
@@ -294,7 +294,7 @@
         "exit": "fade",
         "yaw": 0.45,
         "pitch": 1.05,
-        "fit": 0.7
+        "fit": 0.92
       },
       {
         "id": "scout_marauder.side.05",
@@ -306,7 +306,7 @@
         "exit": "fold",
         "yaw": 1.75,
         "pitch": 0.1,
-        "fit": 0.9
+        "fit": 1.12
       },
       {
         "id": "scout_marauder.gate.06",
@@ -318,7 +318,7 @@
         "exit": "gate",
         "yaw": 0.62,
         "pitch": 0.22,
-        "fit": 0.78
+        "fit": 1.02
       },
       {
         "id": "scout_marauder.headon.07",
@@ -330,7 +330,7 @@
         "exit": "fade",
         "yaw": -1.2,
         "pitch": 0.28,
-        "fit": 0.74
+        "fit": 0.96
       },
       {
         "id": "scout_marauder.top.08",
@@ -342,7 +342,7 @@
         "exit": "flash",
         "yaw": 0.85,
         "pitch": 1.12,
-        "fit": 0.66
+        "fit": 0.88
       },
       {
         "id": "scout_marauder.side.09",
@@ -354,7 +354,7 @@
         "exit": "fade",
         "yaw": 2.05,
         "pitch": 0.26,
-        "fit": 0.88
+        "fit": 1.08
       },
       {
         "id": "scout_marauder.chase.10",
@@ -366,7 +366,7 @@
         "exit": "flash",
         "yaw": 0.5,
         "pitch": 0.34,
-        "fit": 0.86
+        "fit": 1.12
       }
     ],
     "missile_frigate": [
@@ -380,7 +380,7 @@
         "exit": "jump",
         "yaw": 1.35,
         "pitch": 0.18,
-        "fit": 0.92
+        "fit": 1.15
       },
       {
         "id": "missile_frigate.chase.02",
@@ -392,7 +392,7 @@
         "exit": "fade",
         "yaw": 0.28,
         "pitch": 0.48,
-        "fit": 0.84
+        "fit": 1.1
       },
       {
         "id": "missile_frigate.headon.03",
@@ -404,7 +404,7 @@
         "exit": "flash",
         "yaw": -1.35,
         "pitch": 0.2,
-        "fit": 0.76
+        "fit": 1.0
       },
       {
         "id": "missile_frigate.top.04",
@@ -416,7 +416,7 @@
         "exit": "fade",
         "yaw": 0.45,
         "pitch": 1.05,
-        "fit": 0.7
+        "fit": 0.92
       },
       {
         "id": "missile_frigate.side.05",
@@ -428,7 +428,7 @@
         "exit": "fold",
         "yaw": 1.75,
         "pitch": 0.1,
-        "fit": 0.9
+        "fit": 1.12
       },
       {
         "id": "missile_frigate.gate.06",
@@ -440,7 +440,7 @@
         "exit": "gate",
         "yaw": 0.62,
         "pitch": 0.22,
-        "fit": 0.78
+        "fit": 1.02
       },
       {
         "id": "missile_frigate.headon.07",
@@ -452,7 +452,7 @@
         "exit": "fade",
         "yaw": -1.2,
         "pitch": 0.28,
-        "fit": 0.74
+        "fit": 0.96
       },
       {
         "id": "missile_frigate.top.08",
@@ -464,7 +464,7 @@
         "exit": "flash",
         "yaw": 0.85,
         "pitch": 1.12,
-        "fit": 0.66
+        "fit": 0.88
       },
       {
         "id": "missile_frigate.side.09",
@@ -476,7 +476,7 @@
         "exit": "fade",
         "yaw": 2.05,
         "pitch": 0.26,
-        "fit": 0.88
+        "fit": 1.08
       },
       {
         "id": "missile_frigate.chase.10",
@@ -488,7 +488,7 @@
         "exit": "flash",
         "yaw": 0.5,
         "pitch": 0.34,
-        "fit": 0.86
+        "fit": 1.12
       }
     ],
     "battleship": [
@@ -502,7 +502,7 @@
         "exit": "jump",
         "yaw": 1.35,
         "pitch": 0.18,
-        "fit": 0.92
+        "fit": 1.15
       },
       {
         "id": "battleship.chase.02",
@@ -514,7 +514,7 @@
         "exit": "fade",
         "yaw": 0.28,
         "pitch": 0.48,
-        "fit": 0.84
+        "fit": 1.1
       },
       {
         "id": "battleship.headon.03",
@@ -526,7 +526,7 @@
         "exit": "flash",
         "yaw": -1.35,
         "pitch": 0.2,
-        "fit": 0.76
+        "fit": 1.0
       },
       {
         "id": "battleship.top.04",
@@ -538,7 +538,7 @@
         "exit": "fade",
         "yaw": 0.45,
         "pitch": 1.05,
-        "fit": 0.7
+        "fit": 0.92
       },
       {
         "id": "battleship.side.05",
@@ -550,7 +550,7 @@
         "exit": "fold",
         "yaw": 1.75,
         "pitch": 0.1,
-        "fit": 0.9
+        "fit": 1.12
       },
       {
         "id": "battleship.gate.06",
@@ -562,7 +562,7 @@
         "exit": "gate",
         "yaw": 0.62,
         "pitch": 0.22,
-        "fit": 0.78
+        "fit": 1.02
       },
       {
         "id": "battleship.headon.07",
@@ -574,7 +574,7 @@
         "exit": "fade",
         "yaw": -1.2,
         "pitch": 0.28,
-        "fit": 0.74
+        "fit": 0.96
       },
       {
         "id": "battleship.top.08",
@@ -586,7 +586,7 @@
         "exit": "flash",
         "yaw": 0.85,
         "pitch": 1.12,
-        "fit": 0.66
+        "fit": 0.88
       },
       {
         "id": "battleship.side.09",
@@ -598,7 +598,7 @@
         "exit": "fade",
         "yaw": 2.05,
         "pitch": 0.26,
-        "fit": 0.88
+        "fit": 1.08
       },
       {
         "id": "battleship.chase.10",
@@ -610,7 +610,7 @@
         "exit": "flash",
         "yaw": 0.5,
         "pitch": 0.34,
-        "fit": 0.86
+        "fit": 1.12
       }
     ],
     "corporate_flagship": [
@@ -624,7 +624,7 @@
         "exit": "jump",
         "yaw": 1.35,
         "pitch": 0.18,
-        "fit": 0.92
+        "fit": 1.15
       },
       {
         "id": "corporate_flagship.chase.02",
@@ -636,7 +636,7 @@
         "exit": "fade",
         "yaw": 0.28,
         "pitch": 0.48,
-        "fit": 0.84
+        "fit": 1.1
       },
       {
         "id": "corporate_flagship.headon.03",
@@ -648,7 +648,7 @@
         "exit": "flash",
         "yaw": -1.35,
         "pitch": 0.2,
-        "fit": 0.76
+        "fit": 1.0
       },
       {
         "id": "corporate_flagship.top.04",
@@ -660,7 +660,7 @@
         "exit": "fade",
         "yaw": 0.45,
         "pitch": 1.05,
-        "fit": 0.7
+        "fit": 0.92
       },
       {
         "id": "corporate_flagship.side.05",
@@ -672,7 +672,7 @@
         "exit": "fold",
         "yaw": 1.75,
         "pitch": 0.1,
-        "fit": 0.9
+        "fit": 1.12
       },
       {
         "id": "corporate_flagship.gate.06",
@@ -684,7 +684,7 @@
         "exit": "gate",
         "yaw": 0.62,
         "pitch": 0.22,
-        "fit": 0.78
+        "fit": 1.02
       },
       {
         "id": "corporate_flagship.headon.07",
@@ -696,7 +696,7 @@
         "exit": "fade",
         "yaw": -1.2,
         "pitch": 0.28,
-        "fit": 0.74
+        "fit": 0.96
       },
       {
         "id": "corporate_flagship.top.08",
@@ -708,7 +708,7 @@
         "exit": "flash",
         "yaw": 0.85,
         "pitch": 1.12,
-        "fit": 0.66
+        "fit": 0.88
       },
       {
         "id": "corporate_flagship.side.09",
@@ -720,7 +720,7 @@
         "exit": "fade",
         "yaw": 2.05,
         "pitch": 0.26,
-        "fit": 0.88
+        "fit": 1.08
       },
       {
         "id": "corporate_flagship.chase.10",
@@ -732,7 +732,7 @@
         "exit": "flash",
         "yaw": 0.5,
         "pitch": 0.34,
-        "fit": 0.86
+        "fit": 1.12
       }
     ],
     "colonial_transport": [
@@ -746,7 +746,7 @@
         "exit": "jump",
         "yaw": 1.35,
         "pitch": 0.18,
-        "fit": 0.92
+        "fit": 1.15
       },
       {
         "id": "colonial_transport.chase.02",
@@ -758,7 +758,7 @@
         "exit": "fade",
         "yaw": 0.28,
         "pitch": 0.48,
-        "fit": 0.84
+        "fit": 1.1
       },
       {
         "id": "colonial_transport.headon.03",
@@ -770,7 +770,7 @@
         "exit": "flash",
         "yaw": -1.35,
         "pitch": 0.2,
-        "fit": 0.76
+        "fit": 1.0
       },
       {
         "id": "colonial_transport.top.04",
@@ -782,7 +782,7 @@
         "exit": "fade",
         "yaw": 0.45,
         "pitch": 1.05,
-        "fit": 0.7
+        "fit": 0.92
       },
       {
         "id": "colonial_transport.side.05",
@@ -794,7 +794,7 @@
         "exit": "fold",
         "yaw": 1.75,
         "pitch": 0.1,
-        "fit": 0.9
+        "fit": 1.12
       },
       {
         "id": "colonial_transport.gate.06",
@@ -806,7 +806,7 @@
         "exit": "gate",
         "yaw": 0.62,
         "pitch": 0.22,
-        "fit": 0.78
+        "fit": 1.02
       },
       {
         "id": "colonial_transport.headon.07",
@@ -818,7 +818,7 @@
         "exit": "fade",
         "yaw": -1.2,
         "pitch": 0.28,
-        "fit": 0.74
+        "fit": 0.96
       },
       {
         "id": "colonial_transport.top.08",
@@ -830,7 +830,7 @@
         "exit": "flash",
         "yaw": 0.85,
         "pitch": 1.12,
-        "fit": 0.66
+        "fit": 0.88
       },
       {
         "id": "colonial_transport.side.09",
@@ -842,7 +842,7 @@
         "exit": "fade",
         "yaw": 2.05,
         "pitch": 0.26,
-        "fit": 0.88
+        "fit": 1.08
       },
       {
         "id": "colonial_transport.chase.10",
@@ -854,7 +854,7 @@
         "exit": "flash",
         "yaw": 0.5,
         "pitch": 0.34,
-        "fit": 0.86
+        "fit": 1.12
       }
     ],
     "cargotran": [
@@ -868,7 +868,7 @@
         "exit": "jump",
         "yaw": 1.35,
         "pitch": 0.18,
-        "fit": 0.92
+        "fit": 1.15
       },
       {
         "id": "cargotran.chase.02",
@@ -880,7 +880,7 @@
         "exit": "fade",
         "yaw": 0.28,
         "pitch": 0.48,
-        "fit": 0.84
+        "fit": 1.1
       },
       {
         "id": "cargotran.headon.03",
@@ -892,7 +892,7 @@
         "exit": "flash",
         "yaw": -1.35,
         "pitch": 0.2,
-        "fit": 0.76
+        "fit": 1.0
       },
       {
         "id": "cargotran.top.04",
@@ -904,7 +904,7 @@
         "exit": "fade",
         "yaw": 0.45,
         "pitch": 1.05,
-        "fit": 0.7
+        "fit": 0.92
       },
       {
         "id": "cargotran.side.05",
@@ -916,7 +916,7 @@
         "exit": "fold",
         "yaw": 1.75,
         "pitch": 0.1,
-        "fit": 0.9
+        "fit": 1.12
       },
       {
         "id": "cargotran.gate.06",
@@ -928,7 +928,7 @@
         "exit": "gate",
         "yaw": 0.62,
         "pitch": 0.22,
-        "fit": 0.78
+        "fit": 1.02
       },
       {
         "id": "cargotran.headon.07",
@@ -940,7 +940,7 @@
         "exit": "fade",
         "yaw": -1.2,
         "pitch": 0.28,
-        "fit": 0.74
+        "fit": 0.96
       },
       {
         "id": "cargotran.top.08",
@@ -952,7 +952,7 @@
         "exit": "flash",
         "yaw": 0.85,
         "pitch": 1.12,
-        "fit": 0.66
+        "fit": 0.88
       },
       {
         "id": "cargotran.side.09",
@@ -964,7 +964,7 @@
         "exit": "fade",
         "yaw": 2.05,
         "pitch": 0.26,
-        "fit": 0.88
+        "fit": 1.08
       },
       {
         "id": "cargotran.chase.10",
@@ -976,7 +976,7 @@
         "exit": "flash",
         "yaw": 0.5,
         "pitch": 0.34,
-        "fit": 0.86
+        "fit": 1.12
       }
     ],
     "merchant_freighter": [
@@ -990,7 +990,7 @@
         "exit": "jump",
         "yaw": 1.35,
         "pitch": 0.18,
-        "fit": 0.92
+        "fit": 1.15
       },
       {
         "id": "merchant_freighter.chase.02",
@@ -1002,7 +1002,7 @@
         "exit": "fade",
         "yaw": 0.28,
         "pitch": 0.48,
-        "fit": 0.84
+        "fit": 1.1
       },
       {
         "id": "merchant_freighter.headon.03",
@@ -1014,7 +1014,7 @@
         "exit": "flash",
         "yaw": -1.35,
         "pitch": 0.2,
-        "fit": 0.76
+        "fit": 1.0
       },
       {
         "id": "merchant_freighter.top.04",
@@ -1026,7 +1026,7 @@
         "exit": "fade",
         "yaw": 0.45,
         "pitch": 1.05,
-        "fit": 0.7
+        "fit": 0.92
       },
       {
         "id": "merchant_freighter.side.05",
@@ -1038,7 +1038,7 @@
         "exit": "fold",
         "yaw": 1.75,
         "pitch": 0.1,
-        "fit": 0.9
+        "fit": 1.12
       },
       {
         "id": "merchant_freighter.gate.06",
@@ -1050,7 +1050,7 @@
         "exit": "gate",
         "yaw": 0.62,
         "pitch": 0.22,
-        "fit": 0.78
+        "fit": 1.02
       },
       {
         "id": "merchant_freighter.headon.07",
@@ -1062,7 +1062,7 @@
         "exit": "fade",
         "yaw": -1.2,
         "pitch": 0.28,
-        "fit": 0.74
+        "fit": 0.96
       },
       {
         "id": "merchant_freighter.top.08",
@@ -1074,7 +1074,7 @@
         "exit": "flash",
         "yaw": 0.85,
         "pitch": 1.12,
-        "fit": 0.66
+        "fit": 0.88
       },
       {
         "id": "merchant_freighter.side.09",
@@ -1086,7 +1086,7 @@
         "exit": "fade",
         "yaw": 2.05,
         "pitch": 0.26,
-        "fit": 0.88
+        "fit": 1.08
       },
       {
         "id": "merchant_freighter.chase.10",
@@ -1098,7 +1098,7 @@
         "exit": "flash",
         "yaw": 0.5,
         "pitch": 0.34,
-        "fit": 0.86
+        "fit": 1.12
       }
     ],
     "havoc_gunstar": [
@@ -1112,7 +1112,7 @@
         "exit": "jump",
         "yaw": 1.35,
         "pitch": 0.18,
-        "fit": 0.92
+        "fit": 1.15
       },
       {
         "id": "havoc_gunstar.chase.02",
@@ -1124,7 +1124,7 @@
         "exit": "fade",
         "yaw": 0.28,
         "pitch": 0.48,
-        "fit": 0.84
+        "fit": 1.1
       },
       {
         "id": "havoc_gunstar.headon.03",
@@ -1136,7 +1136,7 @@
         "exit": "flash",
         "yaw": -1.35,
         "pitch": 0.2,
-        "fit": 0.76
+        "fit": 1.0
       },
       {
         "id": "havoc_gunstar.top.04",
@@ -1148,7 +1148,7 @@
         "exit": "fade",
         "yaw": 0.45,
         "pitch": 1.05,
-        "fit": 0.7
+        "fit": 0.92
       },
       {
         "id": "havoc_gunstar.side.05",
@@ -1160,7 +1160,7 @@
         "exit": "fold",
         "yaw": 1.75,
         "pitch": 0.1,
-        "fit": 0.9
+        "fit": 1.12
       },
       {
         "id": "havoc_gunstar.gate.06",
@@ -1172,7 +1172,7 @@
         "exit": "gate",
         "yaw": 0.62,
         "pitch": 0.22,
-        "fit": 0.78
+        "fit": 1.02
       },
       {
         "id": "havoc_gunstar.headon.07",
@@ -1184,7 +1184,7 @@
         "exit": "fade",
         "yaw": -1.2,
         "pitch": 0.28,
-        "fit": 0.74
+        "fit": 0.96
       },
       {
         "id": "havoc_gunstar.top.08",
@@ -1196,7 +1196,7 @@
         "exit": "flash",
         "yaw": 0.85,
         "pitch": 1.12,
-        "fit": 0.66
+        "fit": 0.88
       },
       {
         "id": "havoc_gunstar.side.09",
@@ -1208,7 +1208,7 @@
         "exit": "fade",
         "yaw": 2.05,
         "pitch": 0.26,
-        "fit": 0.88
+        "fit": 1.08
       },
       {
         "id": "havoc_gunstar.chase.10",
@@ -1220,7 +1220,7 @@
         "exit": "flash",
         "yaw": 0.5,
         "pitch": 0.34,
-        "fit": 0.86
+        "fit": 1.12
       }
     ],
     "imperial_starship": [
@@ -1234,7 +1234,7 @@
         "exit": "jump",
         "yaw": 1.35,
         "pitch": 0.18,
-        "fit": 0.92
+        "fit": 1.15
       },
       {
         "id": "imperial_starship.chase.02",
@@ -1246,7 +1246,7 @@
         "exit": "fade",
         "yaw": 0.28,
         "pitch": 0.48,
-        "fit": 0.84
+        "fit": 1.1
       },
       {
         "id": "imperial_starship.headon.03",
@@ -1258,7 +1258,7 @@
         "exit": "flash",
         "yaw": -1.35,
         "pitch": 0.2,
-        "fit": 0.76
+        "fit": 1.0
       },
       {
         "id": "imperial_starship.top.04",
@@ -1270,7 +1270,7 @@
         "exit": "fade",
         "yaw": 0.45,
         "pitch": 1.05,
-        "fit": 0.7
+        "fit": 0.92
       },
       {
         "id": "imperial_starship.side.05",
@@ -1282,7 +1282,7 @@
         "exit": "fold",
         "yaw": 1.75,
         "pitch": 0.1,
-        "fit": 0.9
+        "fit": 1.12
       },
       {
         "id": "imperial_starship.gate.06",
@@ -1294,7 +1294,7 @@
         "exit": "gate",
         "yaw": 0.62,
         "pitch": 0.22,
-        "fit": 0.78
+        "fit": 1.02
       },
       {
         "id": "imperial_starship.headon.07",
@@ -1306,7 +1306,7 @@
         "exit": "fade",
         "yaw": -1.2,
         "pitch": 0.28,
-        "fit": 0.74
+        "fit": 0.96
       },
       {
         "id": "imperial_starship.top.08",
@@ -1318,7 +1318,7 @@
         "exit": "flash",
         "yaw": 0.85,
         "pitch": 1.12,
-        "fit": 0.66
+        "fit": 0.88
       },
       {
         "id": "imperial_starship.side.09",
@@ -1330,7 +1330,7 @@
         "exit": "fade",
         "yaw": 2.05,
         "pitch": 0.26,
-        "fit": 0.88
+        "fit": 1.08
       },
       {
         "id": "imperial_starship.chase.10",
@@ -1342,7 +1342,7 @@
         "exit": "flash",
         "yaw": 0.5,
         "pitch": 0.34,
-        "fit": 0.86
+        "fit": 1.12
       }
     ],
     "star_master": [
@@ -1356,7 +1356,7 @@
         "exit": "jump",
         "yaw": 1.35,
         "pitch": 0.18,
-        "fit": 0.92
+        "fit": 1.15
       },
       {
         "id": "star_master.chase.02",
@@ -1368,7 +1368,7 @@
         "exit": "fade",
         "yaw": 0.28,
         "pitch": 0.48,
-        "fit": 0.84
+        "fit": 1.1
       },
       {
         "id": "star_master.headon.03",
@@ -1380,7 +1380,7 @@
         "exit": "flash",
         "yaw": -1.35,
         "pitch": 0.2,
-        "fit": 0.76
+        "fit": 1.0
       },
       {
         "id": "star_master.top.04",
@@ -1392,7 +1392,7 @@
         "exit": "fade",
         "yaw": 0.45,
         "pitch": 1.05,
-        "fit": 0.7
+        "fit": 0.92
       },
       {
         "id": "star_master.side.05",
@@ -1404,7 +1404,7 @@
         "exit": "fold",
         "yaw": 1.75,
         "pitch": 0.1,
-        "fit": 0.9
+        "fit": 1.12
       },
       {
         "id": "star_master.gate.06",
@@ -1416,7 +1416,7 @@
         "exit": "gate",
         "yaw": 0.62,
         "pitch": 0.22,
-        "fit": 0.78
+        "fit": 1.02
       },
       {
         "id": "star_master.headon.07",
@@ -1428,7 +1428,7 @@
         "exit": "fade",
         "yaw": -1.2,
         "pitch": 0.28,
-        "fit": 0.74
+        "fit": 0.96
       },
       {
         "id": "star_master.top.08",
@@ -1440,7 +1440,7 @@
         "exit": "flash",
         "yaw": 0.85,
         "pitch": 1.12,
-        "fit": 0.66
+        "fit": 0.88
       },
       {
         "id": "star_master.side.09",
@@ -1452,7 +1452,7 @@
         "exit": "fade",
         "yaw": 2.05,
         "pitch": 0.26,
-        "fit": 0.88
+        "fit": 1.08
       },
       {
         "id": "star_master.chase.10",
@@ -1464,7 +1464,7 @@
         "exit": "flash",
         "yaw": 0.5,
         "pitch": 0.34,
-        "fit": 0.86
+        "fit": 1.12
       }
     ],
     "constellation": [
@@ -1478,7 +1478,7 @@
         "exit": "jump",
         "yaw": 1.35,
         "pitch": 0.18,
-        "fit": 0.92
+        "fit": 1.15
       },
       {
         "id": "constellation.chase.02",
@@ -1490,7 +1490,7 @@
         "exit": "fade",
         "yaw": 0.28,
         "pitch": 0.48,
-        "fit": 0.84
+        "fit": 1.1
       },
       {
         "id": "constellation.headon.03",
@@ -1502,7 +1502,7 @@
         "exit": "flash",
         "yaw": -1.35,
         "pitch": 0.2,
-        "fit": 0.76
+        "fit": 1.0
       },
       {
         "id": "constellation.top.04",
@@ -1514,7 +1514,7 @@
         "exit": "fade",
         "yaw": 0.45,
         "pitch": 1.05,
-        "fit": 0.7
+        "fit": 0.92
       },
       {
         "id": "constellation.side.05",
@@ -1526,7 +1526,7 @@
         "exit": "fold",
         "yaw": 1.75,
         "pitch": 0.1,
-        "fit": 0.9
+        "fit": 1.12
       },
       {
         "id": "constellation.gate.06",
@@ -1538,7 +1538,7 @@
         "exit": "gate",
         "yaw": 0.62,
         "pitch": 0.22,
-        "fit": 0.78
+        "fit": 1.02
       },
       {
         "id": "constellation.headon.07",
@@ -1550,7 +1550,7 @@
         "exit": "fade",
         "yaw": -1.2,
         "pitch": 0.28,
-        "fit": 0.74
+        "fit": 0.96
       },
       {
         "id": "constellation.top.08",
@@ -1562,7 +1562,7 @@
         "exit": "flash",
         "yaw": 0.85,
         "pitch": 1.12,
-        "fit": 0.66
+        "fit": 0.88
       },
       {
         "id": "constellation.side.09",
@@ -1574,7 +1574,7 @@
         "exit": "fade",
         "yaw": 2.05,
         "pitch": 0.26,
-        "fit": 0.88
+        "fit": 1.08
       },
       {
         "id": "constellation.chase.10",
@@ -1586,7 +1586,7 @@
         "exit": "flash",
         "yaw": 0.5,
         "pitch": 0.34,
-        "fit": 0.86
+        "fit": 1.12
       }
     ],
     "tkhasi_orion": [
@@ -1600,7 +1600,7 @@
         "exit": "jump",
         "yaw": 1.35,
         "pitch": 0.18,
-        "fit": 0.92
+        "fit": 1.15
       },
       {
         "id": "tkhasi_orion.chase.02",
@@ -1612,7 +1612,7 @@
         "exit": "fade",
         "yaw": 0.28,
         "pitch": 0.48,
-        "fit": 0.84
+        "fit": 1.1
       },
       {
         "id": "tkhasi_orion.headon.03",
@@ -1624,7 +1624,7 @@
         "exit": "flash",
         "yaw": -1.35,
         "pitch": 0.2,
-        "fit": 0.76
+        "fit": 1.0
       },
       {
         "id": "tkhasi_orion.top.04",
@@ -1636,7 +1636,7 @@
         "exit": "fade",
         "yaw": 0.45,
         "pitch": 1.05,
-        "fit": 0.7
+        "fit": 0.92
       },
       {
         "id": "tkhasi_orion.side.05",
@@ -1648,7 +1648,7 @@
         "exit": "fold",
         "yaw": 1.75,
         "pitch": 0.1,
-        "fit": 0.9
+        "fit": 1.12
       },
       {
         "id": "tkhasi_orion.gate.06",
@@ -1660,7 +1660,7 @@
         "exit": "gate",
         "yaw": 0.62,
         "pitch": 0.22,
-        "fit": 0.78
+        "fit": 1.02
       },
       {
         "id": "tkhasi_orion.headon.07",
@@ -1672,7 +1672,7 @@
         "exit": "fade",
         "yaw": -1.2,
         "pitch": 0.28,
-        "fit": 0.74
+        "fit": 0.96
       },
       {
         "id": "tkhasi_orion.top.08",
@@ -1684,7 +1684,7 @@
         "exit": "flash",
         "yaw": 0.85,
         "pitch": 1.12,
-        "fit": 0.66
+        "fit": 0.88
       },
       {
         "id": "tkhasi_orion.side.09",
@@ -1696,7 +1696,7 @@
         "exit": "fade",
         "yaw": 2.05,
         "pitch": 0.26,
-        "fit": 0.88
+        "fit": 1.08
       },
       {
         "id": "tkhasi_orion.chase.10",
@@ -1708,7 +1708,7 @@
         "exit": "flash",
         "yaw": 0.5,
         "pitch": 0.34,
-        "fit": 0.86
+        "fit": 1.12
       }
     ],
     "tholian_sentinel": [
@@ -1722,7 +1722,7 @@
         "exit": "jump",
         "yaw": 1.35,
         "pitch": 0.18,
-        "fit": 0.92
+        "fit": 1.15
       },
       {
         "id": "tholian_sentinel.chase.02",
@@ -1734,7 +1734,7 @@
         "exit": "fade",
         "yaw": 0.28,
         "pitch": 0.48,
-        "fit": 0.84
+        "fit": 1.1
       },
       {
         "id": "tholian_sentinel.headon.03",
@@ -1746,7 +1746,7 @@
         "exit": "flash",
         "yaw": -1.35,
         "pitch": 0.2,
-        "fit": 0.76
+        "fit": 1.0
       },
       {
         "id": "tholian_sentinel.top.04",
@@ -1758,7 +1758,7 @@
         "exit": "fade",
         "yaw": 0.45,
         "pitch": 1.05,
-        "fit": 0.7
+        "fit": 0.92
       },
       {
         "id": "tholian_sentinel.side.05",
@@ -1770,7 +1770,7 @@
         "exit": "fold",
         "yaw": 1.75,
         "pitch": 0.1,
-        "fit": 0.9
+        "fit": 1.12
       },
       {
         "id": "tholian_sentinel.gate.06",
@@ -1782,7 +1782,7 @@
         "exit": "gate",
         "yaw": 0.62,
         "pitch": 0.22,
-        "fit": 0.78
+        "fit": 1.02
       },
       {
         "id": "tholian_sentinel.headon.07",
@@ -1794,7 +1794,7 @@
         "exit": "fade",
         "yaw": -1.2,
         "pitch": 0.28,
-        "fit": 0.74
+        "fit": 0.96
       },
       {
         "id": "tholian_sentinel.top.08",
@@ -1806,7 +1806,7 @@
         "exit": "flash",
         "yaw": 0.85,
         "pitch": 1.12,
-        "fit": 0.66
+        "fit": 0.88
       },
       {
         "id": "tholian_sentinel.side.09",
@@ -1818,7 +1818,7 @@
         "exit": "fade",
         "yaw": 2.05,
         "pitch": 0.26,
-        "fit": 0.88
+        "fit": 1.08
       },
       {
         "id": "tholian_sentinel.chase.10",
@@ -1830,7 +1830,7 @@
         "exit": "flash",
         "yaw": 0.5,
         "pitch": 0.34,
-        "fit": 0.86
+        "fit": 1.12
       }
     ],
     "taurean_mule": [
@@ -1844,7 +1844,7 @@
         "exit": "jump",
         "yaw": 1.35,
         "pitch": 0.18,
-        "fit": 0.92
+        "fit": 1.15
       },
       {
         "id": "taurean_mule.chase.02",
@@ -1856,7 +1856,7 @@
         "exit": "fade",
         "yaw": 0.28,
         "pitch": 0.48,
-        "fit": 0.84
+        "fit": 1.1
       },
       {
         "id": "taurean_mule.headon.03",
@@ -1868,7 +1868,7 @@
         "exit": "flash",
         "yaw": -1.35,
         "pitch": 0.2,
-        "fit": 0.76
+        "fit": 1.0
       },
       {
         "id": "taurean_mule.top.04",
@@ -1880,7 +1880,7 @@
         "exit": "fade",
         "yaw": 0.45,
         "pitch": 1.05,
-        "fit": 0.7
+        "fit": 0.92
       },
       {
         "id": "taurean_mule.side.05",
@@ -1892,7 +1892,7 @@
         "exit": "fold",
         "yaw": 1.75,
         "pitch": 0.1,
-        "fit": 0.9
+        "fit": 1.12
       },
       {
         "id": "taurean_mule.gate.06",
@@ -1904,7 +1904,7 @@
         "exit": "gate",
         "yaw": 0.62,
         "pitch": 0.22,
-        "fit": 0.78
+        "fit": 1.02
       },
       {
         "id": "taurean_mule.headon.07",
@@ -1916,7 +1916,7 @@
         "exit": "fade",
         "yaw": -1.2,
         "pitch": 0.28,
-        "fit": 0.74
+        "fit": 0.96
       },
       {
         "id": "taurean_mule.top.08",
@@ -1928,7 +1928,7 @@
         "exit": "flash",
         "yaw": 0.85,
         "pitch": 1.12,
-        "fit": 0.66
+        "fit": 0.88
       },
       {
         "id": "taurean_mule.side.09",
@@ -1940,7 +1940,7 @@
         "exit": "fade",
         "yaw": 2.05,
         "pitch": 0.26,
-        "fit": 0.88
+        "fit": 1.08
       },
       {
         "id": "taurean_mule.chase.10",
@@ -1952,7 +1952,7 @@
         "exit": "flash",
         "yaw": 0.5,
         "pitch": 0.34,
-        "fit": 0.86
+        "fit": 1.12
       }
     ],
     "interdictor_cruiser": [
@@ -1966,7 +1966,7 @@
         "exit": "jump",
         "yaw": 1.35,
         "pitch": 0.18,
-        "fit": 0.92
+        "fit": 1.15
       },
       {
         "id": "interdictor_cruiser.chase.02",
@@ -1978,7 +1978,7 @@
         "exit": "fade",
         "yaw": 0.28,
         "pitch": 0.48,
-        "fit": 0.84
+        "fit": 1.1
       },
       {
         "id": "interdictor_cruiser.headon.03",
@@ -1990,7 +1990,7 @@
         "exit": "flash",
         "yaw": -1.35,
         "pitch": 0.2,
-        "fit": 0.76
+        "fit": 1.0
       },
       {
         "id": "interdictor_cruiser.top.04",
@@ -2002,7 +2002,7 @@
         "exit": "fade",
         "yaw": 0.45,
         "pitch": 1.05,
-        "fit": 0.7
+        "fit": 0.92
       },
       {
         "id": "interdictor_cruiser.side.05",
@@ -2014,7 +2014,7 @@
         "exit": "fold",
         "yaw": 1.75,
         "pitch": 0.1,
-        "fit": 0.9
+        "fit": 1.12
       },
       {
         "id": "interdictor_cruiser.gate.06",
@@ -2026,7 +2026,7 @@
         "exit": "gate",
         "yaw": 0.62,
         "pitch": 0.22,
-        "fit": 0.78
+        "fit": 1.02
       },
       {
         "id": "interdictor_cruiser.headon.07",
@@ -2038,7 +2038,7 @@
         "exit": "fade",
         "yaw": -1.2,
         "pitch": 0.28,
-        "fit": 0.74
+        "fit": 0.96
       },
       {
         "id": "interdictor_cruiser.top.08",
@@ -2050,7 +2050,7 @@
         "exit": "flash",
         "yaw": 0.85,
         "pitch": 1.12,
-        "fit": 0.66
+        "fit": 0.88
       },
       {
         "id": "interdictor_cruiser.side.09",
@@ -2062,7 +2062,7 @@
         "exit": "fade",
         "yaw": 2.05,
         "pitch": 0.26,
-        "fit": 0.88
+        "fit": 1.08
       },
       {
         "id": "interdictor_cruiser.chase.10",
@@ -2074,7 +2074,7 @@
         "exit": "flash",
         "yaw": 0.5,
         "pitch": 0.34,
-        "fit": 0.86
+        "fit": 1.12
       }
     ]
   }

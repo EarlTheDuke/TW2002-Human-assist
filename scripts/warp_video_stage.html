@@ -5,8 +5,8 @@
   <title>Warp video stage</title>
   <link rel="stylesheet" href="/static/redesign.css" />
   <style>
-    html, body { margin: 0; width: 400px; height: 260px; overflow: hidden; background: #000; }
-    #warpClip { width: 400px; height: 260px; }
+    html, body { margin: 0; width: 800px; height: 520px; overflow: hidden; background: #000; }
+    #warpClip { width: 800px; height: 520px; }
   </style>
 </head>
 <body>
@@ -86,7 +86,9 @@
       var api = mesh();
       if (!api || api.source !== "note126") throw new Error("mesh");
       var id = hull + "." + style.style + "." + style.n;
-      var def = DEFS[hull] || { accent: "#7aa2ff", detail: "bridge", engines: 2 };
+      var def = Object.assign({}, DEFS[hull] || { accent: "#7aa2ff", detail: "bridge", engines: 2 });
+      def.glow = style.glow;
+      def.plume = style.plume;
       var sample = { class: hull, fighters: 0, shields: 0, shield_cap: 0, transwarp: {} };
       frame = { style: style, sample: sample, def: def };
       var root = document.getElementById("warpClip");
@@ -94,17 +96,26 @@
       var ms = style.duration_ms;
       root.hidden = false;
       root.style.setProperty("--warp-ms", ms + "ms");
+      if (style.flash) root.style.setProperty("--warp-flash", style.flash);
       root.setAttribute("data-hull", hull);
       root.setAttribute("data-clip", id);
       root.setAttribute("data-exit", style.exit);
+      root.setAttribute("data-camera", style.camera);
       root.setAttribute("data-stars", style.stars);
+      root.setAttribute("data-glow", style.glow || "");
+      root.setAttribute("data-plume", style.plume != null ? String(style.plume) : "");
       root.classList.remove("is-still");
       var html = api.hullMarkup(sample, def, style.yaw, style.pitch, style.fit, 200, 130);
       var field = window.TW2KWarpVariants.stars(id, style.stars);
-      svg.innerHTML = field
-        + '<g class="warp-ship" data-testid="warp-ship"><g data-testid="warp-body" data-model="solid">'
-        + html + "</g></g>";
-      svg.querySelectorAll(".warp-ship, .streaks, .warp-stars").forEach(function (el) {
+      var flash = style.exit === "flash"
+        ? '<ellipse class="warp-flash" data-testid="warp-flash" cx="200" cy="130" rx="'
+          + (22 + Number(style.plume || 12) * 0.35).toFixed(1)
+          + '" ry="16" fill="' + style.flash + '" opacity="0.32"/>'
+        : "";
+      svg.innerHTML = field + flash
+        + '<g class="warp-rig"><g class="warp-ship" data-testid="warp-ship"><g data-testid="warp-body" data-model="solid">'
+        + html + "</g></g></g>";
+      svg.querySelectorAll(".warp-ship, .streaks, .warp-stars, .warp-rig, .warp-flash").forEach(function (el) {
         el.style.animationDuration = ms + "ms";
       });
       return new Promise(function (resolve) {
