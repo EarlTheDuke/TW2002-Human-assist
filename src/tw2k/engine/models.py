@@ -983,7 +983,7 @@ class Player(BaseModel):
             + self.ship.mines.get(MineType.ARMID, 0) * K.armid_mine_cost()
             + self.ship.mines.get(MineType.LIMPET, 0) * K.limpet_mine_cost()
             + self.ship.mines.get(MineType.ATOMIC, 0) * K.ATOMIC_MINE_COST
-            + self.ship.photon_missiles * K.PHOTON_MISSILE_COST
+            + self.ship.photon_missiles * K.photon_missile_cost()
             + int(getattr(self.ship, "cloaks", 0) or 0) * getattr(K, "CLOAK_COST", 25_000)
             + (int(K.PLANET_SCANNER_COST) if getattr(self.ship, "planet_scanner", False) else 0)
             + int(getattr(self.ship, "mine_disruptors", 0) or 0) * K.disruptor_cost()

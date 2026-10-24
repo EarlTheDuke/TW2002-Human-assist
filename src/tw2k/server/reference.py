@@ -52,7 +52,7 @@ def _prices(ship_class: str, holds: int, day: int) -> list[dict[str, Any]]:
         _price("Armid mine", K.armid_mine_cost(), base + " armid_mine_cost()"),
         _price("Limpet mine", K.limpet_mine_cost(), base + " limpet_mine_cost()"),
         _price("Atomic mine", K.ATOMIC_MINE_COST, base + " ATOMIC_MINE_COST"),
-        _price("Photon missile", K.PHOTON_MISSILE_COST, base + " PHOTON_MISSILE_COST"),
+        _price("Photon missile", K.photon_missile_cost(), base + " photon_missile_cost()"),
         _price("Ether probe", K.ether_probe_cost(), base + " ether_probe_cost()"),
         _price("Genesis torpedo", K.genesis_torpedo_cost(), base + " genesis_torpedo_cost()"),
         _price("Cloaking device", K.CLOAK_COST, base + " CLOAK_COST"),

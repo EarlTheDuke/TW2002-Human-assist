@@ -1492,12 +1492,16 @@ ETHER_PROBE_COST = 5_000
 GENESIS_TORPEDO_COST = 25000
 ARMID_DAMAGE = 100
 
-# "legacy": the four shop prices and the armid hit stay as written above
+# "legacy": the shop prices and the armid hit stay as written above
 # (and the hardware-mode hit of 20). "live": the v3.34b shop card.
 # Armid 1,000 and "up to 30" points. Limpet 10,000. Genesis 20,000.
-# Ether probe 3,000. Combat was not played, so 30 is the shop's ceiling,
-# not a measured hit. Atomic detonators stay out of this switch: the live
-# item is a planet killer, and this copy's atomic mine is a different thing.
+# Ether probe 3,000. Photon missile 40,000.
+# Combat was not played, so 30 is the shop's ceiling, not a measured hit.
+# Atomic detonators stay out of this switch: the live item is a planet
+# killer, and this copy's atomic mine is a different thing.
+# Ven 2026-10-24 GameA TWSTATS prints Photon Missile=40,000 cr
+# (docs/playtests/twgs-live/twstats-costs-ven.txt). Stored photon default
+# stays 12,000. SOURCE-CONFLICT with the cabal sample (160,000).
 # Ship TransWarp quotes are on this same card. Ven 2026-10-24 GameA TWSTATS
 # (docs/playtests/twgs-live/twstats-costs-ven.txt): Type I 50,000, Type II
 # 80,000, upgrade 10,000. Stored cabal TEDIT samples stay 12,500 / 20,000 /
@@ -1513,11 +1517,12 @@ GENESIS_TORPEDO_COST_LIVE = 20_000
 SHIP_TW_TYPE1_COST_LIVE = 50_000
 SHIP_TW_TYPE2_COST_LIVE = 80_000
 SHIP_TW_UPGRADE_COST_LIVE = 10_000
+PHOTON_MISSILE_COST_LIVE = 40_000
 ARMID_DAMAGE_LIVE = 30
 
 
 def hardware_price_live() -> bool:
-    """True when the shop uses the live armid, limpet, genesis, ether, and ship TransWarp prices."""
+    """True when the shop uses the live armid, limpet, genesis, ether, ship TransWarp, and photon prices."""
     return HARDWARE_PRICE_MODE == "live" or tw2002_live_profile() or v311_profile()
 
 
@@ -1591,6 +1596,18 @@ def ship_tw_drive_value(drive: str | None) -> int:
     if kind == "type2":
         return ship_tw_type2_cost()
     return 0
+
+
+def photon_missile_cost() -> int:
+    """Shop price. Stored 12,000. The live/v311 card is 40,000.
+
+    hardware_price_live() is that BigBang card. TW2002_LIVE_PROFILE and
+    V311_PROFILE turn the card on without moving HARDWARE_PRICE_MODE.
+    Atomic detonators stay off this switch.
+    """
+    if hardware_price_live():
+        return PHOTON_MISSILE_COST_LIVE
+    return PHOTON_MISSILE_COST
 
 
 def armid_hit_damage() -> int:

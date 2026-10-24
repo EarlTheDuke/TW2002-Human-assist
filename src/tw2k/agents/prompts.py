@@ -729,6 +729,11 @@ def _class0_legacy_text(text: str) -> str:
 def get_system_prompt() -> str:
     """System message for the current `TW2K_HINT_LEVEL` (``full`` or ``minimal``)."""
     text = _MATCH_PROMPT_MINIMAL if is_minimal() else _MATCH_PROMPT_FULL
+    if K.hardware_price_live():
+        text = text.replace(
+            "photon_missiles 12,000 cr each",
+            f"photon_missiles {K.photon_missile_cost():,} cr each",
+        )
     if not K.class0_tw2002():
         text = _class0_legacy_text(text)
     if K.citadel_perk_live():

@@ -3068,7 +3068,7 @@ def _handle_buy_equip(universe: Universe, pid: str, action: Action) -> ActionRes
         "armid_mines": K.armid_mine_cost(),
         "limpet_mines": K.limpet_mine_cost(),
         "atomic_mines": K.ATOMIC_MINE_COST,
-        "photon_missiles": K.PHOTON_MISSILE_COST,
+        "photon_missiles": K.photon_missile_cost(),
         "ether_probes": K.ether_probe_cost(),
         "genesis": K.genesis_torpedo_cost(),
         "holds": K.hold_next_price(class_key, player.ship.holds, day),

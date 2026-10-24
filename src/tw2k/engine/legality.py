@@ -856,7 +856,7 @@ def legal_actions(universe: Universe, player_id: str) -> list[LegalAction]:
             "armid_mines": int(K.armid_mine_cost()),
             "limpet_mines": int(K.limpet_mine_cost()),
             "atomic_mines": int(K.ATOMIC_MINE_COST),
-            "photon_missiles": int(K.PHOTON_MISSILE_COST),
+            "photon_missiles": int(K.photon_missile_cost()),
             "ether_probes": int(K.ether_probe_cost()),
             "genesis": int(K.genesis_torpedo_cost()),
             "holds": K.hold_next_price(player.ship.ship_class.value, player.ship.holds, day),
