@@ -33,7 +33,7 @@ The heading counts helpers in `V311_PROFILE_HELPERS`. Row 84 is still reserved f
 | 19 | `HOLD_RULES_MODE` | `hold_rules_live` | MASTER_PLAN yes | wording only |
 | 20 | `PLANET_NW_MODE` | `planet_nw_live` | MASTER_PLAN yes | score display only |
 | 21 | `PORT_PRICE_MODE` | `port_price_live` | MASTER_PLAN yes | cabal formulas/economy MCIC + experience (GAP 2.3) |
-| 22 | `PORT_REGEN_MODE` | `port_regen_live` | MASTER_PLAN yes | REV v3.05 standard 5%/day |
+| 22 | `PORT_REGEN_MODE` | `port_regen_live` | MASTER_PLAN yes | REV v3.05 standard 5% of the maximum, once, while row 224 is off. The cabal 1% sample is not this switch. |
 | 23 | `SHOP_PRICE_MODE` | `shop_price_live` | MASTER_PLAN yes | cabal formulas hold cost; fighter/shield wave (GAP 2.11 conflict noted) |
 | 24 | `GENESIS_START_MODE` | `genesis_start_live` | MASTER_PLAN yes | S1: new planet has no colonists and usually no product (GAP 6.5); Terra form exists |
 | 25 | `TERRA_COLONIST_MODE` | `terra_colonist_live` | MASTER_PLAN yes | REPORT2 s6/s11: 30,000 pool, 1 group per hold, 750/day; flip with CLASS_M |
@@ -170,6 +170,8 @@ The heading counts helpers in `V311_PROFILE_HELPERS`. Row 84 is still reserved f
 | 225 | `SHIELD_POINT_MODE` | `shield_point_live` | NOTE 129 GAP 1.8: Class 0 and StarDock shields are 131 credits a point (`docs/playtests/twgs-live/stardock-menus.txt`). One day only, so day-to-day drift is UNVERIFIED. The purse went 228 to 96 (132); the menu said 131 a point, and that stated price is the one used. Fighters that day were 218 and stay on the 160-239 wave. Stored default stays legacy. `"1"` does not turn it on. |
 | 226 | `TAVERN_BAR_PRICE_MODE` | `tavern_bar_price_live` | NOTE 129 GAP 1.8: a drink is 80 credits and a plate of food is 24. Announcement 100 already matches `TAVERN_ANNOUNCE_COST`. The stored drink and food prices stay 20. `"1"` does not turn it on. |
 | 227 | `CINEPLEX_PRICE_MODE` | `cineplex_price_live` | NOTE 129 GAP 1.8: Cineplex show 1, Vulcan Thunder, is 100 credits (`docs/playtests/twgs-live/illegal-goods.txt`). The other titles were not opened, so they are not sold. The stored ticket stays 0. `"1"` does not turn it on. |
+
+GAP 2.8 adds no switch and no profile row. The printed standard stays 5 percent (`PORT_REGEN_PER_DAY`), applied once by `PORT_REGEN_MODE` (row 22) while this curve is off. While this curve is on, including under the profile, a day restocks 10 percent of the maximum once. That is the economy2 pair, not the 5 percent applied twice. The 1 percent game in cabal `twgs.html` stays off.
 
 Row 181 is NavPoints (NOTE 159). Rows 182-186 are NOTE 162. Row 187 is the good-trader bounty (NOTE 163). NOTE 164 uses rows 200-203. Those four switches do not grade 6.11 or 13.4 a second time. The stored game stays the FERRSPEC Ferrengi column, defunct corporate ships, the death `#N/3` line, and an empty fighter report.
 
