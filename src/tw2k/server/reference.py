@@ -276,7 +276,8 @@ def game_reference(player=None, day: int = 1, max_days: int | None = None) -> di
         f"A port buys only until it is full. The price eases as it fills. Stock grows back at {regen_pct}% per day. "
         f"The next hold on this ship costs {next_hold:,} cr. Formula: {hold_formula}. "
         f"{end_rule_line(days)} "
-        f"Tri-Cron: ante {int(K.TRICRON_ANTE):,} cr, {int(K.TRICRON_ROUNDS)} rounds, pays 2:1, "
+        f"Tri-Cron, when that match is on: ante {int(K.TRICRON_ANTE):,} cr, "
+        f"{int(K.TRICRON_ROUNDS)} rounds, pays 2:1, "
         f"jackpot {int(K.TRICRON_OPENING_JACKPOT):,} cr. "
         f"{corp_line}"
     )

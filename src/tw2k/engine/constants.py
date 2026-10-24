@@ -3265,7 +3265,7 @@ UG_CONTRACT_PAYOUT_ON = "ship_destroyed"  # tv17 UNVERIFIED
 UG_CONTRACT_ON_ELIMINATION = "sink"     # tv17 UNVERIFIED
 UG_SHOW_CONTRACTS = "totals"            # tv18 UNVERIFIED
 UG_NAME_CHANGE = False                  # tv19
-TAVERN_TRICRON = "on"                   # tv20 built in stardock-leftovers-v1; gated by STARDOCK_EXTRA_MODE
+TAVERN_TRICRON = "on"                   # tv20 handler exists; play is TRICRON_MODE (legacy default)
 BOT_TAVERN_POLICY = "off"               # tv26
 
 
@@ -3341,18 +3341,26 @@ def bots_deploy_on() -> bool:
 
 
 # --- StarDock leftovers (STARDOCK_EXTRA_MODE) --------------------------------
-# Tri-Cron is the tavern game on the live TWGS screen (ante 100, 10 rounds,
-# 2:1, jackpot 5000). The slice blurb called it a news board; the screen does not.
+# The Cineplex stays on this switch. Tri-Cron play is TRICRON_MODE below.
+# The slice blurb called Tri-Cron a news board; the screen does not.
 STARDOCK_EXTRA_MODE = "tw2002"           # sd1: "tw2002" | "legacy"
-TRICRON_ANTE = 100
-TRICRON_ROUNDS = 10
-TRICRON_OPENING_JACKPOT = 5_000
-TRICRON_OPENING_CHAMPION = 5_000
+TRICRON_ANTE = 100                       # tricron.txt: "The current ante is 100 credits per match."
+TRICRON_ROUNDS = 10                      # tricron.txt: "The game will last for 10 rounds."
+TRICRON_OPENING_JACKPOT = 5_000          # tricron.txt: "The jackpot now stands at 5,000 credits."
+TRICRON_OPENING_CHAMPION = 5_000         # tricron.txt: champion score 5000
+# NOTE 129 GAP 11.8. One tavern match. Stored default stays legacy.
+# "1" does not turn this on. V311_PROFILE "v311" does. TW2002_LIVE_PROFILE does not.
+TRICRON_MODE = "legacy"                  # "legacy" | "v311"
 CINEPLEX_COST = 0                        # stored. Show 1 is CINEPLEX_SHOW1_COST behind CINEPLEX_PRICE_MODE.
 
 
 def stardock_extra_on() -> bool:
     return STARDOCK_EXTRA_MODE == "tw2002"
+
+
+def tricron_live() -> bool:
+    """True when a tavern seat can play one Tri-Cron match."""
+    return TRICRON_MODE == "v311" or v311_profile()
 
 
 # --- Corporations (CORP_MODE) -------------------------------------------------
@@ -5178,7 +5186,7 @@ V311_PROFILE_HELPERS: dict[str, tuple[str, str]] = {
         "PORT_DRAIN_CURVE_MODE",
         "Follow-up to row 223: quotes follow the economy3 Merf table and a port restocks 10 percent of its maximum a day (economy2)",
     ),
-    # NOTE 129 rows 225-227. Captures: docs/playtests/twgs-live/.
+    # NOTE 129 rows 225-228. Captures: docs/playtests/twgs-live/.
     "shield_point_live": (
         "SHIELD_POINT_MODE",
         "NOTE 129 GAP 1.8: Class 0 and StarDock shields are 131 credits a point",
@@ -5204,6 +5212,11 @@ V311_PROFILE_HELPERS: dict[str, tuple[str, str]] = {
     "photon_cloak_settings_live": (
         "PHOTON_CLOAK_SETTINGS_MODE",
         "GameA TWSTATS [Settings]: no FedSpace photons, players in the wave are fighter-offline, one photon until that day-tick wave ends",
+    ),
+    # NOTE 129 GAP 11.8. tricron.txt. Stored default stays legacy.
+    "tricron_live": (
+        "TRICRON_MODE",
+        "NOTE 129 GAP 11.8: one Tri-Cron match, ante 100, 10 rounds, payback 2 to 1, jackpot 5,000 (tricron.txt)",
     ),
 }
 

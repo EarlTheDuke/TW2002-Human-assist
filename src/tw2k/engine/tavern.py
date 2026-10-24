@@ -151,14 +151,32 @@ def handle_announce(universe: Universe, pid: str, action: Action) -> ActionResul
     return ActionResult(ok=True, turns_spent=int(K.TAVERN_TURN_COST))
 
 
+def _place_order(raw: Any) -> tuple[int, int, int] | None:
+    """Positions 1, 2 and 3. Omitted means the documented 2-3-1."""
+    if raw is None:
+        return (2, 3, 1)
+    if not isinstance(raw, (list, tuple)) or len(raw) != 3:
+        return None
+    try:
+        order = tuple(int(part) for part in raw)
+    except (TypeError, ValueError):
+        return None
+    if set(order) != {1, 2, 3}:
+        return None
+    return (order[0], order[1], order[2])
+
+
 def handle_tricron(universe: Universe, pid: str, action: Action) -> ActionResult:
-    """One Tri-Cron match. Crons are placed 2-3-1. The ante joins the jackpot first."""
-    if not on() or not K.stardock_extra_on():
+    """One Tri-Cron match. Default placement is 2-3-1. The ante joins the jackpot first."""
+    if not on() or not K.tricron_live():
         return ActionResult(ok=False, error="unsupported action")
     player = universe.players[pid]
     why = guard(player)
     if why:
         return ActionResult(ok=False, error=why)
+    order = _place_order((action.args or {}).get("order"))
+    if order is None:
+        return ActionResult(ok=False, error="order must be positions 1, 2 and 3")
     ante = int(K.TRICRON_ANTE)
     short = _pay(player, ante)
     if short:
@@ -173,22 +191,29 @@ def handle_tricron(universe: Universe, pid: str, action: Action) -> ActionResult
         rounds=int(K.TRICRON_ROUNDS),
         champion=int(state.get("tricron_champion", K.TRICRON_OPENING_CHAMPION)),
         jackpot=int(state.get("tricron_jackpot", K.TRICRON_OPENING_JACKPOT)),
+        order=order,
     )
     player.credits += int(result["payback"]) + int(result["jackpot_prize"])
     state["tricron_jackpot"] = int(result["jackpot"])
     state["tricron_champion"] = int(result["champion"])
     state["tricron_played"] = played + 1
+    profit = int(result["payback"]) - ante
+    if result["took_jackpot"]:
+        summary = f"{player.name} takes the Tri-Cron jackpot ({int(result['jackpot_prize'])} cr)."
+    elif result["beat_house"]:
+        summary = f"You win {profit} credits!"
+    else:
+        summary = "House wins."
     _actor(
         universe, player, EventKind.TRICRON,
-        (
-            f"{player.name} played Tri-Cron. Ante {int(K.TRICRON_ANTE)} cr, "
-            f"{int(K.TRICRON_ROUNDS)} rounds, pays 2:1, jackpot {int(K.TRICRON_OPENING_JACKPOT)} cr."
-        ),
+        summary,
         {
             "player_total": int(result["player_total"]),
             "house_total": int(result["house_total"]),
             "payback": int(result["payback"]),
             "jackpot_prize": int(result["jackpot_prize"]),
+            "ante": ante,
+            "rounds": int(K.TRICRON_ROUNDS),
         },
     )
     return ActionResult(ok=True, turns_spent=int(K.TAVERN_TURN_COST))
@@ -604,7 +629,7 @@ def observation(universe: Universe, player: Player) -> dict[str, Any] | None:
             "contracts": totals,
             "pending_claim": int((state.get("ug_pending") or {}).get(player.id, 0) or 0),
         }
-    if K.stardock_extra_on():
+    if K.tricron_live():
         block["tricron"] = {
             "ante": int(K.TRICRON_ANTE),
             "rounds": int(K.TRICRON_ROUNDS),
@@ -714,7 +739,7 @@ def legal_specs(universe: Universe, player_id: str) -> list[tuple[str, bool, str
             rename_reason,
             params,
         )
-    if K.stardock_extra_on():
+    if K.tricron_live():
         ante = int(K.TRICRON_ANTE)
         add(
             "tricron",
