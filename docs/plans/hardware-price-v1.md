@@ -6,6 +6,8 @@ A live TWGS v3.34b shop card priced an armid mine at 1,000 credits and said it d
 
 `live` charges the four card prices. One armid hit deals 30. The shop said "up to 30" and the combat was not played, so 30 is that ceiling, not a measured roll. How many mines blow up on a move stays as it is. The atomic mine stays at 4,000. The live atomic detonator is a planet killer, and this copy's atomic mine is a different item.
 
+Ven 2026-10-24 GameA TWSTATS puts ship TransWarp on this same card (`hardware_price_live`): Type I 50,000, Type II 80,000, upgrade 10,000 (`docs/playtests/twgs-live/twstats-costs-ven.txt`). Stored cabal samples stay 12,500, 20,000, and 9,000. SOURCE-CONFLICT. `SHIP_TW_MODE` is not this switch. Citadel Transport Unit 50,000 and Upgrade 25,000 already match the planet transporter constants. No shop switch for those.
+
 Do not turn the switch on until Ben says so.
 
 Suite on 79d98ff: 2495 passed, 3 failed, 1 skipped, 3071s. Two failures are the known flakes (WinError 10048 and the spectator-feed timeout). The third, tests/test_v5p_skip_pod.py::test_death_card_dismiss_keeps_the_pod, is a video click that saw no clip playing. That screen was not changed. It passed alone in 8s. Two new tests passed. pb1 and pb2 were re-broken and restored.

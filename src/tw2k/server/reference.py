@@ -66,9 +66,10 @@ def _prices(ship_class: str, holds: int, day: int) -> list[dict[str, Any]]:
         _price("Planet scanner", K.PLANET_SCANNER_COST, base + " PLANET_SCANNER_COST"),
     ]
     if K.ship_tw_on():
-        rows.append(_price("TransWarp type 1", K.SHIP_TW_TYPE1_COST, base + " SHIP_TW_TYPE1_COST"))
+        rows.append(_price("TransWarp type 1", K.ship_tw_type1_cost(), base + " ship_tw_type1_cost()"))
         if K.tow_on():
-            rows.append(_price("TransWarp type 2", K.SHIP_TW_TYPE2_COST, base + " SHIP_TW_TYPE2_COST"))
+            rows.append(_price("TransWarp type 2", K.ship_tw_type2_cost(), base + " ship_tw_type2_cost()"))
+            rows.append(_price("TransWarp upgrade", K.ship_tw_upgrade_cost(), base + " ship_tw_upgrade_cost()"))
     return rows
 
 

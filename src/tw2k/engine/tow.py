@@ -613,9 +613,9 @@ def type2_offer(player: Player) -> dict[str, int]:
         return {}
     drive = getattr(player.ship, "transwarp_drive", None)
     if drive is None:
-        return {"transwarp_type2": int(K.SHIP_TW_TYPE2_COST)}
+        return {"transwarp_type2": int(K.ship_tw_type2_cost())}
     if drive == "type1":
-        return {"transwarp_upgrade": int(K.SHIP_TW_UPGRADE_COST)}
+        return {"transwarp_upgrade": int(K.ship_tw_upgrade_cost())}
     return {}
 
 
