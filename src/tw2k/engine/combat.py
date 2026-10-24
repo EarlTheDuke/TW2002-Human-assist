@@ -1374,6 +1374,27 @@ def _place(universe: Universe, player, sector_id: int) -> None:
     player.known_warps[sector_id] = list(universe.sectors[sector_id].warps)
 
 
+def _apply_death_delay(universe: Universe, player) -> None:
+    """TWGS v3 Death Delay. Not S7 #16's N-midnight sentence.
+
+    On, and this death is past Deaths Per Day: wait until the next midnight.
+    The default allowance is 0, so the first death waits. A later death the
+    same day does not add extra days. Off: no lock.
+    """
+    if not K.death_delay_live():
+        return
+    if not K.death_delay_enabled(universe.config):
+        player.death_delay_left = 0
+        return
+    day = int(universe.day)
+    if int(getattr(player, "deaths_today_day", 0) or 0) != day:
+        player.deaths_today_day = day
+        player.deaths_today = 0
+    player.deaths_today = int(player.deaths_today) + 1
+    if int(player.deaths_today) > K.deaths_per_day_allowance(universe.config):
+        player.death_delay_left = 1
+
+
 def _destroy_ship_tw2002(
     universe: Universe, pid: str, reason: str, killer_id: str | None, by_other: bool,
     *, always_escape: bool = False, force_destroyed: bool = False,
@@ -1431,10 +1452,6 @@ def _destroy_ship_tw2002(
             player.credits = max(int(player.credits), int(K.POD_CASH_CREDITS))
         _place(universe, player, dest)
         outcome = "escape_pod"
-        # NOTE 79 CMB-n. S7 #16: N midnights before the pod may act. 0 flies at once.
-        delay = K.death_delay_days(universe.config)
-        if delay > 0:
-            player.death_delay_left = delay
         # The summary reaches the killer and every witness; where the pod went does not (fog).
         tail = f"escaped in a pod [pod {player.pods_today}/{K.PODS_PER_DAY} today]"
     else:
@@ -1446,19 +1463,13 @@ def _destroy_ship_tw2002(
         player.ship.fighters = K.reentry_fighter_grant()
         _place(universe, player, dest)
         # d9/d11: out until midnight; the free scout waits at StarDock.
-        player.turns_today = max(int(player.turns_today), int(player.turns_per_day))
-        # S7 #16 (S7_softdocs_slice-10.txt lines 373-376): days are added when
-        # the pod is attacked while the pilot is knocked out. A pod that is
-        # already flying does not start a sentence. UNVERIFIED, searched:
-        # S7 #16, OldBBS_TW.faq.txt #12, OldBBS_TW2002V8.faq.txt #12,
-        # Slice-10_Slice_War_Manual.txt #16. None of them says a flying pod
-        # begins a new sentence. Queued in live-twgs-test-queue-v1.md.
-        delay = K.death_delay_days(universe.config)
-        if delay > 0 and int(player.death_delay_left or 0) > 0:
-            player.death_delay_left = int(player.death_delay_left) + delay
+        # Death Delay No (TWGS help): death does not take the day's turns.
+        if not (K.death_delay_live() and not K.death_delay_enabled(universe.config)):
+            player.turns_today = max(int(player.turns_today), int(player.turns_per_day))
         outcome = "ship_destroyed"
         tail = "SHIP DESTROYED - out until tomorrow, a free Scout waits at StarDock"
 
+    _apply_death_delay(universe, player)
     universe.emit(
         EventKind.SHIP_DESTROYED,
         actor_id=killer_id,

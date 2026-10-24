@@ -180,7 +180,8 @@ def _facts(config) -> dict:
         "game_length": getattr(config, "game_length", None) if config is not None else None,
         "scoped": config is not None,
         "bust_clear_days": getattr(config, "bust_clear_days", None) if config is not None else None,
-        "death_delay": K.death_delay_days(config),
+        "death_delay_on": K.death_delay_enabled(config),
+        "deaths_per_day": K.deaths_per_day_allowance(config) if config is not None else 0,
     }
 
 
@@ -461,8 +462,15 @@ def _combat(_f: dict) -> str:
         f"<p>A kill drops you in an escape pod. You lose the ship. Experience drops by {loss} percent "
         f"({_n(K.POD_EXP_LOSS)} of what you had). {pod_credits} "
         "Addendum A is the written source for what the pod keeps.</p>"
-        "<p>No death delay is loaded. A pod can act on the turn you land in it. "
-        "A wait of several midnights is not a rule in this process.</p>"
+        + (
+            f"<p>Death Delay is on. Deaths Per Day is {_n(int(_f.get('deaths_per_day') or 0))}. "
+            "A death past that number waits until the next day. "
+            "The first death waits when the allowance is 0.</p>"
+            if _f.get("death_delay_on")
+            else
+            "<p>No death delay is loaded. A pod can act on the turn you land in it. "
+            "A wait of several midnights is not a rule in this process.</p>"
+        )
         + _photon_wave()
         + _probes()
         + _src("RULINGS v3.11 section 6 (fighter exchange), Addendum A (the escape pod), "
@@ -1391,7 +1399,7 @@ _SWITCH_PLAIN: dict[str, str] = {
     "SHIP_CHART_CAP_MODE": "Ether probes, and the other chart items, stop at the printed cap.",
     "CORP_PLANET_DISBAND_MODE": "When a corporation ends, planets in the C.E.O.'s sector stay with the C.E.O. The rest go unclaimed.",
     "PHOTON_FOLLOW_DAMP_MODE": "A ship that enters a sector while a photon wave is up also has the planet quasar damped.",
-    "DEATH_DELAY_MODE": "A new pod can be locked out for a number of midnights.",
+    "DEATH_DELAY_MODE": "Death Delay is yes or no. Past the day's death allowance, you wait until the next day.",
     "TREASURY_CAP_MODE": "A citadel treasury can hold the printed maximum.",
     "COURSE_MAX_MODE": "A plotted course that is too long is refused.",
     "BIG_BANG_DENSITY_MODE": "A new universe places ports and planets on the v3.11 spread, with no decorative Fed ports in the early sectors.",
@@ -1799,11 +1807,16 @@ def _computer_reports(_f: dict) -> str:
 
 
 def _death_and_pods(f: dict) -> str:
-    delay_days = int(f.get("death_delay") or 0) if K.death_delay_live() else 0
-    if delay_days > 0:
-        wait = f"a new pod cannot move until {_n(delay_days)} midnights have passed."
+    allowance = int(f.get("deaths_per_day") or 0)
+    if f.get("death_delay_on"):
+        wait = (
+            f"Death Delay is on. Deaths Per Day is {_n(allowance)}. "
+            "A death past that number waits until the next day. "
+            "The first death waits when the allowance is 0. "
+            "S7's multi-day sentence is not this switch."
+        )
     else:
-        wait = "no death delay is set, so a new pod can move at once."
+        wait = "Death Delay is off, so a death does not lock you and does not take your turns."
     pod = _gated(
         K.death_pod_live(),
         f"a destroyed ship becomes an escape pod with a clean loadout. You lose {_n(int(K.POD_EXP_LOSS * 100))} percent of your experience.",

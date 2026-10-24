@@ -697,6 +697,8 @@ class Player(BaseModel):
             "jettison_day": 0,
             "jettison_colonists": 0,
             "death_delay_left": 0,
+            "deaths_today": 0,
+            "deaths_today_day": 0,
         })
 
     id: str
@@ -722,9 +724,12 @@ class Player(BaseModel):
     prev_sector_id: int | None = None
     pods_day: int = 0
     pods_today: int = 0
-    # NOTE 79 CMB-n. Midnights left before a pod may act. 0 means flying.
-    # Omitted from dumps while 0.
+    # NOTE 79 CMB-n. 1 means this pilot waits until the next midnight.
+    # 0 means they can act. Omitted from dumps while 0. Not an S7 day count.
     death_delay_left: int = 0
+    # Deaths this game-day toward Deaths Per Day. Omitted while 0.
+    deaths_today: int = 0
+    deaths_today_day: int = 0
     # Sector of the open port visit. Cleared when the player leaves.
     # A second trade here costs no turn. Not a hidden port value.
     port_visit_sector_id: int | None = None
@@ -1257,11 +1262,22 @@ class GameConfig(BaseModel):
             raise ValueError("bust clear days must be 1 or 7")
         return days
 
-    # NOTE 79 CMB-n. None is death delay 0 (the pod flies at once). A number
-    # is how many midnights a new pod waits, once DEATH_DELAY_MODE is live.
-    # Left out of dumps while None. UNVERIFIED, searched: S7 #16 and cabal
-    # twgs.html "<7> Death Delay : Yes". No printed maximum. Queued.
-    death_delay: int | None = None
+    # NOTE 79 CMB-n, rescoped 24 Oct 2026 from Ven GameA (Slot A).
+    # TWGS v3 TEDIT Death Delay is Yes/No, not S7 #16's day count.
+    # None means Yes, the TWGS default (TWSTATS Death Delay=True). False is
+    # off. Left out of dumps while None. Prompt: "Enable Death Delay?".
+    # Help: a podded player is forced out for a day; off, they re-enter
+    # immediately and death does not affect turns. REVISION.TXT: Gold is
+    # what can disable it. This tree has no Gold-edition gate, so False is
+    # accepted. Capture: docs/playtests/twgs-live/death-delay-max.txt.
+    death_delay: bool | None = None
+    # Separate TEDIT number. None means 0 (TWSTATS Deaths Per Day=0).
+    # Prompt: "How many deaths per day?". When Death Delay is on, that many
+    # deaths may restart; the next waits until the next day. Example from
+    # the help: 1 allows one death and a restart, and the second waits.
+    # TEDIT maximum unmeasured (the GUI was not opened; Slot A may lock).
+    # No ceiling is stored. Left out of dumps while None.
+    deaths_per_day: int | None = None
 
     @field_validator("death_delay", mode="before")
     @classmethod
@@ -1269,14 +1285,35 @@ class GameConfig(BaseModel):
         if value is None or value == "":
             return None
         if isinstance(value, bool):
-            raise ValueError("death delay must be a whole number of days")
+            return value
+        if isinstance(value, int):
+            raise ValueError(
+                "death delay is yes or no, not a day count. "
+                "The daily allowance is deaths_per_day"
+            )
+        text = str(value).strip().lower()
+        if text in {"yes", "y", "true", "on"}:
+            return True
+        if text in {"no", "n", "false", "off"}:
+            return False
+        raise ValueError("death delay is yes or no")
+
+    @field_validator("deaths_per_day", mode="before")
+    @classmethod
+    def _check_deaths_per_day(cls, value: Any) -> Any:
+        if value is None or value == "":
+            return None
+        if isinstance(value, bool):
+            raise ValueError("deaths per day must be a whole number")
         try:
-            days = int(value)
+            count = int(value)
         except (TypeError, ValueError):
-            raise ValueError("death delay must be a whole number of days") from None
-        if days < 0:
-            raise ValueError("death delay must be a whole number of days")
-        return days
+            raise ValueError("deaths per day must be a whole number") from None
+        if count < 0:
+            raise ValueError("deaths per day must be a whole number")
+        if count == 0:
+            return None
+        return count
 
     @field_validator("turn_regen_day_seconds", mode="before")
     @classmethod
@@ -1327,6 +1364,8 @@ class GameConfig(BaseModel):
             data.pop("bust_clear_days", None)
         if isinstance(data, dict) and data.get("death_delay", 0) is None:
             data.pop("death_delay", None)
+        if isinstance(data, dict) and data.get("deaths_per_day", 0) is None:
+            data.pop("deaths_per_day", None)
         return data
 
 

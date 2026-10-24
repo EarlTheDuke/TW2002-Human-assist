@@ -5,8 +5,9 @@ n96-ferrengal-quasar,FERRENGAL_QUASAR_FUEL; FERRENGAL_QUASAR_PCT,"10,000 fuel at
 n96-ferrengi-banding,FERRENGI_BAND_STRONG,more_fighters_than_this_ship,,,,,Ferrengi banding cutoff
 n96-ferrengi-clock,FERRENGI_PACE_MODE,legacy: a pace hop relocates and the tribute menu opens on the day tick,,,,,Ferrengi attack clock
 n96-course-max,V311_COURSE_MAX_HOPS,45,,,,,Plotted course limit
-n96-death-delay-max,GameConfig.death_delay,any whole number of days; no ceiling in the code,,,,,Death delay maximum
-n96-flying-pod,death_delay_days,a flying pod does not start a new sentence,,,,,Flying pod sentence
+n96-death-delay-max,GameConfig.death_delay,"CLOSED. Yes/No, default Yes. No numeric maximum. S7 day count is not this field",,,,,Death delay maximum
+n96-deaths-per-day-max,GameConfig.deaths_per_day,"any whole number, default 0. TEDIT maximum unmeasured. BLOCKED",,,,,Deaths Per Day maximum
+n96-flying-pod,death_delay_days,S7 sentence is not the v3 field. A new day starts a new Deaths Per Day allowance,,,,,Flying pod sentence
 n96-ship-odds,docs/plans/ship-odds-exchange-v1.md,"attacker loses ceil(R / A) when P >= R, else the defender loses floor(P / D)",,,,,"Ship-odds loss split"
 n98-port-rating,PORT_DEFENSE_RATING; PORT_LASER_BARRAGE,"unset except class 6: rating 98, barrage 598",,,,,"Port rating and barrage, classes 0-5 and 7-9"
 n98-port-fighters,"a new constant, only if the screen prints a formula or a fighter count",no formula,,,,,Port fighters from the port's size
