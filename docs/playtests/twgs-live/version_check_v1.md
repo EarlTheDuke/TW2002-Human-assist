@@ -20,7 +20,7 @@ Name change. S3 and GAP_MAP 11.7 confirm the service and do not print 100 credit
 
 Cineplex. S3's "nominal amount" is not 100. `CINEPLEX_COST` stays 0.
 
-Opening quotes. 11/27, 31/66, and 56 are one 3.34b port that was not at the chart's 100% and did not show its MCIC. GAP_MAP's equipment sample (about 47 sell, about 130 buy) is the same chart our anchors already use (49 and 128). Do not replace those anchors with the 3.34b screen.
+Opening quotes. 11/27, 31/66, and 56 are one 3.34b port that was not at the chart's 100% and did not show its MCIC. GAP_MAP's equipment sample (about 47 sell, about 130 buy) is the same chart our anchors already use (49 and 128). Do not replace those anchors with the 3.34b screen. `tests/test_note129_price_scale_v1.py` records the screen quotes as DIFFERENT and leaves `PRICE_SCALE_SELL_250` and `PRICE_SCALE_BUY_250` on the economy2 totals.
 
 Computer B. The copy's Computer list labels B "Backtrack", and the computer key handler calls `backtrack()`. v3.11 puts self-destruct on Computer B and puts the return to the previous sector on `<`, which this cockpit already does from the main prompt. A later change belongs under `V311_PROFILE`. This note does not make it.
 

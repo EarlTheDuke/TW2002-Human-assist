@@ -3567,6 +3567,12 @@ PRICE_SCALE_MODE = "legacy"  # "legacy" | "live"
 # Experience 0, no haggle. economy2.html 100% charts. The experience table
 # on that page averages equipment at 11,760 / 32,405. SOURCE-CONFLICT.
 # This follows the 100% chart, as ECONOMY_CALIBRATION.md does.
+# NOTE 129, docs/playtests/twgs-live/price-scale.txt (19 Oct 2026). Experience
+# 0 or 1, and the screen did not print MCIC. Day-1 quotes were fuel sell 11 /
+# buy 27, organics sell 31 / buy 66 (94% of max), equipment sell 56. DIFFERENT
+# from the per-hold chart (15, 35, 28, 71, 49). Not written into these totals:
+# the organics buy is not the 100% point, equipment buying was not quoted, and
+# an unprinted MCIC is not a new anchor. No new formula.
 PRICE_SCALE_SELL_250 = {"fuel_ore": 3_675, "organics": 6_964, "equipment": 12_190}
 PRICE_SCALE_BUY_250 = {"fuel_ore": 8_791, "organics": 17_712, "equipment": 31_910}
 PRICE_SCALE_HOLDS = 250
