@@ -16,6 +16,7 @@ Settings (environment, or a ``.env`` file passed to ``tw2k lobby --env-file``):
   TW2K_TINYBOX_MODELS         form default, e.g. "qwen3.8:latest x2, kimi-k2.6 x2"
   TW2K_TINYBOX_CALL_CAP       model calls per seat per game (default 20000)
   TW2K_TINYBOX_CALLS_PER_MIN  model calls per seat per minute (default 60)
+  TW2K_TINYBOX_TURN_S         longest wait for one reply, capped by the think cap (default 100)
 """
 
 from __future__ import annotations
@@ -24,6 +25,7 @@ import json
 import logging
 import os
 import re
+import socket
 import time
 import urllib.error
 import urllib.request
@@ -36,6 +38,8 @@ log = logging.getLogger("tw2k.lobby.tinybox")
 
 DEFAULT_MODELS = "qwen3.8:latest x2, kimi-k2.6 x2"
 DEFAULT_THINK_CAP_S = 180.0
+# The lobby worker gives an external seat 120 s per turn; leave room for the post.
+DEFAULT_TURN_S = 100.0
 DEFAULT_CALL_CAP = 20_000
 DEFAULT_PER_MINUTE = 60
 _MODEL_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._:/@+-]{0,79}$")
@@ -59,6 +63,13 @@ def load_env_file(path: str | Path) -> list[str]:
     return names
 
 
+def _is_timeout(exc: BaseException) -> bool:
+    if isinstance(exc, (TimeoutError, socket.timeout)):
+        return True
+    reason = getattr(exc, "reason", None)
+    return isinstance(reason, (TimeoutError, socket.timeout))
+
+
 def _num(name: str, default: float) -> float:
     try:
         value = float(os.environ.get(name, "") or default)
@@ -76,6 +87,12 @@ class TinyboxConfig:
     keep_alive: str
     call_cap: int
     per_minute: int
+    turn_s: float = DEFAULT_TURN_S
+
+    @property
+    def call_timeout_s(self) -> float:
+        """One call must answer inside the worker's per-turn deadline, or the turn is lost as a WAIT."""
+        return max(5.0, min(float(self.think_cap_s), float(self.turn_s)))
 
     @property
     def ready(self) -> bool:
@@ -106,6 +123,7 @@ def config() -> TinyboxConfig:
         keep_alive=(os.environ.get("TW2K_CUSTOM_KEEP_ALIVE") or "30m").strip(),
         call_cap=int(_num("TW2K_TINYBOX_CALL_CAP", DEFAULT_CALL_CAP)),
         per_minute=int(_num("TW2K_TINYBOX_CALLS_PER_MIN", DEFAULT_PER_MINUTE)),
+        turn_s=_num("TW2K_TINYBOX_TURN_S", DEFAULT_TURN_S),
     )
 
 
@@ -269,7 +287,7 @@ def ask(cfg: TinyboxConfig, model: str, user: str) -> str:
         cfg.endpoint, data=body, method="POST",
         headers={"authorization": f"Bearer {cfg.key}", "content-type": "application/json"},
     )
-    with urllib.request.urlopen(req, timeout=cfg.think_cap_s) as reply:  # noqa: S310 - host-configured URL
+    with urllib.request.urlopen(req, timeout=cfg.call_timeout_s) as reply:  # noqa: S310 - host-configured URL
         return _text(json.loads(reply.read().decode()))
 
 
@@ -295,6 +313,7 @@ class TinyboxSeatBudget:
         self.calls = 0
         self.errors = 0
         self.fallback_turns = 0
+        self.timeouts = 0
         self.stamps: deque[float] = deque()
         self.history: list[dict[str, Any]] = []
         self.lasting_fallback = False
@@ -328,13 +347,22 @@ class TinyboxSeatBudget:
             return None
         self.calls += 1
         self.stamps.append(now)
+        started = time.monotonic()
         try:
             text = ask(self.cfg, self.model, build_prompt(obs, cockpit, self.history))
         except urllib.error.HTTPError as exc:
+            self._latency(started, f"HTTP {exc.code}")
             return self._error(f"HTTP {exc.code}")
         except Exception as exc:  # timeout, refused, bad JSON
+            self._latency(started, type(exc).__name__)
+            if _is_timeout(exc):
+                # A slow reply is not a broken endpoint: play the heuristic this turn, ask again next turn.
+                self.timeouts += 1
+                self._skip(f"no reply within {self.cfg.call_timeout_s:g}s")
+                return None
             return self._error(type(exc).__name__)
         picked = parse_choice(text)
+        self._latency(started, picked[0] if picked else "no-action")
         legal = {str(r.get("kind")) for r in (obs.get("legal_actions") or []) if r.get("legal")}
         if picked is None or picked[0] not in legal:
             self._skip("reply had no legal action" if picked is None else f"illegal kind {picked[0]!r}")
@@ -347,6 +375,10 @@ class TinyboxSeatBudget:
                              "kind": picked[0], "args": picked[1]})
         del self.history[:-12]
         return picked
+
+    def _latency(self, started: float, outcome: str) -> None:
+        log.info("ai seat game=%s seat=%s model=%s call %.1fs %s",
+                 self.gid, self.seat, self.model, time.monotonic() - started, outcome)
 
     def _error(self, what: str):
         self.errors += 1
