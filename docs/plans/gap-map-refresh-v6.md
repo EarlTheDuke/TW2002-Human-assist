@@ -34,7 +34,7 @@ Only rows whose grade changed. Evidence is `file:function`.
 | Row | v5 | v6 | Evidence |
 |---|---|---|---|
 | 1.2 | Different | Match-behind-flag | `ONE_WAY_SHARE_MODE` row 88, NOTE 78. Extra two-way lanes are `TWO_WAY_WARP_MODE` row 178, NOTE 157. `constants.one_way_fraction_for`, `constants.two_way_edge_target` |
-| 1.3 | Different | Match-behind-flag | `COURSE_MAX_MODE` row 86, NOTE 78. `constants.plot_course_hop_limit`, `runner._handle_plot_course`. 45 is UNVERIFIED |
+| 1.3 | Different | Match-behind-flag | `COURSE_MAX_MODE` row 86, NOTE 78. `constants.plot_course_hop_limit`, `runner._handle_plot_course`, `runner.query_route`. 45 is still UNVERIFIED pending a live plot (NOTE 96) |
 | 1.9 | Partial | Match-behind-flag | `FERRENGAL_QUASAR_MODE` row 102, NOTE 85. `runner._apply_ferrengal_quasar` |
 | 1.10 | Different | Match-behind-flag | `BIG_BANG_DENSITY_MODE` row 87, NOTE 78. `universe.generate_universe` |
 | 1.11 | Different | Match-behind-flag | same switch. `universe._seed_planets` |
@@ -154,7 +154,7 @@ Most of those are stored defaults that are already tw2002, or switches the profi
 
 1.1 Match. Default universe is 1000 sectors. `models.GameConfig` reads `constants.DEFAULT_UNIVERSE_SIZE`. `universe.generate_universe`.
 1.2 Match-behind-flag `ONE_WAY_SHARE_MODE` row 88, NOTE 78, and `TWO_WAY_WARP_MODE` row 178, NOTE 157. About 3 percent one-way when the game does not set `one_way_fraction`. Legacy one-way stays 0.15. Extra two-way lanes are 30 percent of the sector count. Legacy stays average 2.7. `constants.one_way_fraction_for`, `constants.two_way_edge_target`.
-1.3 Match-behind-flag `COURSE_MAX_MODE` row 86, NOTE 78. A plotted course longer than 45 hops is refused. The 45 is UNVERIFIED. Legacy still searches 60. `constants.plot_course_hop_limit`, `runner._handle_plot_course`.
+1.3 Match-behind-flag `COURSE_MAX_MODE` row 86, NOTE 78. When the switch or the v311 profile is on, a computer plot longer than `V311_COURSE_MAX_HOPS` is refused and a plot of that length succeeds. The 45 is still UNVERIFIED pending a live General Editor reading (NOTE 96, n96-course-max). Legacy still searches 60. `constants.plot_course_hop_limit`, `runner._handle_plot_course`, `runner.query_route`.
 1.4 Match. FedSpace is sectors 1 through 10. `constants.FEDSPACE_SECTORS`. `fed.protect_fedspace_attack`.
 1.5 Ben-decision. StarDock stays in sector 1. `constants.STARDOCK_SECTOR`.
 1.6 Partial. Terra exists while class 0 is on. Colonist packing stays behind `TERRA_COLONIST_MODE` row 25 and `COLONIST_UNITS_MODE` row 116. `class0.handle_terra_colonists`.

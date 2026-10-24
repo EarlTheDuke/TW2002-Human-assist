@@ -65,6 +65,8 @@ Read: the refusal text, or the plotted length. In the General Editor, read "Maxi
 
 Settles: `V311_COURSE_MAX_HOPS`. The queue also names `COURSE_MAX_MODE`, the switch that turns the cap on. This visit does not change the switch.
 
+Status: still open. `V311_COURSE_MAX_HOPS` stays 45. No file in `docs/playtests/twgs-live/` reads "Maximum Course Length" or refuses a plot for length. `computer-b.txt` records a 4-hop plot that succeeded. The remake already refuses a computer plot longer than that constant and accepts a plot of that length, on `COURSE_MAX_MODE` live and on the v311 profile. This visit is the one that would confirm or replace 45.
+
 ### Quick-stats and backtrack keys
 
 item_id: n103-quick-backtrack

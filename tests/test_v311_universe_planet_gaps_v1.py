@@ -189,6 +189,72 @@ def test_course_over_45_is_refused_only_when_live(monkeypatch) -> None:
     )
 
 
+def _plot(u: Universe, target: int, *, execute: bool = False):
+    return apply_action(u, "P1", Action(
+        kind=ActionKind.PLOT_COURSE, args={"target": target, "execute": execute},
+    ))
+
+
+def test_live_plot_accepts_the_cap_and_refuses_one_more(monkeypatch) -> None:
+    """NOTE 96. 45 stays. A computer plot of that many hops succeeds; one more is refused.
+
+    The computer course plotter reads query_route (cockpit C, then F, and CIM F).
+    plot_course is the same graph, including execute.
+    """
+    cap = int(K.V311_COURSE_MAX_HOPS)
+    assert cap == 45
+    at_cap = cap + 1
+    over = cap + 2
+    legacy, _who = _line(cap + 1)
+    assert K.course_max_live() is False
+    assert K.plot_course_hop_limit() == 60
+    assert _plot(legacy, over).ok
+    seen = query_route(legacy, "P1", over)
+    assert seen["ok"] and seen["hops"] == cap + 1
+
+    def _boundary(label: str) -> None:
+        assert K.course_max_live() is True, label
+        assert K.plot_course_hop_limit() == cap
+        fresh, who = _line(cap + 1)
+        refused = _plot(fresh, over)
+        assert refused.ok is False, label
+        assert refused.error == f"plotted course is longer than {cap} hops"
+        assert who.sector_id == 1 and who.turns_today == 0
+        flown = _plot(fresh, over, execute=True)
+        assert flown.ok is False and flown.error == refused.error
+        assert who.sector_id == 1 and who.turns_today == 0
+        asked = query_route(fresh, "P1", over)
+        assert asked["ok"] is False
+        assert asked["error"] == refused.error
+        assert asked["path"] == []
+        preview = _plot(fresh, at_cap)
+        assert preview.ok, preview.error
+        assert who.sector_id == 1
+        route = query_route(fresh, "P1", at_cap)
+        assert route["ok"] and route["hops"] == cap and len(route["path"]) == cap
+        shorter = _plot(fresh, 2)
+        assert shorter.ok, shorter.error
+        done = _plot(fresh, at_cap, execute=True)
+        assert done.ok, done.error
+        assert who.sector_id == at_cap
+        gone, pilot = _line(cap + 1)
+        prev = over - 1
+        gone.sectors[prev].warps = [w for w in gone.sectors[prev].warps if int(w) != over]
+        missing = query_route(gone, "P1", over)
+        assert missing["ok"] is False and missing["error"] == "no route"
+        blocked = _plot(gone, over)
+        assert blocked.ok is False and blocked.error == "no route to target"
+        assert pilot.sector_id == 1
+
+    monkeypatch.setattr(K, "COURSE_MAX_MODE", "live")
+    assert K.V311_PROFILE != "v311"
+    _boundary("COURSE_MAX_MODE")
+    monkeypatch.setattr(K, "COURSE_MAX_MODE", "legacy")
+    monkeypatch.setattr(K, "V311_PROFILE", "v311")
+    assert K.COURSE_MAX_MODE == "legacy"
+    _boundary("v311 profile")
+
+
 def test_big_bang_densities_keep_sol_terra_stardock_and_class0(monkeypatch) -> None:
     cfg = GameConfig(seed=11, universe_size=400, enable_ferrengi=False)
     off = generate_universe(cfg)

@@ -4711,7 +4711,7 @@ V311_PROFILE_HELPERS: dict[str, tuple[str, str]] = {
     ),
     "course_max_live": (
         "COURSE_MAX_MODE",
-        "MOV-g (NOTE 78): a plotted course longer than 45 hops is refused (45 UNVERIFIED for 3.11)",
+        "MOV-g (NOTE 78): a plotted course longer than 45 hops is refused; 45 hops is plotted (45 UNVERIFIED, NOTE 96)",
     ),
     "big_bang_density_live": (
         "BIG_BANG_DENSITY_MODE",
@@ -5629,14 +5629,25 @@ def planet_treasury_cap() -> int:
 
 
 COURSE_MAX_MODE = "legacy"  # "legacy" | "live"
-# UNVERIFIED, searched: classictw_docs_wiki/Big_Bang.html "B - Maximum Course
-# Length" (lines 201-210: the setting shapes the map and slows course plots;
-# it is not the refusal limit); cabal twgs.html line 214, post-bang General
-# Editor Two, "<:> Maximum Course Length : 45" (a sample value, not stated as
-# the plot cap; range 20-255 is option B); tw-attac revision history line 538
-# "Long course plots are not longer truncated at 160 characters" (display
-# width, not hops). The clone autopilot searches PLOT_COURSE_MAX_DEPTH * 6.
-# Queued in live-twgs-test-queue-v1.md.
+# UNVERIFIED, searched: docs/playtests/twgs-live/ (no "Maximum Course Length"
+# line and no over-limit plot; computer-b.txt is a 4-hop success on TWGS
+# v2.20b / TW 3.34b, "The shortest path (4 hops, 12 turns) from sector 50 to
+# sector 157") and uploads/ (no capture). Published samples that still print
+# 45, none of them a reading of this game:
+# cabal twgs.html line 214 and stardock_modernmanual/advanced__twgs-settings.md
+# line 171, General Editor Two, "Maximum Course Length : 45";
+# cabal twgs.html lines 69-71, option B default 45, range 20-255, the maximum
+# distance between two sectors on the map;
+# Big_Bang.html lines 201-210, option B shapes the map during creation (the
+# screen sample is 100; Traitor's note on line 210 says default 45);
+# Glossary.html line 203 and cabal blockades.html line 353, a failed plot,
+# "Error - No route within 45 warps from sector 10 to sector 11";
+# TWFAQ_20FAQ.txt lines 106-110, TEDIT can lower the plotter cap after the
+# bang (the example there is 25);
+# tw-attac revision history line 538, course-plot text past 160 characters.
+# When course_max_live(), a shortest path of this many hops is plotted and one
+# more hop is refused. Legacy searches PLOT_COURSE_MAX_DEPTH * 6.
+# Queued as NOTE 96, n96-course-max, in live-twgs-test-queue-v1.md.
 V311_COURSE_MAX_HOPS = 45
 
 
@@ -5646,7 +5657,13 @@ def course_max_live() -> bool:
 
 
 def plot_course_hop_limit() -> int:
-    """Hops a plotted course may take. Legacy is 60. Live is 45 (UNVERIFIED, searched: Big_Bang.html option B and cabal twgs.html General Editor Two)."""
+    """Hops a plotted course may take. Legacy is 60.
+
+    Live is 45. A path of this many hops is plotted. One more hop is refused.
+    UNVERIFIED, searched: docs/playtests/twgs-live/, uploads/, Big_Bang.html
+    option B, cabal twgs.html General Editor Two, Glossary.html
+    "No route within 45 warps".
+    """
     if course_max_live():
         return int(V311_COURSE_MAX_HOPS)
     return int(PLOT_COURSE_MAX_DEPTH) * 6
