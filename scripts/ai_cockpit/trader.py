@@ -736,6 +736,15 @@ class ScriptedTrader:
         # A course plot is a menu the seat opened on purpose. Leave it up.
         if self._plot_menu(text) and (self.plot_to or self._course_prompt(text)):
             return None
+        # NOTE 172d. CONFIRM on the yard form opens "Want to buy it?". Seed 99
+        # chose its hull on day 3 and closed this with Escape, so nothing sold.
+        if getattr(self, "hull_confirm", False) and "want to buy it" in text.lower():
+            self.hull_confirm = False
+            yes = [row for row in labels if row.strip().lower() == "yes"]
+            if yes:
+                self.plan_note = "yes, buy the ship"
+                return Action("click", label=yes[0])
+        self.hull_confirm = False
         self.plan_note = "close the dialog"
         return Action("press", key="Escape")
 
@@ -1310,6 +1319,7 @@ class ScriptedTrader:
             self.bought.add("ship")
             self.yard = None
             self.plan_note = "buy the ship"
+            self.hull_confirm = True
             if any(row.upper() == "CONFIRM" for row in labels):
                 return Action("click", label="CONFIRM")
         self.ship_skip_profit = max(self.ship_skip_profit, max(1, self._daily_profit()))
