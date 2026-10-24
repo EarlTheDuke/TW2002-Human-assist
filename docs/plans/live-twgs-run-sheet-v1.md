@@ -59,11 +59,13 @@ Setup: the new test character, in a Merchant Cruiser, in a safe sector that is n
 
 item_id: n96-course-max
 
-Keys: from the command prompt open the computer, then the course plotter. On this project's cockpit that is C, then F. On the original TW2002 computer menu, press the letter printed beside the course plotter and write that letter in the notes. Plot one course you know is longer than 45 hops, and one of 45 or fewer. Do not fly either course.
+Keys: from the command prompt open the computer, then the course plotter. On this project's cockpit that is C, then F. On the original TW2002 computer menu, press the letter printed beside the course plotter and write that letter in the notes. Plot one course you know is longer than this game's Maximum Course Length, and one of that length. On GameA that length is 20. Do not fly either course.
 
-Read: the refusal text, or the plotted length. In the General Editor, read "Maximum Course Length".
+Read: the refusal text. Confirm whether the number in it is 20. TEDIT field bounds are still unread.
 
-Settles: `V311_COURSE_MAX_HOPS`. The queue also names `COURSE_MAX_MODE`, the switch that turns the cap on. This visit does not change the switch.
+Settles: the per-game length on `GameConfig.max_course_length`. `V311_COURSE_MAX_HOPS` stays the unset default, the published sample 45. `GAMEA_COURSE_MAX_HOPS` is the measured GameA value and is not applied until a game sets the field. This visit does not change `COURSE_MAX_MODE`.
+
+Status: GameA's setting is measured. `docs/playtests/twgs-live/plotted-course-limit.txt` records TWSTATS `Max Course Length=20` on 2026-10-24. The live plot that would show the refusal number, and the TEDIT numeric min and max, are still blocked. No plot was run. No TEDIT was opened.
 
 ### Quick-stats and backtrack keys
 
@@ -83,7 +85,7 @@ Keys: open the original TW2002 Computer menu. Read the label next to B before yo
 
 Read: the menu label for B, and whether B and `<` do the same thing.
 
-Settles: none, cockpit key, not an engine constant. NOTE 103 made B backtrack on this cockpit. The original backtrack key is `<`.
+Settles: none, cockpit key, not an engine constant. Measured in `computer-b.txt`. Under the v3.11 profile, Computer B is Begin Self Destruct and `<` stays the previous-sector key. A legacy Computer menu still uses B for backtrack.
 
 ### Real-time hop time
 
@@ -277,9 +279,11 @@ Setup: one ship that can survive a return shot. A new sector for each class.
 
 ### Port rating and barrage, classes 0-5 and 7-9
 
+Measured 2026-10-24 on Ven GameA (TW Test Game 2, Slot A, v3.34b). Capture: `docs/playtests/twgs-live/gap215-port-attack-2026-10-24.md`. Do not repeat the confirmed shots. CONFIRMED lasers: class 1 337, class 4 1419, class 6 598 (prior REPORT2), class 7 1121. Still open: lasers for classes 2, 3, 5, and non-Fed class 8. Class 0 and StarDock stay Group I. Def rating is per port, not a class constant. A 0-fighter commit aborts after the def and shield text.
+
 item_id: n98-port-rating
 
-Keys: attack one port of each of those classes. Class 6 is already rating 98 and barrage 598. Skip class 6. Skip class 0 until Group I. Read the defensive rating before the shot.
+Keys: attack one port of each of those classes. Class 6 is already rating 98 and barrage 598. Skip class 6. Skip class 0 until Group I. Read the defensive rating before the shot. The 2026-10-24 capture already holds classes 1, 2, 3, 4, 5, 7, and non-Fed 8.
 
 Read: the rating, the return-shot number, the fighters you sent, whether the port was destroyed (it should not be), and the port's size or productivity on that same screen.
 
@@ -504,6 +508,15 @@ Keys: at StarDock, with a Type I drive already fitted, buy the upgrade while the
 Read: the credit price.
 
 Settles: stored `SHIP_TW_UPGRADE_COST` stays 9,000. Live GameA is 10,000 behind `ship_tw_upgrade_cost` (SOURCE-CONFLICT, Ven 2026-10-24). OldFAQ v2 was 40,000.
+### Photon missile price
+
+item_id: n117-photon
+
+Keys: at StarDock, on a Missile Frigate, buy one photon while the live hardware card is on.
+
+Read: the credit price.
+
+Settles: stored `PHOTON_MISSILE_COST` stays 12,000. Live GameA is 40,000 behind `photon_missile_cost` (SOURCE-CONFLICT, Ven 2026-10-24). Cabal sample is 160,000. DIFFERENT on the stored card.
 
 ## Group I. Class 0 and StarDock kills
 

@@ -3068,7 +3068,7 @@ def _handle_buy_equip(universe: Universe, pid: str, action: Action) -> ActionRes
         "armid_mines": K.armid_mine_cost(),
         "limpet_mines": K.limpet_mine_cost(),
         "atomic_mines": K.ATOMIC_MINE_COST,
-        "photon_missiles": K.PHOTON_MISSILE_COST,
+        "photon_missiles": K.photon_missile_cost(),
         "ether_probes": K.ether_probe_cost(),
         "genesis": K.genesis_torpedo_cost(),
         "holds": K.hold_next_price(class_key, player.ship.holds, day),
@@ -3572,8 +3572,8 @@ def _handle_plot_course(universe: Universe, pid: str, action: Action) -> ActionR
     blocked = None
     if K.avoid_live():
         blocked = {int(s) for s in player.avoided_sectors if int(s) != target_id}
-    limit = K.plot_course_hop_limit()
-    # Live searches past 45 so a longer course is named. Legacy stays at 60.
+    limit = K.plot_course_hop_limit(universe.config)
+    # Live searches past the cap so a longer course is named. Legacy stays at 60.
     search = max(limit, len(universe.sectors)) if K.course_max_live() else limit
     path = _bfs_path(
         universe, player.sector_id, target_id,
@@ -3758,7 +3758,7 @@ def query_route(universe: Universe, pid: str, target: object) -> dict:
     if K.avoid_live():
         avoiding = sorted(int(s) for s in player.avoided_sectors)
         blocked = {s for s in avoiding if s != target_id}
-    limit = K.plot_course_hop_limit()
+    limit = K.plot_course_hop_limit(universe.config)
     search = max(limit, len(universe.sectors)) if K.course_max_live() else limit
     path = [] if target_id == sector else _bfs_path(
         universe, sector, target_id, max_depth=search, blocked=blocked,

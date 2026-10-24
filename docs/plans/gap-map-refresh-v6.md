@@ -34,7 +34,7 @@ Only rows whose grade changed. Evidence is `file:function`.
 | Row | v5 | v6 | Evidence |
 |---|---|---|---|
 | 1.2 | Different | Match-behind-flag | `ONE_WAY_SHARE_MODE` row 88, NOTE 78. Extra two-way lanes are `TWO_WAY_WARP_MODE` row 178, NOTE 157. `constants.one_way_fraction_for`, `constants.two_way_edge_target` |
-| 1.3 | Different | Match-behind-flag | `COURSE_MAX_MODE` row 86, NOTE 78. `constants.plot_course_hop_limit`, `runner._handle_plot_course`. 45 is UNVERIFIED |
+| 1.3 | Different | Match-behind-flag | `COURSE_MAX_MODE` row 86, NOTE 78. `constants.plot_course_hop_limit`, `runner._handle_plot_course`, `runner.query_route`. GameA TWSTATS is 20. Unset live default stays the published sample 45 (NOTE 96) |
 | 1.9 | Partial | Match-behind-flag | `FERRENGAL_QUASAR_MODE` row 102, NOTE 85. `runner._apply_ferrengal_quasar` |
 | 1.10 | Different | Match-behind-flag | `BIG_BANG_DENSITY_MODE` row 87, NOTE 78. `universe.generate_universe` |
 | 1.11 | Different | Match-behind-flag | same switch. `universe._seed_planets` |
@@ -86,7 +86,7 @@ Only rows whose grade changed. Evidence is `file:function`.
 | 10.3 | Match | Match-behind-flag | `CORP_ALIGNMENT_RULE` row 71. Stored value stays mixed. `corp._join_block` |
 | 10.10 | Partial | Match | a C.E.O. who leaves already dissolves the corp. `corp.handle_corp_leave`, `corp.disband`. Profile row 98, no helper |
 | 10.11 | Missing | Match-behind-flag | `CORP_RANK_MODE` row 49. `observation.build_observation` |
-| 11.1 | Partial | Match-behind-flag | `HARDWARE_PRICE_MODE` row 14. Ship TransWarp 50,000 / 80,000 / 10,000. Stored 12,500 / 20,000 / 9,000 stay. SOURCE-CONFLICT. `constants.hardware_price_live` |
+| 11.1 | Partial | Match-behind-flag | `HARDWARE_PRICE_MODE` row 14. Ship TransWarp 50,000 / 80,000 / 10,000 (stored 12,500 / 20,000 / 9,000 stay). Photon 40,000 (stored 12,000 stays). Atomic detonators stay off this switch. SOURCE-CONFLICT. `constants.hardware_price_live` |
 | 11.2 | Partial | Match-behind-flag | `SHIP_ROSTER_MODE` row 4 and `TRADE_IN_MODE` row 13. `constants.ship_specs` |
 | 11.6 | Missing | Match-behind-flag | `TAX_RULE_MODE` row 8. `bank.collect_daily_tax` |
 | 11.10 | Partial | Match-behind-flag | `SPECIAL_PORT_DEFENCE_MODE` row 146, NOTE 102. `runner._attack_special_port`, `runner._rebuild_special_ports`. Fighter budgets UNVERIFIED |
@@ -154,7 +154,7 @@ Most of those are stored defaults that are already tw2002, or switches the profi
 
 1.1 Match. Default universe is 1000 sectors. `models.GameConfig` reads `constants.DEFAULT_UNIVERSE_SIZE`. `universe.generate_universe`.
 1.2 Match-behind-flag `ONE_WAY_SHARE_MODE` row 88, NOTE 78, and `TWO_WAY_WARP_MODE` row 178, NOTE 157. About 3 percent one-way when the game does not set `one_way_fraction`. Legacy one-way stays 0.15. Extra two-way lanes are 30 percent of the sector count. Legacy stays average 2.7. `constants.one_way_fraction_for`, `constants.two_way_edge_target`.
-1.3 Match-behind-flag `COURSE_MAX_MODE` row 86, NOTE 78. A plotted course longer than 45 hops is refused. The 45 is UNVERIFIED. Legacy still searches 60. `constants.plot_course_hop_limit`, `runner._handle_plot_course`.
+1.3 Match-behind-flag `COURSE_MAX_MODE` row 86, NOTE 78. When the switch or the v311 profile is on, a computer plot longer than the game's Maximum Course Length is refused and a plot of that length succeeds. `GameConfig.max_course_length` is that setting. Unset, the published sample `V311_COURSE_MAX_HOPS` (45) is used. Ven GameA TWSTATS is 20 (`GAMEA_COURSE_MAX_HOPS`, NOTE 96, n96-course-max). The live refusal number and the TEDIT min/max are still unread. Legacy still searches 60. `constants.plot_course_hop_limit`, `runner._handle_plot_course`, `runner.query_route`.
 1.4 Match. FedSpace is sectors 1 through 10. `constants.FEDSPACE_SECTORS`. `fed.protect_fedspace_attack`.
 1.5 Ben-decision. StarDock stays in sector 1. `constants.STARDOCK_SECTOR`.
 1.6 Partial. Terra exists while class 0 is on. Colonist packing stays behind `TERRA_COLONIST_MODE` row 25 and `COLONIST_UNITS_MODE` row 116. `class0.handle_terra_colonists`.
@@ -186,7 +186,7 @@ Most of those are stored defaults that are already tw2002, or switches the profi
 2.12 Match. Robbing a port is on. `rob_steal.handle_rob`.
 2.13 Match. Stealing from a port is on. `rob_steal.handle_steal`.
 2.14 Match-behind-flag `BUST_CLEAR_MODE` row 94, NOTE 82. Clearing can be every Extern or every 7 days. Legacy still clears every Extern. `rob_steal.busts_clear_this_extern`, `rob_steal.clear_all_busts`.
-2.15 Partial. Blowing a port is behind `PORT_ATTACK_MODE` row 30 and `PORT_ATTACK_ALL_CLASSES_MODE` row 138, NOTE 98. Classes 0-5 and 7-9 still have no measured rating. `runner._handle_port_attack`.
+2.15 Partial. Blowing a port is behind `PORT_ATTACK_MODE` row 30 and `PORT_ATTACK_ALL_CLASSES_MODE` row 138, NOTE 98. At this regrade the constants held class 6 only. Ven GameA 2026-10-24 later measured the other classes (`docs/playtests/twgs-live/gap215-port-attack-2026-10-24.md`); those samples are not wired, so the grade stays Partial. `runner._handle_port_attack`.
 2.16 Match. Building and upgrading a port is on. `constants.port_upgrade_on`.
 2.17 Match-behind-flag `DETECT_GEAR_MODE` row 34. The psychic probe price peek is coded and off. `constants.detect_gear_live`.
 2.18 Match. StarDock trading is on. `economy.execute_trade`.
@@ -219,7 +219,7 @@ Most of those are stored defaults that are already tw2002, or switches the profi
 4.7 Match. Mine disruptors are on. `hardware` disruptor path.
 4.8 Partial. Armid detonation is the stored half-count at 20 damage (`hardware.armid_detonation_hits`, profile row 92). The shop price moves only under `HARDWARE_PRICE_MODE` row 14. `constants.armid_hit_damage`.
 4.9 Match. Limpets attach and can be queried. Removal at StarDock costs 1,250 while hardware is tw2002. `hardware.handle_remove_limpet`, `constants.LIMPET_REMOVAL_COST`.
-4.10 Match-behind-flag `PHOTON_LIMPET_MODE` row 174, NOTE 148. The wave decloaks, damps a quasar, and holds mines and fighters. A limpet during that wave stays off until the switch is on. The interdictor still holds, matching S1. Duration stays 1 second. `runner` photon handler.
+4.10 Match-behind-flag `PHOTON_LIMPET_MODE` row 174, NOTE 148. The wave decloaks, damps a quasar, and holds mines and fighters. A limpet during that wave stays off until the switch is on. The interdictor still holds, matching S1. Duration stays 1 second. Price SOURCE-CONFLICT: stored `PHOTON_MISSILE_COST` 12,000. Live GameA TWSTATS `Photon Missile=40,000 cr` is `photon_missile_cost` on `hardware_price_live` (Ven 2026-10-24). Cabal sample is 160,000. DIFFERENT on the stored card. `runner` photon handler.
 4.11 Match. Density info needs a bought scanner. `scanners.scan_reason`, `runner._buy_scanner`.
 4.12 Match. Holo info needs a bought scanner. `scanners.scan_reason`, `runner._handle_scan`.
 4.13 Match-behind-flag `PLANET_SCANNER_MODE` row 43. Shielded planets stay visible until the scanner is on. `observation._planet_brief`, `runner._buy_planet_scanner`.
@@ -293,7 +293,7 @@ Most of those are stored defaults that are already tw2002, or switches the profi
 10.10 Match. A C.E.O. leaving dissolves the corp and rogues fighters outside his sector. `corp.handle_corp_leave`, `corp.disband`. Profile row 98.
 10.11 Match-behind-flag `CORP_RANK_MODE` row 49. The corporation ranking screen is coded and off. The trader list is `TRADER_RANK_LIST_MODE`, ordered by experience. NOTE 158 added no second screen. `observation.build_observation`.
 10.12 Match-behind-flag `ALLIANCE_MODE` row left out of the profile (not in the original). Alliances are coded and off. `constants.alliance_live`.
-11.1 Match-behind-flag `HARDWARE_PRICE_MODE` row 14. The live shop card is coded and off. Ship TransWarp Type I 50,000, Type II 80,000, and the upgrade 10,000 are on that card. Stored 12,500, 20,000, and 9,000 stay. SOURCE-CONFLICT. `constants.hardware_price_live`.
+11.1 Match-behind-flag `HARDWARE_PRICE_MODE` row 14. The live shop card is coded and off. Ship TransWarp Type I 50,000, Type II 80,000, and the upgrade 10,000 are on that card (stored 12,500, 20,000, and 9,000 stay). Photon missile 40,000 is on that card (stored 12,000 stays). Atomic detonators stay off this switch. SOURCE-CONFLICT. `constants.hardware_price_live`.
 11.2 Match-behind-flag `SHIP_ROSTER_MODE` row 4 and `TRADE_IN_MODE` row 13. The yard and the 90 percent trade-in stay off. `constants.ship_specs`.
 11.3 Match. Police HQ can grant a commission. `victory.is_commissioned`.
 11.4 Match. A killed player can carry a bounty. `constants.REWARD_TARGET_RULE`.
@@ -317,7 +317,7 @@ Most of those are stored defaults that are already tw2002, or switches the profi
 13.4 Match-behind-flag. `OWNER_HAZARD_NOTICE_MODE` row 55 and `SIEGE_REPORT_MODE` row 59 tell the owner about a landing, a fighter hit, a mine, and a siege. NOTE 163 graded the row on those two. `FIGHTER_REPORT_MODE` row 203, NOTE 164, is a separate list of sectors where that trader owns fighters, omitting a count of 0. It is not an observation field, and it does not grade the row a second time. `observation._event_visible_base`, `combat.fighter_report`.
 13.5 Match. An ether-probe report is the route it walked, and it names the sector where fighters destroyed it. `scanners.handle_probe`.
 13.6 Match-behind-flag `FEDCOMM_MODE` row 48. The FedComm notice is coded and off. `class0.extern_sweep`.
-14.1 Match-behind-flag `CIM_MODE` row 186, NOTE 162, and `NAVPOINT_MODE` row 181, NOTE 159. The course plotter and avoids (`AVOID_MODE` row 35) are in. NavPoints are four named slots, Terra and StarDock, set, list, clear, and a course. CIM lists explored sectors and ports, hides a port behind hostile fighters, and plots a path. Backtrack, quick stats, and find route are not that whole menu. `v311_buildable.handle_cim`, `navpoints.menu_rows`.
+14.1 Match-behind-flag `CIM_MODE` row 186, NOTE 162, and `NAVPOINT_MODE` row 181, NOTE 159. The course plotter and avoids (`AVOID_MODE` row 35) are in. NavPoints are four named slots, Terra and StarDock, set, list, clear, and a course. CIM lists explored sectors and ports, hides a port behind hostile fighters, and plots a path. NOTE 110 / NOTE 129: Computer B is Begin Self Destruct when ship exit is on (`computer-b.txt`). N aborts. Y reuses `handle_self_destruct`. `<` stays the previous-sector key. No new row. Backtrack, quick stats, and find route are not that whole menu. `v311_buildable.handle_cim`, `navpoints.menu_rows`.
 14.2 Match. Towing is on. `TOW_MODE` is tw2002. `constants.tow_on`.
 14.3 Match-behind-flag `PLANET_BUST_EXP_MODE` row 149, NOTE 102. The owner may destroy the planet they created for 75 experience (genesis 25 plus destroy 50). `legality.planet_destroy_reason`.
 14.4 Match. An unmanned ship can still hold fighters. While `V311_PROFILE` is on, `observation` game status leaves those fighters out of the V-screen total. Legacy still counts them. No switch was added for that display. Profile GAP 14.4 note.
