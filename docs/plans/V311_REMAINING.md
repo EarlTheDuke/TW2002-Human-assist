@@ -2,11 +2,11 @@
 
 NOTE 161 listed the open rows. NOTE 163, now on the tip, matched 6.7, 6.11, 9.2, 9.5, and 13.4. NOTE 162 moved the grades that were already true, and built the printed pieces that were not. NOTE 164 adds four switches. Two of those switches sit on rows NOTE 163 already graded, and those rows are counted once. Each row is listed once.
 
-The grades are the 171 rows in `docs/plans/gap-map-refresh-v6.md`. Row 181 is NavPoints (`NAVPOINT_MODE`, NOTE 159). NOTE 162 uses rows 182-186. Row 187 is `BOUNTY_GOOD_MODE` from NOTE 163. NOTE 164 uses rows 200-203.
+The grades are the 171 rows in the every-row list of `docs/plans/gap-map-refresh-v6.md`. Row 181 is NavPoints (`NAVPOINT_MODE`, NOTE 159). NOTE 162 uses rows 182-186. Row 187 is `BOUNTY_GOOD_MODE` from NOTE 163. NOTE 164 uses rows 200-203.
 
-**152 of 171 rows match the original rule (88.9%).** That count is Match 69 plus Match-behind-flag 83. A Match-behind-flag row is coded, and its switch stays off until `V311_PROFILE` is `v311`. A normal game, with every switch at the stored default, matches 69 of 171 (40.4%). The other rows are Partial 13, Different 4, Missing 0, and Ben-decision 2. Seventeen rows are still Partial, Different, or Missing. StarDock in sector 1 (1.5) and the class M population cap (6.3) stay Ben-decision and are not in the lists below.
+**161 of 171 rows match the original rule (94.2%).** That count is Match 73 plus Match-behind-flag 88. A Match-behind-flag row is coded, and its switch stays off until `V311_PROFILE` is `v311`. A normal game, with every switch at the stored default, matches 73 of 171 (42.7%). The other rows are Partial 7, Different 1, Missing 0, and Ben-decision 2. Eight rows are still Partial or Different.
 
-NOTE 163's 129 already includes 6.11 and 13.4. NOTE 164 adds the grades for 8.1 and 12.6 only. `CORP_SHIP_DISBAND_MODE` and `FIGHTER_REPORT_MODE` are extra behaviours on 6.11 and 13.4, not a second grade.
+Nine rows this file had left open are Match or Match-behind-flag on this tip: 2.5, 5.7, 5.14, 5.20, 6.10, 9.8, 10.1, 11.11, and 14.6. They are listed under Matched on this tip. 6.11 and 13.4 stay one grade each. `CORP_SHIP_DISBAND_MODE` and `FIGHTER_REPORT_MODE` are extra behaviours on those rows.
 
 `docs/plans/V311_SOURCE_CONFLICTS.md` is on this tip. NOTE 164 updates the Ferrengi odds row and the times-blown row there.
 ## Matched in NOTE 163
@@ -38,32 +38,42 @@ These were on the "can build now" list. A normal game already does the printed r
 - **10.7 Corp assets and member locations.** Match. `member_block` already lists the planet fields and member fields on the EIS corporate menu.
 - **10.9 Corporate ships.** Match. `CORPSHIP_MODE` is tw2002. Corporate hulls are password protected, and a corp mate can board one.
 
+## Matched on this tip
+
+These nine were still on the open lists. The v6 every-row grade is Match or Match-behind-flag, and the tip code is the evidence named there.
+
+- **2.5 Price scale vs ship cost.** Match-behind-flag. Ports stay on the economy chart and ships stay on the Bible chart. `PORT_MAX_STOCK_MODE` row 223 holds a product maximum of 950 to 2,720. No source prints one scale. `economy.port_sell_price`, `universe._make_port`.
+- **5.7 Ship versus ship.** Match. The exchange is the S4/S6 Safety Rating model and the printed expected value: shields, then fighters (S3 Scout 2:1, S2 1:1, S7 fighters-to-use). No source prints a random term (S7, unable to determine the random factors), so the loss split is that expected value under every profile. `combat._resolve_ship_attack_tw2002`. `tests/test_combat_exchange_sources_v1.py`.
+- **5.14 Exp and alignment on death.** Match. NOTE 177. A pod costs `POD_EXP_LOSS` 10 percent experience and no alignment. Ship Destroyed costs `SD_EXP_LOSS` and `SD_ALIGN_LOSS`, half of each. `combat._destroy_ship_tw2002`.
+- **5.20 Combat in FedSpace.** Match. NOTE 177. Attacking a fedsafe trader in FedSpace summons Captain Zyrain and pods the attacker (`fed.protect_fedspace_attack`, `FED_PROTECT_PUNISH` pod, stored `FED_MODE` tw2002). Attacking a Federal costs `FED_ATTACK_ALIGN_PENALTY` 10 alignment and the pod. `victory.is_fedsafe` leaves an evil trader unprotected.
+- **6.10 Planet killer.** Match-behind-flag. NOTE 177. `PLANET_BLOW_ALIGN_MODE` row 214 takes 50 alignment on the blow. Legacy keeps the cabal −1. Experience stays +50. Killing a trader on the planet is `PLANET_ZDY_MODE`. Colonist-kill alignment is still unprinted. `V311_SOURCE_CONFLICTS.md`, NOTE 177, "Destroying a planet".
+- **9.8 Rob and steal caps.** Match. NOTE 177. Rob max is experience times `ROB_CREDIT_FACTOR` 6. Steal max is experience divided by `STEAL_HOLD_DIVISOR` 21. `rob_steal.max_rob_credits`.
+- **10.1 Create a corporation.** Match-behind-flag. NOTE 177. Filing a charter stays in, and `CORP_CREATE_COST` stays 0. `CFS_CEO_RULE` stays purchase. `CFS_CEO_USE_MODE` row 213 lets only the C.E.O. board a FlagShip. `corpships.board_block`. `V311_SOURCE_CONFLICTS.md`, NOTE 177, "Corporate FlagShip".
+- **11.11 Big Bang options.** Match-behind-flag. Density, the one-way share, the 30 percent two-way lanes, and the 95 percent initial starports are `BIG_BANG_DENSITY_MODE`, `ONE_WAY_SHARE_MODE`, `TWO_WAY_WARP_MODE`, and `BIG_BANG_BUILT_MODE` row 221. Bubbles are Gold-only, so v3.11 has none. `universe.generate_universe`.
+- **14.6 Ours-only systems.** Match-behind-flag. `ECON_WIN_MODE` row 215 turns the instant credits win off. `ALLIANCE_OFF_MODE` row 222 refuses an in-game pact. `play_to_day_cap` stays. `victory.check_victory`.
+
 ## Needs Ben's ruling
 
-Two sources disagree, or the difference is a choice Ben already made and has not reopened. Where queued #83, #87, or #88 wrote the pair, the section name is the one in `V311_SOURCE_CONFLICTS.md`.
+A Ben-decision grade, or a Partial whose number is still a choice Ben has not closed. Where the pair is already written, the section name is the one in `V311_SOURCE_CONFLICTS.md`.
 
-- **1.6 Terra colonists.** Partial. Regen of 750 a day and a one-turn load are in. The profile opens the pool at 30,000 with 1,000 people per hold. The Bible's "about 100,000" was not adopted. Deliberate choice by Ben. Small.
-- **1.15 FedSpace fighter limit.** Partial. `FED_TOW_LIMIT_MODE` (NOTE 117) tows above 50 when it is on. The stored game tows above 98. `V311_SOURCE_CONFLICTS.md`, NOTE 151, "FedSpace fighter tow" (Bible over 50, Gypsy 99 or more). Source conflict. Small.
-- **2.5 Price scale vs ship cost.** Different. `ECONOMY_SCALE_MODE` is already tw2002, and prices and hull costs still do not sit on one scale. The cabal samples are not a printed default. No printed number. Large.
-- **4.1 Genesis price.** Partial. Genesis works. The engine price is 25,000. A sample TEDIT prints 80,000. This pair is not in `V311_SOURCE_CONFLICTS.md` yet. Source conflict. Small.
-- **5.14 Exp and alignment on death.** Partial. A pod drops experience. Self-destruct alignment is the open half: the wiki and the MBBS manuals do not say the same thing (`docs/playtests/combat/DEATH_ESCAPE_PODS.md`, d13). This pair is not in `V311_SOURCE_CONFLICTS.md` yet. Source conflict. Small.
-- **5.20 Combat in FedSpace.** Partial. Penalties exist. They are not the full police response, and that script is thin. The fighter ceiling is `V311_SOURCE_CONFLICTS.md`, NOTE 151, "Fedsafe fighter ceiling" (50 or less, or no ceiling). `FEDSAFE_FIGHTER_CAP_MODE` uses 50 when it is on. Source conflict. Medium.
-- **6.2 Class-table citadel costs.** Partial. The class goods are on, and build days are `CITADEL_DAYS_MODE`. The class M level-1 colonist figure is Ben's NOTE 19 choice, the same hold as row 6.3. Deliberate choice by Ben. Small.
-- **9.8 Rob and steal caps.** Partial. A rob pays from experience. The stored factors are the MBBS pair, 6 and 21. The classic pair has no switch. `V311_SOURCE_CONFLICTS.md`, NOTE 150, "Rob and steal caps". Source conflict. Small.
-- **10.1 Create a corporation.** Partial. Filing a charter is in. `CFS_CEO_RULE` is still `purchase` or `use`. This pair is not in `V311_SOURCE_CONFLICTS.md` yet. Source conflict. Small.
-- **11.11 Big Bang options.** Partial. Density, the one-way share, and the 30 percent extra two-way lanes (NOTE 157, queued #87) are switches. Bubbles are `UNIVERSE_TOPOLOGY_MODE`, and the profile leaves them off because code bots trap in dead ends. Gold options stay off as a Gold add-on. Deliberate choice by Ben. Medium.
-- **12.3 Real-time movement.** Different. Ships still move by turns. `DAY_ROLL_CLOCK_MODE` rolls the day. `PLANET_REALTIME_PROD_MODE` stays off because the original produces at Extern. The October map marked this deliberate. Deliberate choice by Ben. Large.
-- **14.6 Ours-only systems.** Different. Alliances, the planet dividend, the credit win, and the day cap are still in this game. The profile leaves alliances out because they are not in the original. This map does not delete them. Deliberate choice by Ben. Large.
+- **1.5 StarDock location.** Ben-decision. StarDock stays in sector 1. `constants.STARDOCK_SECTOR`.
+- **1.6 Terra colonists.** Partial. Daily regen is `TERRA_REGEN_PER_DAY` 750, and a load costs `TERRA_LOAD_TURNS` 1. The stored pool opens at `TERRA_MAX_COLONISTS` 100,000, one person per hold. `TERRA_COLONIST_MODE` row 25 opens at `TERRA_LIVE_START` 30,000 with `TERRA_LIVE_PER_HOLD` 1,000. `class0.handle_terra_colonists`. Small.
+- **1.15 FedSpace fighter limit.** Partial. The stored tow is `FED_TOW_FIGHTER_LIMIT` 98, so a ship with 99 or more fighters is towed. `FED_TOW_LIMIT_MODE` row 168 uses 50 when it is on. `V311_SOURCE_CONFLICTS.md`, NOTE 151, "FedSpace fighter tow" (Bible over 50, Gypsy 99 or more). `fed.run_tows`. Small.
+- **4.1 Genesis price.** Partial. Genesis works. `GENESIS_TORPEDO_COST` is 25,000. `GENESIS_TORPEDO_COST_LIVE` is 20,000. A sample settings screen prints 80,000. That pair is not a row in `V311_SOURCE_CONFLICTS.md`. Small.
+- **6.2 Class-table citadel costs.** Partial. The class goods are on (`CITADEL_COST_MODE` via `citadel_fidelity_rules`). Build days are `CITADEL_DAYS_MODE` row 2. Class M level 1 in `CITADEL_CLASS_COSTS` is 1,000 colonists, 300 fuel, 200 organics, 250 equipment, and 4 days. `CLASS_M_FIDELITY_MODE` multiplies that colonist figure by 1,000. That figure is Ben's NOTE 19 choice, the same hold as row 6.3. Small.
+- **6.3 Class M caps and the bell curve.** Ben-decision. `PLANET_MAX_COLONISTS` for class M stays 30,000 until Ben chooses. The handbook calls daily output a bell that peaks at half that cap. S1 prints no bell-curve shape, so `planets._worked` holds output at that peak above half. Population above half dies off under `PLANET_PROD_MODE` row 26. `constants.planet_prod_live`.
 
 ## Can't verify without the real game
 
-A number was not printed, or the gap line no longer names the missing piece. Guessing it would invent a rule.
+A Ven or TWGS screen still has to print the missing number. Guessing it would invent a rule.
 
-- **2.15 Attack a port.** Partial. Blowing a port is behind `PORT_ATTACK_MODE` and `PORT_ATTACK_ALL_CLASSES_MODE`. Classes 0 through 5 and 7 through 9 have no measured rating or barrage. No printed number. Medium.
-- **4.8 Armid price.** Partial. Detonation is the stored half-count at 20. The shop price moves only under `HARDWARE_PRICE_MODE`. The unit price is sysop-set, and the 4,000 is a sample. No printed number. Small.
-- **5.7 Ship versus ship.** Different. The exchange is still not the original. CMB-c is `docs/plans/ship-odds-exchange-v1.md` only. The attacker picking fighters is printed. The exchange formula is not. No printed number. Large.
-- **6.10 Planet killer.** Partial. The blow is −1 alignment and +50 experience, which is the current choice in `V311_SOURCE_CONFLICTS.md`, NOTE 143, "Destroying a planet". Killing a trader on the planet is `PLANET_ZDY_MODE`. Colonist-kill alignment is an ellipsis, and a citadel's extra blow experience is not printed. No printed number. Small.
-- **12.4 Nightly Extern.** Partial. The jobs named on the every-row line are in, or they are behind `PLANET_COLLISION_MODE` and `SPECIAL_PORT_DEFENCE_MODE`. `INACTIVE_USER_MODE` (NOTE 151, queued #83) deletes a disconnected human after 30 quiet wall-clock days and stays off. `V311_SOURCE_CONFLICTS.md`, NOTE 151, "Days until an inactive user is deleted" (30, or Gypsy's 7). The map says a job past that list has no name. No printed number. Medium.
+- **2.15 Attack a port.** Partial. Blowing a port is behind `PORT_ATTACK_MODE` row 30 and `PORT_ATTACK_ALL_CLASSES_MODE` row 138, NOTE 98. Class 6 is the measured port: defensive rating 98, laser barrage 598 (`PORT_DEFENSE_RATING`, `PORT_LASER_BARRAGE`). Classes 0 through 5 and 7 through 9 have no measured rating or barrage. `runner._handle_port_attack`. Medium.
+- **12.4 Nightly Extern.** Partial. `runner.tick_day` already runs the jobs the sources name: retreats, Ferrengi, the corp penalty, the Class 0 sweep, Terra regen, empty-ship repossession, Fed tows, port regen, bust clearing, photon waves, cloak fails, NavHaz, alien hops, planet production, citadels, treasury, and tax. Collisions and special-port rebuilds are `PLANET_COLLISION_MODE` and `SPECIAL_PORT_DEFENCE_MODE`. `INACTIVE_USER_MODE` row 177 deletes a disconnected human after 30 quiet wall-clock days and stays off. `V311_SOURCE_CONFLICTS.md`, NOTE 151, "Days until an inactive user is deleted" (30, or Gypsy's 7). `INACTIVITY_TIMEOUT_MODE` row 178 sleeps a quiet lobby game after 14,400 seconds and stays off. A job past that list has no name. A live Extern would have to print it. Medium.
+
+## Still Partial or Different
+
+- **4.8 Armid price.** Partial. Detonation is the stored half-count at 20 (`hardware.armid_detonation_hits`). The shop price is `HARDWARE_PRICE_MODE` row 14: stored `ARMID_MINE_COST` 100, live card `ARMID_MINE_COST_LIVE` 1,000. The unit price is sysop-set. Small.
+- **12.3 Real-time movement.** Different. Ships move by turns. `DAY_ROLL_CLOCK_MODE` rolls the day while a seat holds the turn. `PLANET_REALTIME_PROD_MODE` stays off, because the original produces at Extern. No speed table is printed. Large.
 
 ## NOTE 164 matched
 
