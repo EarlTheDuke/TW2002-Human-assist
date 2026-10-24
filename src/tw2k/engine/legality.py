@@ -565,6 +565,9 @@ def legal_actions(universe: Universe, player_id: str) -> list[LegalAction]:
         ))
 
     # ---- S4 group 1: combat / presence ---------------------------------------
+    # Ship attacks (players, Ferrengi, aliens, Federals, unmanned, sector fighters)
+    # follow ATTACK_TURN_MODE. Photons and disruptors keep the stored 5.
+    ship_cost = int(K.attack_turn_cost())
     atk_cost = int(K.TURN_COST["attack"])
     hostile_players = [pid for pid in other_ids if not _are_allied(universe, player_id, pid)]
     fed_shielded = False
@@ -597,7 +600,7 @@ def legal_actions(universe: Universe, player_id: str) -> list[LegalAction]:
         # The engine rejects AND docks 200 alignment - worth a loud reason.
         reason = "FedSpace - combat forbidden (attempting costs 200 alignment)"
     else:
-        reason = _need_turns(player, atk_cost)
+        reason = _need_turns(player, ship_cost)
     atk_params: dict[str, Any] = {"target": {"type": "str", "required": True, "choices": attack_targets,
                                              "players": hostile_players, "ferrengi": ferrengi_ids}}
     if K.alien_on():  # ALIEN_TRADERS.md al31: omitted under legacy so the digest stays put
@@ -608,7 +611,7 @@ def legal_actions(universe: Universe, player_id: str) -> list[LegalAction]:
         unmanned = unmanned_attack_choices(universe, player_id)
         atk_params["target"]["unmanned_choices"] = unmanned
         if unmanned and not attack_targets:
-            reason = _need_turns(player, atk_cost)
+            reason = _need_turns(player, ship_cost)
     if K.fed_tw2002():
         atk_params["target"]["federals"] = fed_ids
         if atk_note_fed:
@@ -622,7 +625,7 @@ def legal_actions(universe: Universe, player_id: str) -> list[LegalAction]:
             reason = "no fighters aboard to attack with"
         atk_params["qty"] = {"type": "int", "required": False, "min": 1, "max": cap,
                              "note": "fighters to send; your hull caps one attack"}
-    out.append(_la(ActionKind.ATTACK, legal=reason is None, reason=reason, cost=atk_cost, params=atk_params))
+    out.append(_la(ActionKind.ATTACK, legal=reason is None, reason=reason, cost=ship_cost, params=atk_params))
 
     photons = int(getattr(player.ship, "photon_missiles", 0) or 0)
     if K.hardware_tw2002():

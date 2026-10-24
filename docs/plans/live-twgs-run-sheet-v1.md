@@ -177,7 +177,7 @@ Keys: attack one ship. Read the turn counter before and after. Repeat from the o
 
 Read: turns spent, and whether that number changes with the hull.
 
-Settles: the attack entry of the turn-cost table. This game spends 5 turns.
+Settles: `ATTACK_TURN_MODE` (profile row 228). Live KillTest spent 0 turns on a ship attack (`docs/playtests/twgs-live/attack-turn-cost-ven.txt`). Stored games keep `TURN_COST["attack"]` at 5. Only a Merchant Cruiser was measured, so there is no per-hull cost.
 
 ### Attacker destroyed by its own attack
 

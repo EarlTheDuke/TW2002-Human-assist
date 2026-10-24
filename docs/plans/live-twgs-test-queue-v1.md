@@ -108,7 +108,7 @@ One added check. NOTE 103 mapped Computer B to backtrack on this cockpit. The or
 
 ## Live TWGS test queue (NOTE 112)
 
-GAP 2.5 is `PRICE_SCALE_MODE` (profile row 165). The economy2 100% chart totals are the quotes. Shield unit price, the ship-versus-ship loss split, and real-time travel seconds are not in a saved file, so they are not switched.
+GAP 2.5 is `PRICE_SCALE_MODE` (profile row 165). The economy2 100% chart totals are the quotes. Shield unit price, the ship-versus-ship loss split, and real-time travel seconds are not in a saved file, so they are not switched. Attack turn cost is `ATTACK_TURN_MODE` (profile row 228): the KillTest capture spent 0, and stored games keep `TURN_COST["attack"]` at 5. No other attacker hull was measured.
 
 Searched before these rows were added: `docs/playtests/ports/ECONOMY_SCALE.md` (no shield unit price), `docs/plans/ship-odds-exchange-v1.md` (loss split already queued under NOTE 96), `docs/reference/tw2002/GAP_MAP.md` row 5.7 and row 12.3, `docs/reference/tw2002/eis_tw2002_v3_docs/GeneralUpdated.html` (RealtimeMovement and InteractiveCombat: a rate by size and power, SysOp may cut it to 1/4 or 1/2 or double it, and an attack waits for the hop; no seconds and no per-hull table). StarDock trade-in is already `TRADE_IN_MODE` row 13 and `TRADE_IN_PARTS_MODE` row 76. The published 1.25 flee is already `SHIP_FLEE_MODE` row 56. Day roll while a seat holds the turn is already `DAY_ROLL_CLOCK_MODE` row 81, and a legacy game with its own day length is `LEGACY_DAY_CLOCK_MODE` row 164. `PLANET_REALTIME_PROD_MODE` stays off the profile because the original produces at Extern.
 
@@ -116,7 +116,7 @@ Searched before these rows were added: `docs/playtests/ports/ECONOMY_SCALE.md` (
 |---|---|---|---|---|
 | Shield unit price | 131 a point behind `SHIELD_POINT_MODE`. The stored price stays the wave, or flat 10 when `SHIELD_PRICE_MODE` is flat. Day-to-day drift is UNVERIFIED. Fighters that day were 218 and stay on the wave | Buy one shield on a second day and read it next to that day's fighter price | The credit price, and whether it is still 131 a point | `SHIELD_POINT_LIVE`, only if a second day prints a different point price |
 | Ship-odds loss split | already queued under NOTE 96. No new switch | See the NOTE 96 row | Fighters and shields left on both ships | `docs/plans/ship-odds-exchange-v1.md` |
-| Attack turn cost | an attack spends 5 turns | Attack a ship and read the turn counter before and after | Turns spent, and whether that number changes with the hull | `TURN_COST["attack"]` |
+| Attack turn cost | Live KillTest spent 0. Stored games keep 5 (`TURN_COST["attack"]`). `ATTACK_TURN_MODE` (profile row 228) charges 0 for a ship attack. Only a Merchant Cruiser was measured. Capture `docs/playtests/twgs-live/attack-turn-cost-ven.txt` | Done 2026-10-17 on GameK. Turns left stayed 229 across six ship attacks. A deployed-fighter attack between two 3-turn moves also cost 0 | Turns spent, and whether that number changes with the hull | `ATTACK_TURN_MODE` |
 | Attacker destroyed by its own attack | the attack does not destroy the attacker | Send every fighter into a stronger ship | Whether the attacker is podded | no constant until a screen shows it |
 | Real-time hop time | no delay. Movement spends turns per warp | Warp one sector in a Merchant Cruiser and in a Scout. Time the hop. Repeat after a SysOp speed change if one is set | Seconds for each hull, and the speed setting | a per-hull travel time, only if the screen or the editor prints one |
 

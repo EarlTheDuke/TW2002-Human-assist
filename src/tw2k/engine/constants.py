@@ -5164,6 +5164,10 @@ V311_PROFILE_HELPERS: dict[str, tuple[str, str]] = {
         "CINEPLEX_PRICE_MODE",
         "NOTE 129 GAP 1.8: Cineplex show 1, Vulcan Thunder, is 100 credits",
     ),
+    "attack_turn_live": (
+        "ATTACK_TURN_MODE",
+        "NOTE 112: a ship attack spends 0 turns (KillTest Merchant Cruiser). Stored TURN_COST attack stays 5",
+    ),
 }
 
 
@@ -6932,3 +6936,25 @@ def cineplex_cost() -> int:
     if cineplex_price_live():
         return int(CINEPLEX_SHOW1_COST)
     return int(CINEPLEX_COST)
+
+
+# NOTE 112, profile row 228. Live TWGS v2.20b / TW2002 v3.34b KillTest
+# (docs/playtests/twgs-live/attack-turn-cost-ven.txt): a Merchant Cruiser's
+# ship attacks, and one attack on deployed sector fighters, spent 0 turns.
+# Turns left did not change, and the screen printed no turn line. No other
+# attacker hull was measured, so this is not a per-hull table. Stored
+# TURN_COST["attack"] stays 5. Port attacks, photons, and disruptors keep
+# that stored entry. "1" does not turn this on. TW2002_LIVE_PROFILE does not.
+ATTACK_TURN_MODE = "legacy"  # "legacy" | "live"
+
+
+def attack_turn_live() -> bool:
+    """True when a ship attack spends no turns."""
+    return ATTACK_TURN_MODE == "live" or v311_profile()
+
+
+def attack_turn_cost() -> int:
+    """Turns one ship attack spends. Live KillTest measured 0. Stored games stay at 5."""
+    if attack_turn_live():
+        return 0
+    return int(TURN_COST["attack"])
