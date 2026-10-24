@@ -62,9 +62,10 @@ def test_on_class_6_blow_pays_and_a_later_dock_kills(monkeypatch) -> None:
 
 
 def test_on_an_unmeasured_class_still_has_no_barrage(monkeypatch) -> None:
+    """Class 9 has no sample. Class 1 is a measured pair and is covered elsewhere."""
     monkeypatch.setattr(K, "PORT_ATTACK_MODE", "live")
     monkeypatch.setattr(K, "PORT_ATTACK_ALL_CLASSES_MODE", "live")
-    u, pilot = _cruiser(98013, PortClass.CLASS_1_BSS)
+    u, pilot = _cruiser(98013, PortClass.CLASS_9_SSS)
     res = _act(u, pilot.id, ActionKind.ATTACK, target="port", confirm=True, qty=1796)
     assert res.ok is True
     assert pilot.deaths == 0 and pilot.alignment == -5 and pilot.experience == 0

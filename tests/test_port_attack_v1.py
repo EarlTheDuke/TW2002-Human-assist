@@ -1,4 +1,7 @@
-"""port-attack-defense-v1. Off, a port is not a target. On, the one measured case applies."""
+"""port-attack-defense-v1. Off, a port is not a target. On, class 6 still kills a cruiser.
+
+Confirmed samples for the other classes live in test_gap215_port_attack_samples_v1.
+"""
 import tw2k.engine.constants as K
 from tests.test_phase_abc import _first_non_fed_sector, _make_universe
 from tests.test_ship_combat_core_v1 import _act, _park
@@ -54,12 +57,15 @@ def test_on_class_6_barrage_kills_the_cruiser(monkeypatch) -> None:
     assert ev.payload["outcome"] == "destroyed"
 
 
-def test_on_an_unmeasured_class_does_not_invent_a_kill(monkeypatch) -> None:
+def test_on_a_def_only_class_does_not_invent_a_laser(monkeypatch) -> None:
     monkeypatch.setattr(K, "PORT_ATTACK_MODE", "live")
     u, pilot = _cruiser(61004)
-    u.sectors[pilot.sector_id].port.class_id = PortClass.CLASS_1_BSS
+    port = u.sectors[pilot.sector_id].port
+    port.class_id = PortClass.CLASS_2_BSB
+    port.name = "generated-port"
     res = _act(u, pilot.id, ActionKind.ATTACK, target="port", confirm=True, qty=30)
     assert res.ok is True
     assert pilot.alignment == -5 and pilot.ship.fighters == 27 and pilot.deaths == 0
     ev = next(e for e in reversed(u.events) if e.kind is EventKind.COMBAT and e.payload.get("vs") == "port")
-    assert ev.payload["barrage"] is None and ev.payload["outcome"] == "survived"
+    assert ev.payload["barrage"] is None and ev.payload["defensive_rating"] == 55
+    assert ev.payload["outcome"] == "survived"

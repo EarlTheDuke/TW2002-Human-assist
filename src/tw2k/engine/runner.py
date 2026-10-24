@@ -1595,7 +1595,7 @@ def _handle_attack(universe: Universe, pid: str, action: Action) -> ActionResult
 
 
 def _handle_port_attack(universe: Universe, pid: str, action: Action) -> ActionResult:
-    """Live only. One measured case: class 6 rating 98, barrage 598, alignment -5."""
+    """Live only. Samples from Ven GameA 2026-10-24, plus the class 6 pair."""
     player = universe.players[pid]
     if player.planet_landed is not None:
         return ActionResult(ok=False, error="must be in space to attack")
@@ -1623,8 +1623,7 @@ def _handle_port_attack(universe: Universe, pid: str, action: Action) -> ActionR
     player.alignment += K.PORT_ATTACK_ALIGNMENT
     player.ship.fighters -= qty
     cls = int(port.class_id)
-    barrage = K.PORT_LASER_BARRAGE.get(cls)
-    rating = K.PORT_DEFENSE_RATING.get(cls)
+    rating, barrage = K.port_attack_sample(cls, player.sector_id, getattr(port, "name", "") or "")
     destroyed = False
     port_destroyed = False
     special = port.class_id in (PortClass.STARDOCK, PortClass.FEDERAL)
