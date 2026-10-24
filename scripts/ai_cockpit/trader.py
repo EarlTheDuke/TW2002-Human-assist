@@ -1600,7 +1600,9 @@ class ScriptedTrader:
 
     def _hull_trip(self) -> bool:
         """NOTE 172b. Hard with rich cash and an open yard goes to read the hulls."""
-        if self.level != "hard" or not self._gear_done() or self._ship_closed():
+        # NOTE 172d. Not gated on the gear. Seed 99 left its first dock visit
+        # without fighters, so it held 46,000 by day 7 and never sailed back.
+        if self.level != "hard" or self._ship_closed():
             return False
         if self.hull_day == self.day:
             return False
