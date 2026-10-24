@@ -172,7 +172,10 @@ SYSTEM_PROMPT = (
     "Goal: grow net worth and experience over a long game: trade profitably between ports, upgrade "
     "holds and ship, claim and build planets toward a level 3+ citadel and quasar cannon, and defend "
     "what you own. Choose exactly one action from `legal_actions`. Fill its `params` as described "
-    "(respect choices/min/max). Reply with ONE JSON object and nothing else: "
+    "(respect choices/min/max). Landing and lifting off each cost turns: after you land, do the "
+    "planet work you landed for (build, deposit, upgrade, take or leave fighters/colonists) before "
+    "you lift off, and do not land again right after lifting off from the same planet. Check "
+    "`my_last_moves` and any `loop_warning` before choosing. Reply with ONE JSON object and nothing else: "
     '{"kind": "<legal kind>", "args": {...}, "why": "<one short sentence>"}'
 )
 
@@ -218,7 +221,37 @@ def build_prompt(obs: dict[str, Any], cockpit: dict[str, Any] | None, history: l
     out["legal_actions"] = legal
     out["blocked_actions"] = blocked
     out["my_last_moves"] = history[-6:]
+    warning = loop_warning(history)
+    if warning:
+        out["loop_warning"] = warning
     return json.dumps(out, default=str, separators=(",", ":"))
+
+
+_REVERSE = {"land_planet": "liftoff", "liftoff": "land_planet"}
+
+
+def _real(history: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    return [h for h in history if h.get("kind")]
+
+
+def loop_warning(history: list[dict[str, Any]]) -> str:
+    """A plain sentence when the recent moves bounce between landing and lifting off."""
+    moves = [h.get("kind") for h in _real(history)[-4:]]
+    bounces = sum(1 for a, b in zip(moves, moves[1:]) if _REVERSE.get(str(a)) == b)
+    if bounces >= 2 or (bounces == 1 and moves[-1] == "land_planet"):
+        return ("You have been landing and lifting off with nothing in between. That wastes turns. "
+                "Do the planet work now, or warp/trade instead of another land/liftoff.")
+    return ""
+
+
+def is_reversal(history: list[dict[str, Any]], kind: str, sector: Any) -> bool:
+    """True when ``kind`` undoes the immediately previous move (land then liftoff, or back)."""
+    if not history:
+        return False
+    last = history[-1]
+    if not last.get("kind") or _REVERSE.get(str(last.get("kind"))) != kind:
+        return False
+    return last.get("sector") == sector
 
 
 def _text(payload: dict[str, Any]) -> str:
@@ -314,6 +347,7 @@ class TinyboxSeatBudget:
         self.errors = 0
         self.fallback_turns = 0
         self.timeouts = 0
+        self.reversals = 0
         self.stamps: deque[float] = deque()
         self.history: list[dict[str, Any]] = []
         self.lasting_fallback = False
@@ -371,7 +405,17 @@ class TinyboxSeatBudget:
                 self._fall(f"{self.errors} unusable replies in a row")
             return None
         self.errors = 0
-        self.history.append({"day": obs.get("day"), "sector": (obs.get("sector") or {}).get("id"),
+        sector = (obs.get("sector") or {}).get("id")
+        if is_reversal(self.history, picked[0], sector) and len(legal - {picked[0]}) > 0:
+            # Land-then-liftoff (or liftoff-then-land) with nothing between: refuse once,
+            # the heuristic plays this turn, and the marker lets the next pick through.
+            self.reversals += 1
+            self.history.append({"day": obs.get("day"), "sector": sector, "kind": None,
+                                 "note": f"refused {picked[0]} right after {self.history[-1]['kind']}"})
+            del self.history[:-12]
+            self._skip(f"refused immediate {self.history[-2]['kind']} -> {picked[0]} reversal")
+            return None
+        self.history.append({"day": obs.get("day"), "sector": sector,
                              "kind": picked[0], "args": picked[1]})
         del self.history[:-12]
         return picked
