@@ -78,7 +78,7 @@ def test_profile_rows_are_200_and_the_heading_matches() -> None:
     assert K.V311_PROFILE_HELPERS["fighter_report_live"][0] == "FIGHTER_REPORT_MODE"
     text = _PROFILE.read_text(encoding="utf-8")
     assert f"## The switch set ({len(K.V311_PROFILE_HELPERS)} helpers)" in text
-    assert len(K.V311_PROFILE_HELPERS) == 160
+    assert len(K.V311_PROFILE_HELPERS) == 161
     for row in ("| 200 |", "| 201 |", "| 202 |", "| 203 |"):
         assert row in text
 

@@ -629,18 +629,28 @@ def legal_actions(universe: Universe, player_id: str) -> list[LegalAction]:
 
     photons = int(getattr(player.ship, "photon_missiles", 0) or 0)
     if K.hardware_tw2002():
-        from .hardware import photon_hull_ok
+        from .hardware import photon_hull_ok, photon_settings_block
         adj = [int(w) for w in (sector.warps or [])]
+        block = photon_settings_block(player)
         if photons <= 0:
             reason = "no photon missiles loaded (buy_equip photon_missiles at StarDock)"
         elif not photon_hull_ok(player):
             reason = "only Missile Frigate or Imperial StarShip may fire photons"
+        elif block:
+            reason = block
         elif in_fedspace and not K.rank_tw2002():
             reason = "FedSpace forbids weapons fire (attempting costs 100 alignment)"
         elif not adj:
             reason = "no adjacent sector to photon"
         else:
-            reason = _need_turns(player, atk_cost)
+            choices = list(adj)
+            if K.photon_cloak_settings_live():
+                choices = [w for w in choices if int(w) not in K.FEDSPACE_SECTORS]
+            if not choices:
+                reason = "FedSpace photons are off"
+            else:
+                reason = _need_turns(player, atk_cost)
+                adj = choices
         out.append(_la(ActionKind.PHOTON_MISSILE, legal=reason is None, reason=reason, cost=atk_cost,
                        params={"target": {"type": "int", "required": True, "choices": adj,
                                           "note": "adjacent sector id (photon wave)"}}))

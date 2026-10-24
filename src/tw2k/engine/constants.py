@@ -2283,7 +2283,12 @@ def photon_limpet_live() -> bool:
 
 # Armid (h1/h2). Legacy keeps ARMID_DAMAGE=100 and MINE_MAX_HITS_PER_MOVE random.
 ARMID_DAMAGE_TW2002 = 20
-# Photon wave duration in day-ticks (h7). TEDIT sample "1 seconds" -> 1 tick.
+# Photon wave duration in day-ticks (h7). Cabal twgs.html and the modern manual
+# print 1 second, mapped to 1 day-tick. Gypsy's v2.03 V-screen prints 10 seconds.
+# GameA TWSTATS [Settings] prints "Photon Missile Duration=20 Sec"
+# (docs/playtests/twgs-live/twstats-costs-ven.txt). SOURCE-CONFLICT. The 20
+# seconds are not applied: this engine has no realtime photon clock.
+# PHOTON_CLOAK_SETTINGS_MODE does not change this number.
 PHOTON_WAVE_DURATION = 1
 # NOTE 148 GAP 4.10. S1 "The Photon Advantage" skips armids, the quasar, and
 # sector fighters. Item 2, a limpet, is not on that skip list. "legacy" keeps
@@ -2292,7 +2297,7 @@ PHOTON_LIMPET_MODE = "legacy"  # "legacy" | "v311"
 # Cloak (h12-h16)
 CLOAK_COST = 25_000
 CLOAK_MAX = 5
-CLOAK_FAIL_RATE = 0.03  # TEDIT FailRate 3%; checked on tick_day while cloaked
+CLOAK_FAIL_RATE = 0.03  # TEDIT FailRate 3%; GameA "Cloak Fail Percent=3%" matches. Day tick while cloaked.
 # Mine disruptor (h18-h20)
 DISRUPTOR_COST = 40_000
 
@@ -5195,6 +5200,11 @@ V311_PROFILE_HELPERS: dict[str, tuple[str, str]] = {
         "SHIP_CAPACITY_MODE",
         "GAP 3.15: mines, genesis, photons, and the printed TransWarp hop range follow the ship chart",
     ),
+    # GameA photon and cloak card. Row 230. Rows 225-227 are NOTE 129. Row 228 is attack turns.
+    "photon_cloak_settings_live": (
+        "PHOTON_CLOAK_SETTINGS_MODE",
+        "GameA TWSTATS [Settings]: no FedSpace photons, players in the wave are fighter-offline, one photon until that day-tick wave ends",
+    ),
 }
 
 
@@ -7091,3 +7101,21 @@ def chart_transwarp_hops(class_key: str) -> int | None:
     if cap is None:
         return None
     return int(cap)
+
+
+# GameA TWSTATS [Settings], one card (docs/playtests/twgs-live/twstats-costs-ven.txt).
+# Off, a stored game keeps today's photon: FedSpace fire is only the rank-off
+# penalty, a wave does not scramble players, and another photon can be fired
+# the same day. On, three measured lines are honored together:
+#   FedSpace Photons=False
+#   Photons Disable Players=True
+#   Multiple Photons=False  (the lock is this engine's 1 day-tick wave, not 20 seconds)
+# Cloak Fail Percent=3% is already CLOAK_FAIL_RATE. Photon Missile Duration=20 Sec
+# stays deferred (PHOTON_WAVE_DURATION). Stored default stays legacy. "1" does
+# not turn this on.
+PHOTON_CLOAK_SETTINGS_MODE = "legacy"  # "legacy" | "live"
+
+
+def photon_cloak_settings_live() -> bool:
+    """True when the GameA photon and cloak card is in force."""
+    return PHOTON_CLOAK_SETTINGS_MODE == "live" or tw2002_live_profile() or v311_profile()
