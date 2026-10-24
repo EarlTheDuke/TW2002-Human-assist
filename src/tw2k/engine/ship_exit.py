@@ -4,10 +4,13 @@ The cockpit keeps the "not in this game" lines while the switch is legacy, and
 the verbs stay out of the legal list so the bank pin does not move.
 
 Self-destruct follows the ship-destroyed path: half the experience and half
-the alignment (halfway toward zero), and the ship is gone. d13 also keeps the
-pilot out tomorrow, so the next day still has no turns. Halfway-to-zero
-alignment is the ship-destroyed rule. It is confirmed for a good trader and
-UNVERIFIED for a red one.
+the alignment (halfway toward zero), and the ship is gone, unless
+SELF_DESTRUCT_PENALTY_MODE is on (R5 B). That switch still takes half the
+experience, cuts a negative alignment in half, and leaves a non-negative
+alignment alone. d13 also keeps the pilot out tomorrow, so the next day
+still has no turns, on either setting. Halfway-to-zero alignment is the
+ship-destroyed rule. It is confirmed for a good trader and UNVERIFIED for
+a red one. The MBBS self-destruct sentence is the switch, not that rule.
 
 Jettison of colonists is the published rule: a good trader loses 1 alignment
 each, and only 250 of those count in a day. Dumping other cargo into space,
@@ -55,9 +58,14 @@ def self_destruct_spec(universe, pid: str) -> tuple[bool, str | None, int, dict[
     player = universe.players[pid]
     if not player.alive:
         return False, "you are already out", 0, {}
-    return True, None, 0, {
-        "note": "half your experience and half your alignment; out today and tomorrow",
-    }
+    if K.self_destruct_mbbs_live():
+        note = (
+            "half your experience; a negative alignment is cut in half; "
+            "a positive alignment stays; out today and tomorrow"
+        )
+    else:
+        note = "half your experience and half your alignment; out today and tomorrow"
+    return True, None, 0, {"note": note}
 
 
 def _cargo_key(ship, name: str):

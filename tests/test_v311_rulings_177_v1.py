@@ -1,10 +1,11 @@
-"""NOTE 177. Three source conflicts settled under Ben's delegation (lean v3.11 original).
+"""NOTE 177, then R10 A.
 
-10.1 gains CFS_CEO_USE_MODE, row 213: only a C.E.O. boards a Corporate FlagShip.
 6.10 gains PLANET_BLOW_ALIGN_MODE, row 214: blowing a planet costs 50 alignment (Bible).
+That switch is legacy by default and turns on under V311_PROFILE=v311, not "1".
 8.1 is NOTE 164's FERRENGI_ODDS_MODE (row 200, the Bible chart); the stored FERRSPEC
 table stays the legacy value.
-Both switches are legacy by default and turn on only under V311_PROFILE=v311, not "1".
+10.1 keeps CFS_CEO_USE_MODE for Gypsy's use-rule. R10 A does not select it:
+only the C.E.O. buys a FlagShip, and a member may board. The profile leaves it off.
 """
 from __future__ import annotations
 
@@ -32,7 +33,7 @@ def _flagship_world(monkeypatch):
     return universe, rec
 
 
-def test_switches_default_legacy_and_only_v311_turns_them_on(monkeypatch):
+def test_switches_default_legacy_and_only_v311_turns_the_blow_on(monkeypatch):
     assert K.CFS_CEO_USE_MODE == "legacy"
     assert K.PLANET_BLOW_ALIGN_MODE == "legacy"
     assert K.cfs_ceo_use_live() is False
@@ -41,9 +42,9 @@ def test_switches_default_legacy_and_only_v311_turns_them_on(monkeypatch):
     assert K.cfs_ceo_use_live() is False
     assert K.planet_blow_align_live() is False
     monkeypatch.setattr(K, "V311_PROFILE", "v311")
-    assert K.cfs_ceo_use_live() is True
+    assert K.cfs_ceo_use_live() is False
     assert K.planet_blow_align_live() is True
-    assert K.V311_PROFILE_HELPERS["cfs_ceo_use_live"][0] == "CFS_CEO_USE_MODE"
+    assert "cfs_ceo_use_live" not in K.V311_PROFILE_HELPERS
     assert K.V311_PROFILE_HELPERS["planet_blow_align_live"][0] == "PLANET_BLOW_ALIGN_MODE"
 
 
