@@ -10,8 +10,8 @@ A row is Match when the original rule is what a normal game does now. Match-behi
 
 | Grade | v5 | v6 |
 |---|---|---|
-| Match | 50 | 73 |
-| Match-behind-flag | 17 | 89 |
+| Match | 50 | 72 |
+| Match-behind-flag | 17 | 90 |
 | Partial | 53 | 6 |
 | Different | 38 | 1 |
 | Missing | 11 | 0 |
@@ -24,6 +24,8 @@ NOTE 178 moved two Different rows to Partial. 5.7: the tw2002 exchange already i
 GAP 1.15 moved from Partial to Match-behind-flag. The switch was already `FED_TOW_LIMIT_MODE` row 168 (NOTE 117). Bible 50 when on. Gypsy 98 stored when off. No new switch.
 
 ## What moved
+
+GAP 3.15 moved from Match to Match-behind-flag on `SHIP_CAPACITY_MODE` row 229. A stored game keeps unlimited mines, genesis, and photons, and a TransWarp jump with no printed hop ceiling. Holds stay on the tw2002 roster. The ship transporter stays `SHIP_TRANSPORT_RANGE`.
 
 The v5 "no switch at all" list now has a switch on this tip: planet scanner, scanner fog, citadel perks, citadel parking, the good-trader tax, radio, daily stats, FedComm, gold aliens, and corporation rankings. Gold aliens are coded and off, and the profile leaves `GOLD_ALIEN_MODE` out on purpose. Density, one-way lanes, the 45-hop plot cap, Class 0 hold prices, the treasury cap, Ferrengi pace and grudges, and the planet-bust experience loop moved in NOTEs 78 through 102. Player-kill experience (`COMBAT_EXP_DIVISOR` 15/35/25) and the ether-probe route are already what a normal game does, so those rows are Match. Corp member transfers of credits, fighters, shields, and mines are in `corp.handle_corp_transfer`. Holds and the corp treasury are `CORP_CARGO_TREASURY_MODE` row 183, NOTE 162.
 
@@ -204,7 +206,7 @@ Most of those are stored defaults that are already tw2002, or switches the profi
 3.12 Match-behind-flag `SHIP_ROSTER_MODE` row 4. Star Master, Constellation, T'Khasi Orion, and Taurean Mule are in the live table. `constants.ship_specs`.
 3.13 Match-behind-flag `SHIP_ROSTER_MODE` row 4. The Tholian Sentinel is in the live table. `constants.ship_specs`.
 3.14 Match-behind-flag `SHIP_ROSTER_MODE` row 4. The Interdictor Cruiser is in the live table. `constants.ship_specs`.
-3.15 Match. A normal game uses `SHIP_SPECS_TW2002` while `ECONOMY_SCALE_MODE` is tw2002. `equip_room` caps mines, genesis, photons, fighters, shields, and holds. Fighters per attack are on that chart. Ether probes stay `SHIP_CHART_CAP_MODE` row 96. `constants.equip_room`, `constants.ship_specs`.
+3.15 Match-behind-flag `SHIP_CAPACITY_MODE` row 229. Off, mines, genesis, and photons stay unlimited and a TransWarp jump is still ore divided by 3. On, the Bible/MBBS chart caps those three, and a jump stops at the printed hop range (Corporate FlagShip 28, Imperial StarShip 50, Havoc Gunstar 16). Holds stay `max_holds` on the tw2002 roster. The ship transporter stays `SHIP_TRANSPORT_RANGE`. Ether probes stay `SHIP_CHART_CAP_MODE` row 96. `constants.ship_capacity_live`, `constants.equip_room`, `ship_transwarp.handle_ship_transwarp`.
 3.16 Match. Combat odds are already the chart. `COMBAT_ODDS_MODE` stays off and changes nothing (profile no-op). `combat.combat_odds_of`.
 3.17 Match-behind-flag `TRADE_IN_MODE` row 13. Live trade-in is 90 percent and stays off. Legacy stays 25 percent. Itemised parts are `TRADE_IN_PARTS_MODE` row 76. `constants.trade_in_live`.
 3.18 Match. A player can own more than one ship. `constants.fleet_on`.
@@ -226,7 +228,7 @@ Most of those are stored defaults that are already tw2002, or switches the profi
 4.14 Match-behind-flag `DETECT_GEAR_MODE` row 34. Same probe as 2.17. `constants.detect_gear_live`.
 4.15 Match. Ship TransWarp is on. `SHIP_TW_MODE` is tw2002. Price SOURCE-CONFLICT: stored cabal samples 12,500 / 20,000 / 9,000. Live GameA TWSTATS `Type I TWarp=50,000 cr`, `Type II TWarp=80,000 cr`, `TWarp Upgrade=10,000 cr` is `ship_tw_type1_cost` / `ship_tw_type2_cost` / `ship_tw_upgrade_cost` on `hardware_price_live` (Ven 2026-10-24). Citadel Transport Unit 50,000 and Upgrade 25,000 already match `PLANET_TRANSPORTER_COST_FIRST` / `PLANET_TRANSPORTER_COST_EXTRA`. No shop switch. `constants.ship_tw_on`.
 4.16 Match. `SHIP_TRANSPORT_RANGE` is the Bible chart. The ISS stays 10, not the MBBS prose 15. `fleet.transport_range`, `fleet.handle_ship_transport`.
-4.17 Match-behind-flag `SHIP_CHART_CAP_MODE` row 96, NOTE 82. Mines, genesis, and photons already follow the chart. Live adds the probe cap of 25. `constants.ship_chart_cap_live`.
+4.17 Match-behind-flag `SHIP_CHART_CAP_MODE` row 96, NOTE 82. Live adds the ether-probe cap of 25. Mines, genesis, and photons are `SHIP_CAPACITY_MODE` row 229, not this switch. Cloaks stay 5. `constants.ship_chart_cap_live`.
 5.1 Match. Entry order is NavHaz, limpet, armids, sector quasar, then fighters. `runner._apply_sector_hazards`.
 5.2 Match. NavHaz damages on the percent, and FedSpace clears it at night. `hardware.navhaz_pct`, `hardware.tick_navhaz`.
 5.3 Match. Armid damage is the stored half detonation. `hardware.armid_detonation_hits`. Profile row 92, no helper.
