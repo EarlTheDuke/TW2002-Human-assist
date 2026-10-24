@@ -14,6 +14,12 @@ Live providers read a key from the environment and never print it:
     XAI_API_KEY=... python3 scripts/ai_cockpit_player.py --provider grok --url ...
     OPENAI_API_KEY=... python3 scripts/ai_cockpit_player.py --provider openai --url ...
     ANTHROPIC_API_KEY=... python3 scripts/ai_cockpit_player.py --provider anthropic --url ...
+
+An OpenAI-compatible endpoint is optional until a key is pasted. With no key
+the same scripted trader plays, and it still only sees the cockpit page:
+
+    AI_COCKPIT_BASE_URL=https://host/v1 AI_COCKPIT_API_KEY=... AI_COCKPIT_MODEL=... \\
+        python3 scripts/ai_cockpit_player.py --provider custom --url ...
 """
 
 from __future__ import annotations
@@ -50,8 +56,15 @@ def check_imports() -> int:
 def _parse(argv: list[str] | None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Play a cockpit seat from the rendered screen.")
     parser.add_argument("--url", default="", help="seat link, including token, mode=cu, and layout=redesign")
-    parser.add_argument("--provider", default="scripted", help="scripted, mock, grok, openai, or anthropic")
+    parser.add_argument(
+        "--provider", default="scripted",
+        help="scripted, mock, grok, openai, anthropic, or custom (OpenAI-compatible base URL)",
+    )
     parser.add_argument("--model", default="", help="model name for a live provider; empty uses that provider's default")
+    parser.add_argument(
+        "--base-url", default="",
+        help="OpenAI-compatible base URL for --provider custom; the key stays in the environment",
+    )
     parser.add_argument("--mock-script", default="", help="JSON list of canned replies for --provider mock")
     parser.add_argument("--run-dir", default="runs/ai-cockpit", help="folder for screens and the action log")
     parser.add_argument("--max-turns", type=int, default=40, help="most actions to take")
@@ -98,6 +111,7 @@ def main(argv: list[str] | None = None) -> int:
             model=str(args.model or ""),
             mock_script=str(args.mock_script or ""),
             level=str(args.level or "hard"),
+            base_url=str(args.base_url or ""),
             directives=str(args.directives or ""),
             stuck_after=int(args.stuck_after),
         )

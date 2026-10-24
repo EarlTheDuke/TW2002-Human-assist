@@ -100,6 +100,7 @@
     return new URLSearchParams(raw).get("token") || "";
   }
   const params = new URLSearchParams(location.search);
+  if (params.get("mode") === "cu") document.body.classList.add("cu-seat");
   const state = {
     seat: (params.get("seat") || "P2").toUpperCase(),
     token: params.get("token") || fragmentToken() || "",
@@ -1328,6 +1329,8 @@
     };
   }
   function shuffleWarp(ids) {
+    const api = window.TW2KWarpVariants;
+    if (api && api.drawBag) return api.drawBag(ids, lastWarpId);
     const bag = ids.slice();
     for (let i = bag.length - 1; i > 0; i--) {
       const j = Math.floor(Math.random() * (i + 1));
@@ -1345,6 +1348,13 @@
   }
   function takeWarpClip(list) {
     const ids = list.map((row) => String(row.id));
+    const api = window.TW2KWarpVariants;
+    if (api && api.takeId) {
+      const step = api.takeId(ids, { bag: warpBag, last: lastWarpId });
+      warpBag = step.bag;
+      lastWarpId = step.last;
+      return list.find((row) => String(row.id) === step.id) || list[0];
+    }
     const same = warpBag.length > 0 && warpBag.every((id) => ids.indexOf(id) >= 0);
     if (!same) warpBag = shuffleWarp(ids);
     let id = warpBag.pop();
@@ -1521,15 +1531,15 @@
       ? window.TW2KWarpVariants.stars(chosen.id, style.stars)
       : warpStars();
     const flash = style && style.exit === "flash"
-      ? '<ellipse data-testid="warp-flash" cx="200" cy="130" rx="'
+      ? '<ellipse class="warp-flash" data-testid="warp-flash" cx="200" cy="130" rx="'
         + (22 + Number(style.plume || 12) * 0.35).toFixed(1)
         + '" ry="16" fill="' + style.flash + '" opacity="0.32"/>'
       : "";
     svg.innerHTML = field + flash
-      + '<g class="warp-ship" data-testid="warp-ship"><g data-testid="warp-body" data-model="'
+      + '<g class="warp-rig"><g class="warp-ship" data-testid="warp-ship"><g data-testid="warp-body" data-model="'
       + drawn.model + '"' + drawn.xform + ">"
-      + drawn.html + "</g></g>";
-    svg.querySelectorAll(".warp-ship, .streaks, .warp-stars").forEach((el) => {
+      + drawn.html + "</g></g></g>";
+    svg.querySelectorAll(".warp-ship, .streaks, .warp-stars, .warp-rig, .warp-flash").forEach((el) => {
       el.style.animationDuration = ms + "ms";
     });
     root.setAttribute("data-paint-ms", (performance.now() - paintAt).toFixed(2));
@@ -2302,8 +2312,10 @@
     const path = (plotted && plotted.path) || [];
     const serverPath = (plotted && plotted.server) || [];
     const cost = Number((LA("warp") || {}).turn_cost || 0);
+    const turnsLeftNow = Number((S && S.turns_remaining) || 0);
+    const warpBlocked = cost > turnsLeftNow;
     const oneWays = (S.sector.warps_out || []).filter((w) => oneWay(w));
-    const sig = JSON.stringify([hereId, serverPath, plotted && plotted.target, S.sector.warps_out, oneWays, (S.known_sectors || []).map((k) => k.id), state.awaiting, state.busy, cost, S.planet_landed]);
+    const sig = JSON.stringify([hereId, serverPath, plotted && plotted.target, S.sector.warps_out, oneWays, (S.known_sectors || []).map((k) => k.id), state.awaiting, state.busy, cost, warpBlocked, S.planet_landed]);
     if (sig === mapSig && svg.childElementCount) return;
     mapSig = sig;
     const known = {};
@@ -6769,6 +6781,8 @@
     al.className = S.alignment < 0 ? "r" : S.alignment > 0 ? "c" : "w";
     const chip = $("waitchip");
     chip.textContent = over ? "GAME OVER" : outOfTurns() ? "NO TURNS" : (state.awaiting ? "YOUR MOVE" : "WAITING");
+    chip.setAttribute("role", "status");
+    chip.setAttribute("aria-live", "assertive");
     if (over && S.game_over_panel) showEndPanel(S.game_over_panel);
     chip.className = "chip" + (state.awaiting && !outOfTurns() && !over ? "" : " idle");
     document.querySelector("[data-testid=prompt-line]").textContent = "Command [TL=" + fmt(S.turns_remaining) + "] (?=Help) :";
@@ -6781,6 +6795,26 @@
     paintShip();
     here();
     keys();
+    markCuControls();
+  }
+
+  function markCuControls() {
+    // mode=cu only. A grey control stays on the page so its title still
+    // carries the reason, and this seat cannot press it. The default cockpit
+    // keeps the click that explains the reason.
+    if (!document.body.classList.contains("cu-seat")) return;
+    document.querySelectorAll("button, a").forEach((el) => {
+      const illegal = el.classList.contains("dim");
+      if (illegal) {
+        el.setAttribute("aria-disabled", "true");
+        el.disabled = true;
+        el.dataset.cuLocked = "1";
+      } else if (el.dataset.cuLocked === "1") {
+        el.disabled = !!state.busy;
+        el.removeAttribute("aria-disabled");
+        delete el.dataset.cuLocked;
+      }
+    });
   }
 
   async function refresh() {

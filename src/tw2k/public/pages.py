@@ -536,7 +536,7 @@ def new_game(brand: str, *, error: str | None = None, values: dict[str, Any] | N
         v.setdefault("ai_cockpit_count", "1")
         v.setdefault("ai_cockpit_level", "hard")
         provider = v["ai_cockpit_provider"] if v["ai_cockpit_provider"] in (
-            "scripted", "grok", "openai", "anthropic") else "scripted"
+            "scripted", "grok", "openai", "anthropic", "custom") else "scripted"
         try:
             count_picked = str(int(v.get("ai_cockpit_count") or 1))
         except (TypeError, ValueError):
@@ -555,6 +555,7 @@ def new_game(brand: str, *, error: str | None = None, values: dict[str, Any] | N
             + _opt("grok", "Grok", provider)
             + _opt("openai", "OpenAI", provider)
             + _opt("anthropic", "Anthropic", provider)
+            + _opt("custom", "OpenAI-compatible (env)", provider)
         )
         checked = " checked" if v.get("ai_cockpit") == "on" else ""
         cockpit_fields = (
@@ -565,7 +566,10 @@ def new_game(brand: str, *, error: str | None = None, values: dict[str, Any] | N
             "Easy looks briefly and takes a weak trade. Normal trades a shorter route. "
             "Hard plays the long game, leaves a sector the screen has marked dangerous, "
             "and shops only when the days left can pay for it. "
-            "A live provider reads its key from the lobby process environment. The key is not stored and not shown.</p>"
+            "A live provider reads its key from the lobby process environment. "
+            "OpenAI-compatible reads AI_COCKPIT_BASE_URL (or TW2K_CUSTOM_BASE_URL), "
+            "AI_COCKPIT_API_KEY (or TW2K_CUSTOM_API_KEY), and the model. "
+            "The key is not stored and not shown.</p>"
             f'<label for="ai_cockpit_count">AI cockpit seats</label>'
             f'<select id="ai_cockpit_count" name="ai_cockpit_count">{counts}</select>'
             f'<label for="ai_cockpit_level">Difficulty</label>'
