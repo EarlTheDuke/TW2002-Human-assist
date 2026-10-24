@@ -11,6 +11,9 @@ KEY_ENVS = (
     "OPENAI_API_KEY",
     "ANTHROPIC_API_KEY",
     "TW2K_COCKPIT_LLM_KEY",
+    "AI_COCKPIT_API_KEY",
+    "TW2K_CUSTOM_API_KEY",
+    "TW2K_TINYBOX_API_KEY",
 )
 
 _BEARER = re.compile(r"(?i)bearer\s+[A-Za-z0-9._\-]{8,}")

@@ -46,6 +46,12 @@ PLAYBOOK = (
 
 _ATTEMPTS = 3
 
+# Preferred names first. The TinyBox lobby vars are accepted so one endpoint
+# can be pasted later. This mind still sends the screen, never a harness read.
+CUSTOM_URL_ENVS = ("AI_COCKPIT_BASE_URL", "TW2K_CUSTOM_BASE_URL")
+CUSTOM_KEY_ENVS = ("AI_COCKPIT_API_KEY", "TW2K_CUSTOM_API_KEY", "TW2K_TINYBOX_API_KEY")
+CUSTOM_MODEL_ENVS = ("AI_COCKPIT_MODEL", "TW2K_CUSTOM_MODEL")
+
 
 class ProviderError(RuntimeError):
     """A live provider could not answer. The message never includes a key."""
@@ -94,6 +100,41 @@ def _usage_from_payload(payload: dict, style: str, provider: str, model: str) ->
     )
 
 
+def _env_first(names: tuple[str, ...]) -> tuple[str, str]:
+    """The first set variable, or the preferred name and an empty value."""
+    preferred = ""
+    for name in names:
+        if not name:
+            continue
+        if not preferred:
+            preferred = name
+        value = (os.environ.get(name) or "").strip()
+        if value:
+            return name, value
+    return preferred, ""
+
+
+def chat_completions_url(raw: str) -> str:
+    """OpenAI-compatible chat URL. A full `/chat/completions` path is kept.
+
+    The address is not echoed. A username or password in the URL is refused
+    so a key cannot ride along in the base URL.
+    """
+    text = (raw or "").strip().rstrip("/")
+    if not text or any(ch.isspace() or ord(ch) < 32 for ch in text):
+        raise ProviderError("the model base URL is not an http(s) address")
+    lower = text.lower()
+    if not (lower.startswith("https://") or lower.startswith("http://")):
+        raise ProviderError("the model base URL is not an http(s) address")
+    rest = text.split("://", 1)[1]
+    host = rest.split("/", 1)[0]
+    if "@" in host:
+        raise ProviderError("the model base URL must not include a username or password")
+    if lower.endswith("/chat/completions"):
+        return text
+    return text + "/chat/completions"
+
+
 @dataclass
 class _HTTPMind:
     name: str
@@ -104,20 +145,79 @@ class _HTTPMind:
     style: str
     extra_headers: dict[str, str] = field(default_factory=dict)
     model_override: str = ""
+    url_envs: tuple[str, ...] = ()
+    key_envs: tuple[str, ...] = ()
+    model_envs: tuple[str, ...] = ()
+    base_url_override: str = ""
     last_usage: Usage | None = None
     plan_note: str = ""
 
+    def _resolved_key(self) -> tuple[str, str]:
+        names = self.key_envs or ((self.env_key,) if self.env_key else ())
+        return _env_first(names)
+
+    def _resolved_model(self) -> str:
+        picked = (self.model_override or "").strip()
+        if picked:
+            return picked
+        names = self.model_envs or ((self.model_env,) if self.model_env else ())
+        _name, value = _env_first(names)
+        if value:
+            return value
+        return (self.default_model or "").strip()
+
+    def _resolved_url(self) -> str:
+        override = (self.base_url_override or "").strip()
+        if override:
+            return chat_completions_url(override)
+        if self.url_envs:
+            _name, value = _env_first(self.url_envs)
+            if not value:
+                return ""
+            return chat_completions_url(value)
+        return self.url
+
+    def config_gap(self) -> str:
+        """Why this mind cannot call out. Empty when the call is configured.
+
+        The runner uses the sentence as a log line and plays the scripted
+        trader instead. The sentence names a variable, never a key or URL.
+        """
+        if self.url_envs or (self.base_url_override or "").strip():
+            try:
+                url = self._resolved_url()
+            except ProviderError as exc:
+                return f"{exc}, scripted fallback"
+            if not url:
+                name = self.url_envs[0] if self.url_envs else "AI_COCKPIT_BASE_URL"
+                return f"no {name}, scripted fallback"
+        key_name, key = self._resolved_key()
+        if (self.env_key or self.key_envs) and not key:
+            return f"no {key_name}, scripted fallback"
+        if self.name == "custom" and not self._resolved_model():
+            return "no AI_COCKPIT_MODEL, scripted fallback"
+        return ""
+
     def decide(self, view: TurnView) -> Action:
-        key = (os.environ.get(self.env_key) or "").strip()
+        key_name, key = self._resolved_key()
         if not key:
-            raise ProviderError(f"{self.name} needs {self.env_key} in the environment")
-        model = (self.model_override or os.environ.get(self.model_env) or self.default_model).strip()
+            raise ProviderError(f"{self.name} needs {key_name} in the environment")
+        try:
+            url = self._resolved_url()
+        except ProviderError:
+            raise
+        if not url:
+            name = self.url_envs[0] if self.url_envs else "AI_COCKPIT_BASE_URL"
+            raise ProviderError(f"{self.name} needs {name} in the environment")
+        model = self._resolved_model()
+        if not model:
+            raise ProviderError(f"{self.name} needs AI_COCKPIT_MODEL in the environment")
         errors: list[str] = []
         total = Usage(provider=self.name, model=model)
         action = Action("wait", ms=400)
         for _attempt in range(_ATTEMPTS):
             body = self._body(view, model, errors)
-            raw = _post_json(self.url, body, self._headers(key))
+            raw = _post_json(url, body, self._headers(key))
             total.add(_usage_from_payload(raw, self.style, self.name, model))
             text = _message_text(raw, self.style)
             try:
@@ -271,6 +371,25 @@ def anthropic_provider() -> _HTTPMind:
     )
 
 
+def custom_provider() -> _HTTPMind:
+    """OpenAI-compatible endpoint. Base URL, key, and model come from the environment.
+
+    ``--base-url`` and ``--model`` override the address and the model for one
+    process. The key is never taken from the command line.
+    """
+    return _HTTPMind(
+        name="custom",
+        env_key="AI_COCKPIT_API_KEY",
+        url="",
+        model_env="AI_COCKPIT_MODEL",
+        default_model="",
+        style="openai",
+        url_envs=CUSTOM_URL_ENVS,
+        key_envs=CUSTOM_KEY_ENVS,
+        model_envs=CUSTOM_MODEL_ENVS,
+    )
+
+
 class MockMind:
     """Replays canned replies through the same prompt and validation path as a live model."""
 
@@ -330,16 +449,22 @@ class MockMind:
         return action
 
 
-def resolve_provider(name: str, model: str = "", mock_script: str = "", level: str = "hard"):
-    """The named mind. An empty key falls back to the scripted trader."""
-    provider = build_provider(name, model, mock_script, level)
-    env_key = str(getattr(provider, "env_key", "") or "")
-    if env_key and not (os.environ.get(env_key) or "").strip():
-        return ScriptedTrader(level=level), f"no {env_key}, scripted fallback"
+def resolve_provider(
+    name: str, model: str = "", mock_script: str = "", level: str = "hard", base_url: str = "",
+):
+    """The named mind. A missing key or endpoint falls back to the scripted trader."""
+    provider = build_provider(name, model, mock_script, level, base_url=base_url)
+    gap = getattr(provider, "config_gap", None)
+    if callable(gap):
+        note = gap()
+        if note:
+            return ScriptedTrader(level=level), note
     return provider, ""
 
 
-def build_provider(name: str, model: str = "", mock_script: str = "", level: str = "hard"):
+def build_provider(
+    name: str, model: str = "", mock_script: str = "", level: str = "hard", base_url: str = "",
+):
     key = (name or "scripted").strip().lower()
     if key == "scripted":
         return ScriptedTrader(level=level)
@@ -351,7 +476,12 @@ def build_provider(name: str, model: str = "", mock_script: str = "", level: str
         mind = openai_provider()
     elif key == "anthropic":
         mind = anthropic_provider()
+    elif key in ("custom", "compatible", "openai-compatible"):
+        mind = custom_provider()
     else:
-        raise ProviderError("provider must be scripted, mock, grok, openai, or anthropic")
+        raise ProviderError(
+            "provider must be scripted, mock, grok, openai, anthropic, or custom"
+        )
     mind.model_override = (model or "").strip()
+    mind.base_url_override = (base_url or "").strip()
     return mind
