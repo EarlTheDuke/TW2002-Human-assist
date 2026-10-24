@@ -551,7 +551,7 @@ EVENT_FACTS: dict[EventKind, tuple[str, ...]] = {
     EventKind.FED_RESPONSE: ("reason", "fed"),
     EventKind.FEDERATION_HALL: ("listed", "ranked"),
     EventKind.CIM_REPORT: ("query", "sectors", "ports", "route"),
-    EventKind.UG_RENAME: ("old_name", "name", "cost"),
+    EventKind.UG_RENAME: ("old_name", "name", "cost", "experience", "deal", "lines"),
     EventKind.FED_TOW: ("from", "to", "reason"),
     EventKind.FED_ZYRAIN: ("fed", "sector"),
     EventKind.FED_REPOSSESS: ("reason", "victim"),

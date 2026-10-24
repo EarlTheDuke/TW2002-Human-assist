@@ -357,7 +357,7 @@ Keys: in the Underground, change the trader's name.
 
 Read: credits taken, and whether the price moves with experience.
 
-Settles: a name-change price, only if the screen prints one. `UG_NAME_CHANGE` is false until then.
+Settles: a higher-experience price, only if the screen prints one. Experience 1 is 100 credits (`name-change.txt`, `UG_NAME_UNKNOWN_COST`). `UG_NAME_MODE` stays legacy until v311. `UG_NAME_CHANGE` stays false.
 
 ### Tri-Cron
 
