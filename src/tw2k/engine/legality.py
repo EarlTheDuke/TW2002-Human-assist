@@ -1117,6 +1117,10 @@ def legal_actions(universe: Universe, player_id: str) -> list[LegalAction]:
     # dump_planet_cargo: ship cargo (incl. colonists) -> planet.
     cargo_have = {c.value: int(n) for c, n in (player.ship.cargo or {}).items() if int(n) > 0}
     dump_max = dict(cargo_have)
+    # A hold of people that is not a whole thousand cannot land on a handbook
+    # world. Zeroing that qty is not the class cap: the planet may still have room.
+    colonist_misaligned = False
+    other_capped = False
     if owned_landed and K.planet_limits_on():
         total_col = sum(int(n) for n in landed_planet.colonists.values())
         pools = {c.value: int(n) for c, n in landed_planet.colonists.items()}
@@ -1126,7 +1130,10 @@ def legal_actions(universe: Universe, player_id: str) -> list[LegalAction]:
                 room = col_room
                 if K.colonist_handbook_transfer(landed_planet.class_id):
                     per = int(K.colonists_per_hold())
-                    have = have - (have % per)
+                    aligned = have - (have % per)
+                    if have > 0 and aligned <= 0 and (room is None or int(room) > 0):
+                        colonist_misaligned = True
+                    have = aligned
                     if room is not None:
                         room = int(room) * per
                 elif room is not None and K.class_m_transfer_on(landed_planet.class_id):
@@ -1134,6 +1141,8 @@ def legal_actions(universe: Universe, player_id: str) -> list[LegalAction]:
             else:
                 held = int(landed_planet.stockpile.get(Commodity(name), 0))
                 room = K.planet_stock_room(landed_planet.class_id.value, name, held)
+                if have > 0 and room is not None and int(room) <= 0:
+                    other_capped = True
             if room is not None:
                 dump_max[name] = min(have, int(room))
             elif name == Commodity.COLONISTS.value and K.colonist_handbook_transfer(landed_planet.class_id):
@@ -1143,6 +1152,8 @@ def legal_actions(universe: Universe, player_id: str) -> list[LegalAction]:
         reason = owned_reason
     elif not cargo_have:
         reason = "holds are empty"
+    elif not dump_max and colonist_misaligned and not other_capped:
+        reason = K.COLONIST_MOVE_BY_THOUSAND
     elif not dump_max:
         reason = "planet is at its class cap"
     else:
@@ -1157,6 +1168,7 @@ def legal_actions(universe: Universe, player_id: str) -> list[LegalAction]:
     ship_cols = int((player.ship.cargo or {}).get(Commodity.COLONISTS, 0) or 0)
     pools_have = ({c.value: int(n) for c, n in landed_planet.colonists.items() if int(n) > 0} if owned_landed else {})
     ship_room = ship_cols
+    colonist_misaligned = False
     if owned_landed and ship_cols > 0 and K.planet_limits_on():
         total_col = sum(int(n) for n in landed_planet.colonists.values())
         pools = {c.value: int(n) for c, n in landed_planet.colonists.items()}
@@ -1171,10 +1183,16 @@ def legal_actions(universe: Universe, player_id: str) -> list[LegalAction]:
             ship_room = min(ship_cols, cap)
     if owned_landed and ship_room > 0 and K.colonist_handbook_transfer(landed_planet.class_id):
         per = int(K.colonists_per_hold())
-        ship_room = ship_room - (ship_room % per)
+        aligned = ship_room - (ship_room % per)
+        # ship_room was still positive, so the planet has room. The hold is short of a thousand.
+        if aligned <= 0:
+            colonist_misaligned = True
+        ship_room = aligned
     from_choices = (["ship"] if ship_room > 0 else []) + sorted(pools_have)
     if owned_reason:
         reason = owned_reason
+    elif not from_choices and colonist_misaligned:
+        reason = K.COLONIST_MOVE_BY_THOUSAND
     elif not from_choices and ship_cols > 0 and ship_room <= 0:
         cap = K.planet_colonist_cap(landed_planet.class_id.value)
         reason = f"planet colonist cap is {cap}"

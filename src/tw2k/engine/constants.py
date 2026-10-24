@@ -5124,6 +5124,32 @@ def class_m_cargo_for_people(people: int) -> int:
     return amount * per // thousand
 
 
+def class_m_people_quantity_ok(people: int) -> bool:
+    """True when this many class M people are a positive whole number of thousands.
+
+    Terra live already stores people in the hold (colonists_per_hold() ==
+    CLASS_M_PEOPLE_PER_THOUSAND). The cargo round trip is then the identity,
+    so a remainder such as 75 people looks exact. The thousand is the unit.
+    """
+    amount = int(people)
+    thousand = int(CLASS_M_PEOPLE_PER_THOUSAND)
+    if amount <= 0 or thousand <= 0 or amount % thousand != 0:
+        return False
+    cargo = class_m_cargo_for_people(amount)
+    return cargo > 0 and class_m_people_for_cargo(cargo) == amount
+
+
+def class_m_cargo_quantity_ok(cargo: int) -> bool:
+    """True when this cargo count lands on class M as whole thousands of people."""
+    amount = int(cargo)
+    if amount <= 0:
+        return False
+    people = class_m_people_for_cargo(amount)
+    if not class_m_people_quantity_ok(people):
+        return False
+    return class_m_cargo_for_people(people) == amount
+
+
 def colonist_holds_for_cargo(amount: int) -> int:
     """Holds filled by this many cargo colonists. Matches Ship.cargo_used."""
     per = int(colonists_per_hold())
