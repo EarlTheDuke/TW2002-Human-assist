@@ -890,6 +890,22 @@ class ScriptedTrader:
             if offer and offer != listed and offer != typed and "unit_price" in fields:
                 self.plan_note = "offer " + str(offer)
                 return Action("type", selector='[data-n="unit_price"]', text=str(offer))
+            # NOTE 172d. After a counter the form can come back with qty blank.
+            # CONFIRM then only says "Type an amount": seed 7 clicked it 1,600
+            # times. Type the deal's amount again, or leave the form.
+            if "qty" in fields and not str(fields.get("qty") or "").strip():
+                qty = str((self.deal or {}).get("qty") or "")
+                if qty and getattr(self, "_qty_retyped", 0) < 2:
+                    self._qty_retyped = getattr(self, "_qty_retyped", 0) + 1
+                    self.plan_note = "qty " + qty
+                    return Action("type", selector='[data-n="qty"]', text=qty)
+                self.deal = None
+                self._qty_retyped = 0
+                self.plan_note = "leave the form"
+                if any(row.upper() == "ESC" for row in labels):
+                    return Action("click", label="ESC")
+                return Action("press", key="Escape")
+            self._qty_retyped = 0
             self.deal = None
             self.plan_note = "accept the port's price"
             return Action("click", label="CONFIRM")
@@ -2030,13 +2046,23 @@ class ScriptedTrader:
         # An unseen exit is allowed only when no known exit is safe. The caller
         # skips that exit when a neighbouring lane is already marked.
         if self.settled_day and known:
+            # NOTE 172d. Seed 99 bought a load at its ask, found no buyer on the
+            # map, and bounced 47 <-> 114 for nine days with an unseen exit
+            # beside it. After a few bounces with nothing traded, look further.
+            bounce = getattr(self, "_bounce", 0)
+            if fresh and bounce >= 4:
+                self._bounce = 0
+                return max(fresh, key=score)[0]
             goal = self._best_ask_sector()
             step = self._first_step(sector, goal) if goal else None
             if step is not None and any(item[0] == step for item in known):
+                self._bounce = bounce + 1 if step == self.previous else 0
                 return step
             back = [item for item in known if item[0] == self.previous]
             if back:
+                self._bounce = bounce + 1
                 return back[0][0]
+            self._bounce = 0
             return max(known, key=score)[0]
         # A threat already on the map means the next new sector can be mined.
         # Walk back onto sectors already seen. Before any threat, keep looking:
