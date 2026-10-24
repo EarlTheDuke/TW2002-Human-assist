@@ -27,7 +27,7 @@ n97-ship-rename,SHIP_RENAME_COST; SHIP_RENAME_NAME_MAX,"5000 credits, 30 charact
 n110-computer-b,"none, cockpit key, not an engine constant","Under the v3.11 profile, Computer B is Begin Self Destruct. N aborts. Y reuses the existing self-destruct. < stays the previous-sector key. A legacy Computer menu still uses B for backtrack",,,,,"Computer menu B"
 n112-shield-price,"a shield price, only if the screen prints one",no saved unit price. The flat 10 stays. The fighter wave is 160 to 239,,,,,Shield unit price
 n112-ship-odds,docs/plans/ship-odds-exchange-v1.md,already queued under NOTE 96. No new switch,,,,,Ship-odds loss split
-n112-attack-turns,TURN_COST attack,an attack spends 5 turns,,,,,Attack turn cost
+n112-attack-turns,ATTACK_TURN_MODE,stored attack spends 5; live KillTest spends 0,,,,,Attack turn cost
 n112-attacker-destroyed,no constant until a screen shows it,the attack does not destroy the attacker,,,,,Attacker destroyed by its own attack
 n112-hop-time,"a per-hull travel time, only if the screen or the editor prints one",no delay. Movement spends turns per warp,,,,,Real-time hop time
 n115-sdf-solo,none until the screen shows a solo procedure,not built. The glossary says SDF needs another corpie,,,,,"Steal-dump-flee, solo"

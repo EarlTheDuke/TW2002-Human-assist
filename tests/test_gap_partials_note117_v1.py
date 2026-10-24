@@ -212,7 +212,7 @@ def test_manual_names_the_three_switches() -> None:
 
 def test_sources_are_read_as_utf8() -> None:
     profile = (ROOT / "docs/plans/v311-profile-v1.md").read_text(encoding="utf-8")
-    assert "## The switch set (158 helpers)" in profile
+    assert "## The switch set (159 helpers)" in profile
     for name in (
         "FEDSAFE_FIGHTER_CAP_MODE",
         "fedsafe_fighter_cap_live",

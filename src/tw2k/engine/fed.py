@@ -397,7 +397,7 @@ def attack_federal(
     feds = [f for f in getattr(universe, "federals", []) or [] if f.name == fed_name]
     if not feds or int(feds[0].sector_id) != int(player.sector_id):
         return ActionResult(ok=False, error="target not in this sector")
-    cost = int(K.TURN_COST["attack"])
+    cost = int(K.attack_turn_cost())
     if player.turns_today + cost > player.turns_per_day:
         return ActionResult(ok=False, error="out of turns")
     if K.combat_tw2002() and action_args is not None:
