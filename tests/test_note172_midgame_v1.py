@@ -242,3 +242,14 @@ def test_a_rich_seat_still_missing_fighters_sails_for_the_yard() -> None:
     t.bought.discard("fighters")
     t.credits = 46_000
     assert t._hull_trip()
+
+
+def test_a_settled_seat_stops_bouncing_between_two_seen_sectors() -> None:
+    # NOTE 172d: seed 99 bounced 47 <-> 114 for nine days beside an unseen exit.
+    t = _rich()
+    t.settled_day = 1
+    t.visited |= {47, 114}
+    t.previous = 114
+    opts = [(114, "1:114 (3t)", 3), (149, "2:149 (3t)", 3)]
+    picks = [t._explore_choice(47, opts) for _ in range(6)]
+    assert 149 in picks
