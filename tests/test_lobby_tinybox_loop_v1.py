@@ -64,7 +64,7 @@ def test_land_then_liftoff_is_refused_once(fake, caplog) -> None:
     b = _budget()
     with caplog.at_level(logging.INFO, logger="tw2k.lobby.tinybox"):
         assert b(fake, _LANDED, None)[0] == "land_planet"
-        assert b(fake, _LANDED, None) is None  # immediate reversal: heuristic plays
+        assert b(fake, _LANDED, None)[0] == "wait"  # immediate reversal: the seat waits
         assert b.reversals == 1 and not b.lasting_fallback
         assert "reversal" in caplog.text
         assert b(fake, _LANDED, None)[0] == "liftoff"  # asked again later: allowed
@@ -74,7 +74,7 @@ def test_liftoff_then_land_is_refused_and_other_moves_pass(fake) -> None:
     fake.script = ["liftoff", "land_planet", "warp", "land_planet"]
     b = _budget()
     assert b(fake, _LANDED, None)[0] == "liftoff"
-    assert b(fake, _LANDED, None) is None
+    assert b(fake, _LANDED, None)[0] == "wait"
     assert b(fake, _LANDED, None)[0] == "warp"
     assert b(fake, _LANDED, None)[0] == "land_planet"  # not a reversal after a warp
     assert b.reversals == 1
@@ -105,5 +105,34 @@ def test_model_sees_the_refusal_on_the_wire(fake) -> None:
     b(fake, _LANDED, None)  # refused
     b(fake, _LANDED, None)
     last = fake.prompts[-1]["my_last_moves"]
-    assert last[-1]["kind"] is None and "refused liftoff" in last[-1]["note"]
+    assert last[-2]["kind"] is None and "refused liftoff" in last[-2]["note"]
+    assert last[-1]["kind"] == "wait" and last[-1]["by"] == "seat"
     assert "do not land again" in fake.system[0]
+
+
+def test_refused_reversal_plays_a_planet_action_when_legal(fake) -> None:
+    obs = dict(_LANDED, legal_actions=[*_LANDED["legal_actions"],
+        {"kind": "build_citadel", "legal": True, "params": {"planet_id": {"choices": [7]}}}])
+    fake.script = ["land_planet", "liftoff"]
+    b = _budget()
+    b(fake, obs, None)
+    assert b(fake, obs, None) == ("build_citadel", {"planet_id": 7}, "refused land/liftoff flip: planet work instead")
+
+
+def test_unfillable_planet_action_falls_to_wait_and_none() -> None:
+    obs = {"legal_actions": [{"kind": "assign_colonists", "legal": True, "params": {"n": {"min": 1}}},
+                             {"kind": "wait", "legal": True}]}
+    assert TB.substitute_move(obs)[0] == "wait"
+    assert TB.substitute_move({"legal_actions": [{"kind": "warp", "legal": True}]}) is None
+
+
+def test_code_player_moves_are_recorded(fake) -> None:
+    fake.script = ["land_planet"]
+    b = _budget()
+    picked = b(fake, _LANDED, None)
+    b.record(_LANDED, picked[0], picked[1])  # model's own move: not duplicated
+    assert [h["kind"] for h in b.history] == ["land_planet"]
+    b.record(_LANDED, "liftoff", {})  # code player lifted off
+    assert b.history[-1] == {"day": 2, "sector": 5, "kind": "liftoff", "args": {}, "by": "code"}
+    fake.script = ["land_planet"]
+    assert b(fake, _LANDED, None)[0] == "wait"  # re-land after a code liftoff is refused too

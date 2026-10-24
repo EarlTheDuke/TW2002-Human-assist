@@ -254,6 +254,38 @@ def is_reversal(history: list[dict[str, Any]], kind: str, sector: Any) -> bool:
     return last.get("sector") == sector
 
 
+PLANET_KINDS = ("build_citadel", "assign_colonists", "deposit_treasury", "dump_planet_cargo",
+                "withdraw_treasury", "fighters")
+
+
+def _fill(params: dict[str, Any]) -> dict[str, Any] | None:
+    args: dict[str, Any] = {}
+    for name, spec in (params or {}).items():
+        spec = spec if isinstance(spec, dict) else {}
+        if spec.get("choices"):
+            args[name] = spec["choices"][0]
+        elif spec.get("max") is not None and float(spec.get("max") or 0) > 0:
+            args[name] = spec["max"]
+        elif spec.get("optional") or spec.get("default") is not None:
+            continue
+        else:
+            return None
+    return args
+
+
+def substitute_move(obs: dict[str, Any]) -> tuple[str, dict[str, Any], str] | None:
+    """A legal planet action with fillable args, else ``wait``, else None (code player)."""
+    rows = {str(r.get("kind")): r for r in obs.get("legal_actions") or [] if r.get("legal")}
+    for kind in PLANET_KINDS:
+        if kind in rows:
+            args = _fill(rows[kind].get("params") or {})
+            if args is not None:
+                return kind, args, "refused land/liftoff flip: planet work instead"
+    if "wait" in rows:
+        return "wait", {}, "refused land/liftoff flip: wait"
+    return None
+
+
 def _text(payload: dict[str, Any]) -> str:
     choices = payload.get("choices") or []
     if not choices:
@@ -348,6 +380,7 @@ class TinyboxSeatBudget:
         self.fallback_turns = 0
         self.timeouts = 0
         self.reversals = 0
+        self._returned: tuple | None = None
         self.stamps: deque[float] = deque()
         self.history: list[dict[str, Any]] = []
         self.lasting_fallback = False
@@ -368,6 +401,7 @@ class TinyboxSeatBudget:
                  self.gid, self.seat, self.model, reason)
 
     def __call__(self, key: str, obs: dict, cockpit: dict | None):
+        self._returned = None
         if self.lasting_fallback:
             return None
         now = time.monotonic()
@@ -407,18 +441,39 @@ class TinyboxSeatBudget:
         self.errors = 0
         sector = (obs.get("sector") or {}).get("id")
         if is_reversal(self.history, picked[0], sector) and len(legal - {picked[0]}) > 0:
-            # Land-then-liftoff (or liftoff-then-land) with nothing between: refuse once,
-            # the heuristic plays this turn, and the marker lets the next pick through.
+            # Land-then-liftoff (or liftoff-then-land) with nothing between: refuse it and play a
+            # planet action (or wait) here, not the code player, which tends to make the same flip.
             self.reversals += 1
+            prev = self.history[-1]["kind"]
+            sub = substitute_move(obs)
+            log.info("ai seat game=%s seat=%s model=%s refused immediate %s -> %s reversal; playing %s",
+                     self.gid, self.seat, self.model, prev, picked[0], sub[0] if sub else "heuristic")
             self.history.append({"day": obs.get("day"), "sector": sector, "kind": None,
-                                 "note": f"refused {picked[0]} right after {self.history[-1]['kind']}"})
+                                 "note": f"refused {picked[0]} right after {prev}"})
+            if sub is None:
+                del self.history[:-12]
+                self._returned = None
+                return None
+            self.history.append({"day": obs.get("day"), "sector": sector, "kind": sub[0],
+                                 "args": sub[1], "by": "seat"})
             del self.history[:-12]
-            self._skip(f"refused immediate {self.history[-2]['kind']} -> {picked[0]} reversal")
-            return None
+            self._returned = sub
+            return sub
+        self._returned = picked
         self.history.append({"day": obs.get("day"), "sector": sector,
                              "kind": picked[0], "args": picked[1]})
         del self.history[:-12]
         return picked
+
+    def record(self, obs: dict, kind: str, args: dict | None = None) -> None:
+        """The move the seat actually posted. Code-player turns go into the history too."""
+        mine = self._returned
+        self._returned = None
+        if mine is not None and mine[0] == kind:
+            return
+        self.history.append({"day": obs.get("day"), "sector": (obs.get("sector") or {}).get("id"),
+                             "kind": kind, "args": args or {}, "by": "code"})
+        del self.history[:-12]
 
     def _latency(self, started: float, outcome: str) -> None:
         log.info("ai seat game=%s seat=%s model=%s call %.1fs %s",
