@@ -67,6 +67,7 @@ class TurnView:
     step: int
     screen: dict = field(default_factory=dict)
     history: list = field(default_factory=list)
+    directive_text: str = ""
 
 
 def system_prompt(manual_excerpt: str) -> str:
@@ -300,10 +301,13 @@ def _prompt(view: TurnView, errors: list[str] | None = None) -> str:
     complaint = ""
     if errors:
         complaint = "\nThe last reply was not a visible action: " + "; ".join(errors[-3:]) + "\nChoose a label from the list.\n"
+    directives = str(getattr(view, "directive_text", "") or "").strip()
+    goals = f"{directives}\n\n" if directives else ""
     return (
         f"Step {view.step}. {manual}\n"
         f"{recent}"
         f"{complaint}"
+        f"{goals}"
         f"Visible controls:\n{labels}\n\n"
         f"Visible text:\n{view.visible_text[:8000]}"
     )

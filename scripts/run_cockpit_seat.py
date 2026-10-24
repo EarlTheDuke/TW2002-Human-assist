@@ -30,6 +30,10 @@ def _parse(argv: list[str] | None) -> argparse.Namespace:
                         help="game days to play, counted from the day the seat starts on")
     parser.add_argument("--out", default="", help="write the run report JSON here")
     parser.add_argument("--idle-s", type=float, default=600.0)
+    parser.add_argument("--directives", default="",
+                        help="per-seat directive inbox, for example runs/directives with P3.json inside")
+    parser.add_argument("--stuck-after", type=int, default=6,
+                        help="acted turns with no progress before a recovery directive")
     return parser.parse_args(argv)
 
 
@@ -65,7 +69,11 @@ def main(argv: list[str] | None = None) -> int:
     async def _go() -> dict:
         timeout = httpx.Timeout(30.0, connect=10.0)
         async with httpx.AsyncClient(base_url=args.base_url.rstrip("/"), timeout=timeout) as client:
-            return await run_http(client, seat, token, int(args.days), idle_s=float(args.idle_s))
+            return await run_http(
+                client, seat, token, int(args.days), idle_s=float(args.idle_s),
+                directives=str(args.directives or "") or None,
+                stuck_after=int(args.stuck_after),
+            )
 
     report = asyncio.run(_go())
     if args.out:
