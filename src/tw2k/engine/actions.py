@@ -105,6 +105,8 @@ class ActionKind(str, Enum):
     FEDERATION_HALL = "federation_hall"  # NOTE 162 GAP 1.8
     UNDERGROUND_RENAME = "underground_rename"  # NOTE 162 GAP 11.7
     CIM = "cim"  # NOTE 162 GAP 14.1
+    LIBRARY = "library"  # NOTE 129 GAP 1.8. Off while STARDOCK_DOORS_MODE is legacy.
+    SINGLES_BAR = "singles_bar"  # NOTE 129 GAP 1.8. Not on the where-to list. No charge.
 
 
 class Action(BaseModel):

@@ -5219,6 +5219,7 @@ V311_PROFILE_HELPERS: dict[str, tuple[str, str]] = {
         "Follow-up to row 223: quotes follow the economy3 Merf table and a port restocks 10 percent of its maximum a day (economy2)",
     ),
     # NOTE 129 rows 225-228. Captures: docs/playtests/twgs-live/.
+    # Row 233 is the Libram and singles-bar door.
     "shield_point_live": (
         "SHIELD_POINT_MODE",
         "NOTE 129 GAP 1.8: Class 0 and StarDock shields are 131 credits a point",
@@ -5254,7 +5255,12 @@ V311_PROFILE_HELPERS: dict[str, tuple[str, str]] = {
         "GRIMY_TIP_MODE",
         "NOTE 129: a StarDock tip is 23 credits and the paid underground password is 160",
     ),
+    "stardock_doors_live": (
+        "STARDOCK_DOORS_MODE",
+        "NOTE 129 GAP 1.8: the where-to list includes the Libram, and B opens the singles bar without a charge",
+    ),
 }
+
 
 # NOTE 151 GAP 12.4. Cabal twgs.html and the modern manual print 30 days until an
 # inactive user is deleted. Gypsy's v2.03 sample prints 7. Off, nobody is deleted
@@ -6281,6 +6287,19 @@ FEDERATION_HALL_MODE = "legacy"  # "legacy" | "v311"
 def federation_hall_live() -> bool:
     """True when StarDock opens Federation Hall and the hardware shop screen."""
     return FEDERATION_HALL_MODE == "v311" or v311_profile()
+
+
+# NOTE 129 GAP 1.8, row 233. Live TWGS 3.34b lists the Libram Universitatus on
+# the StarDock where-to menu. B is not on that list and asks the singles-bar
+# question. The visit that lowered a balance named no item and printed no
+# price, so this door does not take credits. Stored default stays legacy.
+# "1" does not turn this on. V311_PROFILE "v311" does.
+STARDOCK_DOORS_MODE = "legacy"  # "legacy" | "v311"
+
+
+def stardock_doors_live() -> bool:
+    """True when StarDock lists the Libram and B opens the singles bar."""
+    return STARDOCK_DOORS_MODE == "v311" or v311_profile()
 
 
 # NOTE 162 GAP 10.6, row 183. EIS already moves credits, fighters, shields, and
