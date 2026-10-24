@@ -168,6 +168,8 @@ class GameForm:
     ai_brain: str = "heuristic"
     ai_key: str = field(default="", repr=False)
     ai_endpoint: str = field(default="", repr=False)
+    # TinyBox (server key): one model per AI seat, in seat order. Settings only when chosen.
+    ai_models: list[str] = field(default_factory=list)
     # NOTE 128. Off unless AI_COCKPIT_SEAT_MODE is on and the form asked for the seat.
     # The provider and the model are stored. A key is never a form field here.
     ai_cockpit: bool = False
@@ -203,7 +205,9 @@ class GameForm:
             out["hold_until_human"] = True
         if self.ai_opponents:
             out["ai_opponents"] = int(self.ai_opponents)
-            out["ai_brain"] = self.ai_brain if self.ai_brain in ("heuristic", "llm") else "heuristic"
+            out["ai_brain"] = self.ai_brain if self.ai_brain in AI_BRAINS else "heuristic"
+            if out["ai_brain"] == "tinybox" and self.ai_models:
+                out["ai_models"] = list(self.ai_models)
         if self.ai_cockpit:
             out["ai_cockpit"] = True
             out["ai_cockpit_provider"] = self.ai_cockpit_provider
@@ -251,7 +255,8 @@ _ALLOWED = {"name", "rules", "universe_size", "max_days", "turns_per_day", "star
 _TURNS_MIN = 50
 _TURNS_MAX = 5_000
 # Accepted only while LOBBY_AI_SEAT_MODE is on. Off, these stay unknown fields.
-_AI_FIELDS = {"ai_opponents", "ai_brain", "ai_key", "ai_endpoint"}
+_AI_FIELDS = {"ai_opponents", "ai_brain", "ai_key", "ai_endpoint", "ai_models"}
+AI_BRAINS = ("heuristic", "llm", "tinybox")
 # Accepted only while AI_COCKPIT_SEAT_MODE is on. Off, these stay unknown fields.
 _COCKPIT_FIELDS = {
     "ai_cockpit", "ai_cockpit_provider", "ai_cockpit_model", "ai_cockpit_count", "ai_cockpit_level",
@@ -262,7 +267,17 @@ _COCKPIT_LEVELS = {"easy", "normal", "hard"}
 
 def ai_label(brain: str) -> str:
     """The name a human sees for an AI seat. Rankings, the end screen and the trader list use it."""
+    if brain == "tinybox":
+        return "AI (TinyBox)"
     return "AI (LLM)" if brain == "llm" else "AI (heuristic)"
+
+
+def ai_seat_label(brain: str, model: str = "") -> str:
+    """Per-seat name. A TinyBox seat names its model, e.g. ``AI (qwen3.8)``."""
+    if brain == "tinybox" and model:
+        short = model.split("/")[-1].split(":")[0][:24]
+        return f"AI ({short})"
+    return ai_label(brain)
 
 
 def _allowed_fields() -> set[str]:
@@ -472,12 +487,23 @@ def parse_game_form(data: dict, presets: dict[str, int] | None = None) -> GameFo
     brain = "heuristic"
     ai_key = ""
     ai_endpoint = ""
+    ai_models: list[str] = []
     if K.lobby_ai_seat_on():
         ai_n = _as_int(data, "ai_opponents", 0, 0, 4)
         brain = str(data.get("ai_brain", "heuristic")).strip().lower() or "heuristic"
-        if brain not in ("heuristic", "llm"):
-            raise FormError("AI brain must be heuristic or llm")
-        if ai_n and brain == "llm":
+        if brain not in AI_BRAINS:
+            raise FormError("AI brain must be heuristic, llm or tinybox")
+        if ai_n and brain == "tinybox":
+            from . import tinybox as _tb
+
+            if not _tb.ready():
+                raise FormError("TinyBox is not set up on this lobby. Start it with --env-file pointing at "
+                                "the .env that has TW2K_CUSTOM_BASE_URL and the key.")
+            try:
+                ai_models = _tb.parse_models(str(data.get("ai_models") or _tb.default_models_text()), ai_n)
+            except ValueError as exc:
+                raise FormError(str(exc)) from None
+        elif ai_n and brain == "llm":
             # Read into locals the caller moves into process memory. Not into settings().
             ai_endpoint = _ai_endpoint(data.get("ai_endpoint"))
             ai_key = _ai_key(data.get("ai_key"))
@@ -517,6 +543,7 @@ def parse_game_form(data: dict, presets: dict[str, int] | None = None) -> GameFo
         ai_brain=brain,
         ai_key=ai_key,
         ai_endpoint=ai_endpoint,
+        ai_models=ai_models,
         ai_cockpit=cockpit,
         ai_cockpit_provider=cockpit_provider,
         ai_cockpit_model=cockpit_model,

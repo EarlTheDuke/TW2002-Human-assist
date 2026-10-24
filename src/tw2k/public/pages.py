@@ -95,7 +95,7 @@ def ai_call_estimate(turns_per_day: int, opponents: int, brain: str) -> str:
 
     UNVERIFIED: one model call per turn per LLM seat. Heuristic is zero.
     """
-    if brain != "llm" or int(opponents) <= 0:
+    if brain not in ("llm", "tinybox") or int(opponents) <= 0:
         return "Estimate: 0 model calls per game day with the heuristic brain."
     calls = max(0, int(turns_per_day)) * int(opponents) * int(K.LOBBY_AI_CALLS_PER_TURN)
     seats = int(opponents)
@@ -433,13 +433,20 @@ def new_game(brand: str, *, error: str | None = None, values: dict[str, Any] | N
             ai_n = int(v["ai_opponents"])
         except (TypeError, ValueError):
             ai_n = 0
-        brain = v["ai_brain"] if v["ai_brain"] in ("heuristic", "llm") else "heuristic"
+        brain = v["ai_brain"] if v["ai_brain"] in ("heuristic", "llm", "tinybox") else "heuristic"
         ai_opts = "".join(_opt(str(n), str(n), v["ai_opponents"]) for n in range(5))
         brains = (
             _opt("heuristic", "Heuristic (free)", brain)
             + _opt("llm", "LLM (your key)", brain)
+            + _opt("tinybox", "TinyBox (server key)", brain)
         )
         hidden = "" if brain == "llm" else " hidden"
+        from . import tinybox as _tb
+
+        tb_hidden = "" if brain == "tinybox" else " hidden"
+        tb_models = escape(str(v.get("ai_models") or _tb.default_models_text()))
+        tb_state = ("TinyBox is set up on this lobby." if _tb.ready() else
+                    "TinyBox is not set up: start the lobby with --env-file pointing at your .env.")
         estimate = escape(ai_call_estimate(hint_turns, ai_n, brain))
         per = int(K.LOBBY_AI_CALLS_PER_TURN)
         ai_fields = (
@@ -451,6 +458,12 @@ def new_game(brand: str, *, error: str | None = None, values: dict[str, Any] | N
             '<label for="ai_key">API key</label>'
             '<input id="ai_key" name="ai_key" type="password" autocomplete="off" value="">'
             '<p class="note">Your key stays in memory for this game only. It is not stored, and it is not shown again.</p>'
+            "</div>"
+            f'<div id="aiModelBox"{tb_hidden}>'
+            '<label for="ai_models">Model for each AI seat</label>'
+            f'<input id="ai_models" name="ai_models" type="text" autocomplete="off" value="{tb_models}">'
+            '<p class="note">One model per seat in order, e.g. qwen3.8:latest x2, kimi-k2.6 x2. '
+            f'The lobby uses its own TinyBox key. {escape(tb_state)}</p>'
             "</div>"
             f'<p class="note" id="aiCallHint">{estimate}</p>'
         )
@@ -469,9 +482,11 @@ def new_game(brand: str, *, error: str | None = None, values: dict[str, Any] | N
             "  const brain = document.getElementById('ai_brain').value;\n"
             "  const box = document.getElementById('aiKeyBox');\n"
             "  if (box) box.hidden = brain !== 'llm';\n"
+            "  const mbox = document.getElementById('aiModelBox');\n"
+            "  if (mbox) mbox.hidden = brain !== 'tinybox';\n"
             "  const hint = document.getElementById('aiCallHint');\n"
             "  if (!hint) return;\n"
-            "  if (brain !== 'llm' || seats < 1) {\n"
+            "  if ((brain !== 'llm' && brain !== 'tinybox') || seats < 1) {\n"
             "    hint.textContent = 'Estimate: 0 model calls per game day with the heuristic brain.';\n"
             "    return;\n"
             "  }\n"
