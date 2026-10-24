@@ -270,6 +270,12 @@ class CockpitSeat:
                     obs, cockpit, brain, lobby=lobby, llm_key=llm_key, llm_ask=llm_ask,
                     fallback_line=fallback_line, announced=announced,
                 )
+            record = getattr(llm_ask, "record", None)
+            if callable(record):
+                try:
+                    record(obs, kind, args)
+                except Exception:  # noqa: BLE001 - history is advisory
+                    pass
             day = int(obs.get("day") or 0)
             row = table[day]
             report["posts"] += 1
