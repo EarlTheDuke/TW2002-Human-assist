@@ -730,8 +730,9 @@ class Player(BaseModel):
     # Deaths this game-day toward Deaths Per Day. Omitted while 0.
     deaths_today: int = 0
     deaths_today_day: int = 0
-    # Sector of the open port visit. Cleared when the player leaves.
-    # A second trade here costs no turn. Not a hidden port value.
+    # GAP 2.7. Sector of the open port visit. A later trade here costs no
+    # turn. Cleared by end_port_visit when the player leaves the sector,
+    # and when a refused haggle closes the dock. Not a hidden port value.
     port_visit_sector_id: int | None = None
     # haggle-detail-v1. The port's open counter, or None. Omitted while None.
     haggle_counter: dict | None = None
@@ -777,7 +778,13 @@ class Player(BaseModel):
     tavern_last_trace: dict[str, Any] | None = None
 
     def end_port_visit(self) -> None:
-        """A port visit ends when this player leaves the sector."""
+        """Close the port visit.
+
+        GAP 2.7. Leaving the sector does this (warp, transwarp, transport,
+        retreat, flee, tow, a fed tow, boarding another ship, death). A
+        refused haggle does this too, while the ship is still in the sector.
+        There is no separate undock command.
+        """
         self.port_visit_sector_id = None
         self.haggle_counter = None
     corp_ticker: str | None = None

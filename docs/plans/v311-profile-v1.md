@@ -198,7 +198,8 @@ MASTER_PLAN no, no-op, or hold, with no ruling in NOTE 57. The profile does not 
 | switch | MASTER_PLAN | why |
 |---|---|---|
 | `PORT_OPEN_STOCK_MODE` | no | superseded by `PORT_STOCK_FIDELITY_MODE` |
-| `TRADE_TURN_MODE`, `WARP_COST_MODE` | no-op | rule already on |
+| `TRADE_TURN_MODE` | no-op | GAP 2.7 is already the stored rule. The first trade of a visit costs 1 and later trades in that sector cost 0. The October 3 line that said 3 per trade is stale. Row 227 stays open: a new switch would either do nothing or put 3 back and move stored games. `docs/playtests/ports/TURNS_REGEN.md` |
+| `WARP_COST_MODE` | no-op | rule already on |
 | `ALIGNMENT_MODE`, `RANK_TITLES_MODE`, `COMBAT_ODDS_MODE`, `CORP_RULES_V2_MODE`, `COCKPIT_PARITY_MODE` | no-op | legacy and live are the same |
 | `PLANET_CLASS_MODE` | no | v3.11 genesis class is random |
 | `BANK_LIVE_MODE` | no | v3.11 docs give the ~500,000 cap |

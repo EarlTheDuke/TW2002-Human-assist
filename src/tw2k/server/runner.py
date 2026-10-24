@@ -98,7 +98,8 @@ def _is_day_done(player) -> bool:
     """Player has no meaningful actions left for the day.
 
     Classic TW2002 deducts 3 turns per warp for most ships. If a player has
-    `turns_remaining < ship.turns_per_warp` AND can't afford a trade (cost=3),
+    `turns_remaining < ship.turns_per_warp` AND can't afford a trade (GAP 2.7:
+    the first deal of a visit costs 1, a later deal in that sector costs 0),
     they can only wait/scan — treat as day-done so the server doesn't burn
     LLM calls on an agent that can't usefully move. This is the safety net
     that prevents an infinite out-of-turns loop (bug: D1·56..D1·91 flooding).

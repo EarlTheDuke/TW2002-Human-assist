@@ -254,9 +254,13 @@ def _live_haggle(player: Player, commodity: Commodity, side: str, listed: int, o
 def trade_turn_cost(player: Player) -> int:
     """Turns a successful trade spends right now.
 
-    The first trade of a visit costs the dock turn. Further trades in that
-    sector cost none. The visit ends when the player leaves the sector.
-    legacy and live both use that rule, so the pin stays put.
+    GAP 2.7. Docking spends 1 turn (`PORT_DOCK_TURN_COST`). Further trades
+    in the same visit spend 0. A visit is `port_visit_sector_id` equal to
+    this sector. It ends when `end_port_visit` runs, which is when the
+    player leaves the sector. The saved Bible prints "One turn deducted"
+    and does not print a second trade cost, so this does not invent one.
+    See docs/playtests/ports/TURNS_REGEN.md. Legacy and live both use this
+    rule. A stored game does not charge 3 turns per trade.
     """
     if player.port_visit_sector_id == player.sector_id and K.trade_visit_free():
         return 0
