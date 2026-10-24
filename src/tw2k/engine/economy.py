@@ -203,13 +203,16 @@ def _live_haggle(player: Player, commodity: Commodity, side: str, listed: int, o
         if side == "sell" and offered * 100 <= base * 112 and not K.haggle_rounds_live():
             player.haggle_counter = None
             return "accept", offered
+        if side == "buy" and offered >= counter:
+            # Playtest 4: a bid at or above the port's counter closes, under
+            # rounds too, mirroring the sell side above (TWGS takes its own
+            # counter).
+            player.haggle_counter = None
+            return "accept", offered
         if K.haggle_rounds_live():
             # Playtest 3: the second ask closes at or under the port's counter.
             player.haggle_counter = None
             return "end", "the port lost patience"
-        if side == "buy" and offered >= counter:
-            player.haggle_counter = None
-            return "accept", offered
         listed = base
     if side == "sell":
         if offered * 100 <= listed * 103:
