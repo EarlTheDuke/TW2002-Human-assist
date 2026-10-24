@@ -4632,7 +4632,7 @@ V311_PROFILE_HELPERS: dict[str, tuple[str, str]] = {
     ),
     "death_delay_live": (
         "DEATH_DELAY_MODE",
-        "NOTE 79 CMB-n: a pod can be locked out for N midnights",
+        "NOTE 79 CMB-n: Death Delay is Yes/No. Past Deaths Per Day, the pilot waits until the next day",
     ),
     "treasury_cap_live": (
         "TREASURY_CAP_MODE",
@@ -5449,33 +5449,52 @@ def photon_follow_damp_live() -> bool:
     return PHOTON_FOLLOW_DAMP_MODE == "live" or tw2002_live_profile() or v311_profile()
 
 
-# v311-combat-gaps-v1 (NOTE 79) CMB-n, row 93. S7 #16: death delay 0 lets the
-# pod fly at once. 1 or more keeps the pilot out until that many midnights
-# pass. A pod destroyed while that sentence is running has the same number
-# added again. A flying pod does not start a new sentence. UNVERIFIED, searched:
-# S7_softdocs_slice-10.txt #16 lines 353-378 (the extra days apply while knocked
-# out; 0, 1 and 2 are examples and no ceiling is printed); cabal twgs.html
-# line 253 "<7> Death Delay : Yes" (a sample flag, not a maximum);
-# OldBBS_TW.faq.txt and OldBBS_TW2002V8.faq.txt #12; TWGS_v2_Revision_History.html
-# (a sub-setting for deaths before #SD#, not the day maximum). Stored default
-# stays legacy, which ignores GameConfig.death_delay. Queued in
-# docs/plans/live-twgs-test-queue-v1.md.
+# v311-combat-gaps-v1 (NOTE 79) CMB-n, row 93. TWGS v3 TEDIT Death Delay is
+# Yes/No, not S7 #16's day count. Prompt "Enable Death Delay?". Default Yes
+# (TWSTATS Death Delay=True on Ven GameA / Slot A, 24 Oct 2026). On, a death
+# past Deaths Per Day waits until the next midnight. Default Deaths Per Day
+# is 0, so the first death waits. Off, the pilot re-enters immediately and
+# that death does not take the day's turns. REVISION.TXT: Gold is what can
+# turn it off. S7's 0/1/2/N sentence is the older SoftDocs model and is not
+# this field. Deaths Per Day maximum is UNVERIFIED, searched: tedit.exe
+# strings, GameA/OUTPUT/TWSTATS.TXT, and REVISION.TXT. TEDIT was not opened,
+# so no ceiling is stored. Capture: docs/playtests/twgs-live/death-delay-max.txt.
+# Stored default stays legacy, which ignores both settings.
 DEATH_DELAY_MODE = "legacy"  # "legacy" | "live"
 
 
 def death_delay_live() -> bool:
-    """True when GameConfig.death_delay locks a fresh pod out."""
+    """True when GameConfig.death_delay and deaths_per_day are read."""
     return DEATH_DELAY_MODE == "live" or tw2002_live_profile() or v311_profile()
 
 
-def death_delay_days(config) -> int:
-    """Midnights a new pod must wait. 0 when the switch is off or unset."""
+def death_delay_enabled(config) -> bool:
+    """TWGS default is Yes. None and True are on. False is off. Legacy is off."""
     if not death_delay_live():
-        return 0
+        return False
     raw = getattr(config, "death_delay", None)
+    if raw is None:
+        return True
+    return bool(raw)
+
+
+def deaths_per_day_allowance(config) -> int:
+    """Deaths that may restart before the next one waits. Default 0. No TEDIT ceiling stored."""
+    raw = getattr(config, "deaths_per_day", None)
     if raw is None:
         return 0
     return max(0, int(raw))
+
+
+def death_delay_days(config) -> int:
+    """Midnights a lock lasts once it starts. One when Death Delay is on, else zero.
+
+    S7's configurable N is not this number. The daily allowance is
+    deaths_per_day_allowance. A new day starts a new allowance.
+    """
+    if not death_delay_enabled(config):
+        return 0
+    return 1
 
 
 # v311-universe-planet-gaps-v1 (NOTE 78). Each stored default is legacy.

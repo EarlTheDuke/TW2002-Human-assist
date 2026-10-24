@@ -1,0 +1,27 @@
+Ven GameA / Slot A. 24 Oct 2026. TWGS v3 fidelity target.
+TEDIT was not opened. Slot A may lock the game, and this measurement did not type into the editor.
+Sources: tedit.exe strings, GameA\OUTPUT\TWSTATS.TXT, REVISION.TXT.
+
+Death Delay
+Prompt: Enable Death Delay?
+Kind: Yes/No. Not a day count.
+Default: Yes.
+TWSTATS: Death Delay=True.
+Help: forces a podded player out for a day. If disabled, they re-enter immediately and death does not affect turns.
+REVISION.TXT: Gold-only can disable.
+Highest accepted numeric value: none. This field has no numeric maximum.
+Refusal text: none recorded. The field is not a number.
+S7 #16 (0, 1, 2, and a day-count maximum) is the older SoftDocs model. It is not the TWGS v3 TEDIT Death Delay field.
+
+Deaths Per Day
+Prompt: How many deaths per day?
+Kind: whole number, separate from Death Delay.
+Default: 0.
+TWSTATS: Deaths Per Day=0.
+Help: when Death Delay is enabled, how many deaths are allowed each day before the next death forces a wait until the next day.
+Help example: set to 1, one death and a restart, the second death waits until the next day.
+Tried in the TEDIT GUI: not tried. 0, 1, and 2 were not typed. The largest accepted value was not measured.
+Refusal text: none recorded.
+TEDIT maximum unmeasured. BLOCKED until a spare game can open TEDIT. No ceiling was invented.
+
+Left in place: Death Delay stays Yes (TWSTATS True). Deaths Per Day stays 0. No game setting was written by this note.

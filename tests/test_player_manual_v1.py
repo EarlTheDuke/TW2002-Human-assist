@@ -149,7 +149,8 @@ def test_added_sections_follow_the_engine_and_name_v311_only_rules(monkeypatch) 
     assert f"{K.ether_probe_cost():,} credits" in live
     assert K.ether_probe_cost() == K.ETHER_PROBE_COST_LIVE
     assert "still faces the quasar" in live
-    assert "No death delay is loaded." in live
+    assert "No death delay is loaded." not in live
+    assert "Death Delay is on. Deaths Per Day is 0." in live
     assert "Bust-clear interval: The v3.11 profile turns this on. In this process it is on." in live
     assert "No interval is set, so bust records clear every day." in live
     assert "A game can set the interval to 1 or to 7." in live

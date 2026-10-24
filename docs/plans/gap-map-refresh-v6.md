@@ -239,7 +239,7 @@ Most of those are stored defaults that are already tw2002, or switches the profi
 5.10 Match-behind-flag `SPECIAL_HULL_RULES_MODE` row 105, NOTE 86. An Interdictor holds other ships, and a Tholian defending its corp planet fights at 4:1. Both need the roster switch. `combat.hull_interdict_reason`.
 5.11 Match. Surrender is a verb. `combat` challenge settle.
 5.12 Match-behind-flag `DEATH_POD_MODE` row 29. A destroyed ship becomes a pod. The clean loadout stays off. `combat._strip_ship`, `combat._destroy_ship_tw2002`.
-5.13 Match-behind-flag `DEATH_DELAY_MODE` row 93, NOTE 79. A pod can be locked out for N midnights. Legacy ignores the setting. Two pods a day and out-until-midnight are the stored death path. `REENTRY_FIGHTERS_MODE` row 180, NOTE 158, stocks the free Scout. `runner.tick_day`, `combat._destroy_ship_tw2002`.
+5.13 Match-behind-flag `DEATH_DELAY_MODE` row 93, NOTE 79. TWGS v3 Death Delay is Yes/No, not S7's N midnights. Past Deaths Per Day (default 0) the pilot waits until the next day. Legacy ignores the setting. Two pods a day and out-until-midnight are the stored death path. `REENTRY_FIGHTERS_MODE` row 180, NOTE 158, stocks the free Scout. `runner.tick_day`, `combat._destroy_ship_tw2002`.
 5.14 Match. NOTE 177: Built. A pod costs `POD_EXP_LOSS` 10% experience and no alignment; Ship Destroyed costs `SD_EXP_LOSS` and `SD_ALIGN_LOSS` 50% of both (cabal pods.html). `combat._destroy_ship_tw2002`.
 5.15 Match. Furbing another ship's holds is on. `combat._destroy_ship`.
 5.17 Match. Corbomite and disruptors fire in combat. `combat._resolve_ship_attack_tw2002`.

@@ -21,7 +21,10 @@ CONSTANTS_PY = ROOT / "src/tw2k/engine/constants.py"
 # GameConfig fields and doc paths. Not symbols on tw2k.engine.constants.
 ALLOW = {
     "GameConfig.death_delay": (
-        "Field on tw2k.engine.models.GameConfig. The queue asks for the TEDIT maximum."
+        "Yes/No on tw2k.engine.models.GameConfig. TWGS v3 has no numeric maximum."
+    ),
+    "GameConfig.deaths_per_day": (
+        "Whole-number allowance on tw2k.engine.models.GameConfig. The TEDIT maximum is unmeasured."
     ),
     "docs/plans/ship-odds-exchange-v1.md": (
         "The ship-odds ruling is this doc. No engine constant and no new switch."
@@ -108,7 +111,16 @@ def test_named_constants_exist_or_are_allow_listed() -> None:
             seen.append(token)
     assert "FERRENGI_XP_BY_HULL" in seen
     assert "GameConfig.death_delay" in seen
+    assert "GameConfig.deaths_per_day" in seen
     assert "death_delay_days" in seen
+    capture = (ROOT / "docs/playtests/twgs-live/death-delay-max.txt").read_text(encoding="utf-8")
+    assert "Enable Death Delay?" in capture
+    assert "Death Delay=True" in capture
+    assert "How many deaths per day?" in capture
+    assert "Deaths Per Day=0" in capture
+    assert "TEDIT maximum unmeasured" in capture
+    assert "BLOCKED" in capture
+    assert "S7" in capture
     assert "PLANET_COLLISION" not in seen
     assert "V311_COURSE_MAX_HOPS" in seen
 
