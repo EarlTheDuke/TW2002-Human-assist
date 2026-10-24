@@ -566,7 +566,14 @@ def _citadels(_f: dict) -> str:
     )
     return (
         "<p>A citadel is built on a planet you own. The table is colonists, fuel, organics, equipment and days "
-        f"for each class and level. The class-M fidelity rule is {_on(K.class_m_fidelity_live())}.</p>"
+        f"for each class and level. The class-M fidelity rule is {_on(K.class_m_fidelity_live())}."
+        + (
+            " On any class but M those colonists are S1 handbook thousands. "
+            "Class L level 1 is 400 (thousands)=400,000 people, not 400 people. "
+            "Terra people dumped there are divided by 1,000."
+            if K.colonist_units_live() else ""
+        )
+        + "</p>"
         + _table(("Class", "Level", "Colonists", "Fuel", "Organics", "Equipment", "Days"), rows)
         + f"<ul>{perks}</ul>"
         f"<p>The treasury pays {_n(K.PLANET_TREASURY_INTEREST_PCT)} percent a day. "

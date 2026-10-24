@@ -17,7 +17,7 @@ Checked with `V311_PROFILE` on, and again with it off. Under the profile the swi
 | Any other class | handbook thousands | those 30,000 land as 30 colonists; a remainder is refused |
 | Growth and the class cap | thousands, stored as people on class M | 30,000 thousands per product pool (90,000 thousands across fuel, organics, and equipment). Half of one pool is the growth line |
 | Production, class M | thousands, then the S1 ratio | 15,000 thousands on fuel (15,000,000 people) make 5,000 fuel. 3 thousands make 1. Ratios 3 / 7 / 13 |
-| Citadel table | thousands in S1, people on a live class M | level 1 needs 1,000 thousands = 1,000,000 people. 999 thousands cannot start it |
+| Citadel table | thousands in S1, people on a live class M | Class M level 1 needs 1,000 thousands = 1,000,000 people. Class L level 1 is S1 Colo 400, which is 400 thousands = 400,000 people, not 400 people. 399 thousands cannot start it |
 | Net worth | thousands | 30,000 people on class M, or 30 handbook colonists on another class, score 30 times the colonist price. Cargo people score the same way |
 | Planet card, citadel form, Terra form | the original label | `Colonists (1000s)` with the people count beside it |
 
@@ -27,7 +27,9 @@ No place applies a ratio or a cap to people while the citadel treats the same nu
 
 Behind `COCKPIT_LAYOUT=redesign` only. The planet card, the citadel form, and the Terra form say `Colonists (1000s)` and the people count when colonist clarity is on (the profile, or Terra live, or the colonist-unit switch, or the cockpit block). At 221 thousands the citadel sentence is:
 
-`Level 1 needs 1,000 (thousands) colonists = 1,000,000; you have 221 (thousands); about 26 more Terra trips with 30 holds`
+`Level 1 needs 1,000 (thousands)=1,000,000 people; you have 221 (thousands)=221,000 people; about 26 more Terra trips with 30 holds`
+
+Class L uses the same sentence. S1 section VII prints Colo 400 for level 1. A playtest on a class L world (Mid Eden) read that 400 as people. It is 400 handbook thousands. A Terra dump of about 31,000 people lands as about 31 thousands (`people // 1,000`) and does not meet the 400. The build dialog says `400 (thousands)=400,000 people`. Class M is unchanged: level 1 is still 1,000,000 people. No new profile row.
 
 26 is the shortfall (779 thousands) divided by a 30-hold Terra take, rounded up. The note's "about 33" is the empty-world figure (1,000 / 30). The form uses the shortfall. The 30-hold haul is the note's example, not a published trip size (UNVERIFIED).
 
