@@ -514,16 +514,6 @@ Read: the credit price.
 
 Settles: stored `PHOTON_MISSILE_COST` stays 12,000. Live GameA is 40,000 behind `photon_missile_cost` (SOURCE-CONFLICT, Ven 2026-10-24). Cabal sample is 160,000. DIFFERENT on the stored card.
 
-### Atomic detonator price
-
-item_id: n117-atomic
-
-Keys: at StarDock, buy one atomic detonator while the live hardware card is on.
-
-Read: the credit price.
-
-Settles: stored `ATOMIC_DETONATOR_COST` stays 60,000. Live GameA is 15,000 behind `atomic_detonator_cost` (SOURCE-CONFLICT, Ven 2026-10-24). DIFFERENT on the stored card.
-
 ## Group I. Class 0 and StarDock kills
 
 Only if the game can spare the ports. Do this last. One first kill serves the blow row, the first-kill row, the return-fire row, and the capture row. Do not repeat that kill for each row.

@@ -25,7 +25,7 @@ The heading counts helpers in `V311_PROFILE_HELPERS`. Row 84 is still reserved f
 | 11 | `HAGGLE_WINDOW_MODE` | `haggle_window_live` | MASTER_PLAN yes | flip with HAGGLE_LIVE_MODE; older written band, superseded by the live bands |
 | 12 | `OWN_PLANET_TURN_MODE` | `own_planet_turn_live` | MASTER_PLAN yes | REPORT2 s6: land/lift off on own planet 0 turns |
 | 13 | `TRADE_IN_MODE` | `trade_in_live` | MASTER_PLAN yes | 90% receipts seen live (REPORT2 s4); EIS ShipyardMenu trade-in |
-| 14 | `HARDWARE_PRICE_MODE` | `hardware_price_live` | MASTER_PLAN yes. Ship TransWarp Type I 50,000, Type II 80,000, upgrade 10,000 on this card (stored 12,500 / 20,000 / 9,000 stay). Photon missile 40,000 and atomic detonator 15,000 on this card (stored 12,000 and 60,000 stay). No new helper. | live shop card (REPORT2 s4); v3.11 prices are sysop-set. Ship TransWarp, photon, and atomic detonator SOURCE-CONFLICT (Ven 2026-10-24 GameA TWSTATS) |
+| 14 | `HARDWARE_PRICE_MODE` | `hardware_price_live` | MASTER_PLAN yes. Ship TransWarp Type I 50,000, Type II 80,000, upgrade 10,000 on this card (stored 12,500 / 20,000 / 9,000 stay). Photon missile 40,000 on this card (stored 12,000 stays). Atomic detonators stay off this switch. No new helper. | live shop card (REPORT2 s4); v3.11 prices are sysop-set. Ship TransWarp and photon SOURCE-CONFLICT (Ven 2026-10-24 GameA TWSTATS) |
 | 15 | `PLANET_SHIELD_ACTIVE_MODE` | `planet_shields_active` | MASTER_PLAN yes | S1 s V: shields are the Level 5 system |
 | 16 | `GENESIS_SCORE_MODE` | `genesis_score_fair` | MASTER_PLAN yes (fair) | scoring fix only; original ranks by exp |
 | 17 | `ACTION_RESULT_MODE` | `action_result_report` | MASTER_PLAN yes for AI-seat games (report) | API shape only; the AI seat needs ok/rejected/turns_spent |

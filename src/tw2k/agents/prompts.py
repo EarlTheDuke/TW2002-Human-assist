@@ -734,10 +734,6 @@ def get_system_prompt() -> str:
             "photon_missiles 12,000 cr each",
             f"photon_missiles {K.photon_missile_cost():,} cr each",
         )
-        text = text.replace(
-            "atomic_detonator 60,000 cr each",
-            f"atomic_detonator {K.atomic_detonator_cost():,} cr each",
-        )
     if not K.class0_tw2002():
         text = _class0_legacy_text(text)
     if K.citadel_perk_live():

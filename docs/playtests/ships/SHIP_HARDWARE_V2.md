@@ -26,7 +26,7 @@ Row numbers match the `vN` references in the code comments.
 | v11 | Reading | After a trade, tells you what percent of the port's limit your price was. | CONFIRMED in shape: HardwareMenu. Exact formula UNVERIFIED. | After a successful trade, an actor-only `PSYCHIC_PROBE` event. pct = unit / haggle bound when you sell, bound / unit when you buy (`haggle_bound`). The listed price is captured before the trade executes. |
 | v12 | Private | Only the owner learns it. | CONFIRMED in shape. | The event is actor-only and never appears in rival observations. |
 | **Atomic detonator (redesign)** | | | | |
-| v13 | Price | Cabal twgs.html 60,000. Iago 15,000. Live GameA TWSTATS 15,000. | SOURCE-CONFLICT. | Stored `K.ATOMIC_DETONATOR_COST` stays 60,000. `atomic_detonator_cost()` is 15,000 when `hardware_price_live` (Ven 2026-10-24). |
+| v13 | Price | TWGS 60,000; Iago 15,000. | SOURCE-CONFLICT (TWGS taken). | `K.ATOMIC_DETONATOR_COST = 60_000`. |
 | v14 | Cap | Max 5 aboard. | CONFIRMED: Bible. | `K.ATOMIC_DETONATOR_MAX = 5`. |
 | v15 | planet_destroy last step | "Try to Destroy Planet: first you purchase Atomic Detonators". | CONFIRMED: Gypsy. | Under tw2002, step 2 of `planet_destroy` needs and uses one detonator (checked in `planet_destroy_reason`, so legal equals handler). Step 1 (killing colonists) is unchanged. Legacy needs none. |
 | v16 | Use | Land on the planet and set the detonator. | CONFIRMED. | `deploy_atomic {"planet_id"}` (existing ActionKind) is dispatched only under tw2002 and requires being landed. A hostile planet needs 0 fighters and 0 shields. Your own or an unowned planet is allowed (P-busting). Corp-mate or ally planets are refused. |
@@ -59,7 +59,7 @@ Row numbers match the `vN` references in the code comments.
 - NavHaz dispersion is the MBBS 3% per night, applied on day ticks (TWGS value UNVERIFIED; named constant).
 - Beacon launch costs 0 turns (UNVERIFIED).
 - v1 follow-up: losing your ship under tw2002 now strips cloaks, disruptors and cloaked state as well as the v2 items (escape pod starts bare).
-- Prices: corbomite stays 1,000. The detonator stored price stays the cabal sample 60,000. Live GameA is 15,000 behind `hardware_price_live`. SOURCE-CONFLICT. DIFFERENT on the stored card.
+- Prices: TWGS picked over the Bible/Iago where they conflict (corbomite 1,000; detonator 60,000).
 
 ## What the engine does (HARDWARE_MODE tw2002)
 

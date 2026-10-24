@@ -990,7 +990,7 @@ class Player(BaseModel):
             + int(getattr(self.ship, "corbomite", 0) or 0) * getattr(K, "CORBOMITE_COST", 1_000)
             + int(getattr(self.ship, "marker_beacons", 0) or 0) * getattr(K, "BEACON_COST", 100)
             + int(getattr(self.ship, "psychic_probe", 0) or 0) * K.psychic_probe_cost()
-            + int(getattr(self.ship, "atomic_detonators", 0) or 0) * K.atomic_detonator_cost()
+            + int(getattr(self.ship, "atomic_detonators", 0) or 0) * getattr(K, "ATOMIC_DETONATOR_COST", 60_000)
             + self.ship.ether_probes * K.ether_probe_cost()
             + self.ship.genesis * K.genesis_torpedo_cost()
             + K.scanner_value(getattr(self.ship, "scanner", None))

@@ -1580,7 +1580,6 @@ def _hardware(f: dict) -> str:
         ("Marker beacon", _n(prices.get("marker_beacon", K.BEACON_COST)), _cap(ship, "marker_beacon")),
         ("Ether probe", _n(K.ether_probe_cost()), probe_cap),
         ("Photon missile", _n(K.photon_missile_cost()), _n(int((K.hull_spec(ship) or {}).get("max_photons") or 0))),
-        ("Atomic detonator", _n(K.atomic_detonator_cost()), _cap(ship, "atomic_detonator")),
         ("Density scanner", _n(K.scanner_cost("density_scanner")), "one scanner"),
         ("Holo scanner", _n(K.scanner_cost("holo_scanner")), "one scanner, replaces density"),
         ("Planet scanner", _n(K.PLANET_SCANNER_COST) if K.planet_scanner_live() else "not sold", _cap(ship, "planet_scanner")),
