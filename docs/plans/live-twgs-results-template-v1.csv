@@ -20,7 +20,7 @@ n102-special-return,no constant yet,not modelled; a wave only spends the fighter
 n102-collision-chance,PLANET_COLLISION_PCT_PER_EXCESS,"10 percent per planet over the cap of 5, never past 100",,,,,"Planet collision chance"
 n102-collision-log,no named constant. The two daily-log sentences are inline in the day tick,"Unstable planetary mass in sector N every night; the loss line names the planets and leaves the sector number out",,,,,"Collision log wording"
 n102-sector1,STARDOCK_SECTOR,skipped (Old FAQ v2),,,,,Sector 1 overload
-n103-quick-backtrack,the two keys in the cockpit,"> quick stats, < backtrack",,,,,"Quick-stats and backtrack keys"
+n103-quick-backtrack,the two keys in the cockpit,"> quick stats, < adjacent backtrack. / unbound (UNVERIFIED). Non-adjacent < plots on 3.34b and refuses here (DIFFERENT)",,,,,"Quick-stats and backtrack keys"
 n97-haggle-good,HAGGLE_EXP_GOOD,+1,,,,,Good haggle experience
 n97-haggle-great,HAGGLE_EXP_GREAT,"+2, when the accepted price reaches the hidden bound",,,,,"Great haggle experience"
 n97-ship-rename,SHIP_RENAME_COST; SHIP_RENAME_NAME_MAX,"5000 credits, 30 characters, 0 turns",,,,,"Ship rename"

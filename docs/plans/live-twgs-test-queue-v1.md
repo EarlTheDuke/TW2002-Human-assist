@@ -76,11 +76,17 @@ Numbers a v3.11 source does not settle. Each row is the live test that would pin
 
 ## Live TWGS test queue (NOTE 103)
 
-GeneralNew.html gives `<` and `>` to quick stats. The v3.11 revision history says the backtrack key is `<` only. The cockpit uses `>` for quick stats and `<` for backtrack, and both commands are also on the Computer menu.
+`<` backtracks. `>` opens quick stats on this cockpit. The documented quick-stats key is `/`, and this cockpit does not bind it. No new live keypress in this pass. The 19 Oct 2026 `<` capture stays `docs/playtests/twgs-live/computer-b.txt`. The reading is `docs/playtests/note103-quick-backtrack-v1.md`.
+
+Handlers, kept. `web/redesign.js` `key` sends a prompt `>` to `quickStats` (menu screen `quick-stats`) and a prompt `<` to `backtrack`. `backtrack` warps with `act("warp")` when `cameFrom` is still in `warps_out`, and otherwise refuses. The keydown listener passes `<` and `>` through before `toUpperCase`. Computer menu copies, same file, `CKEYS`: S calls `quickStats`, B calls `backtrack` unless `self_destruct` is a legal action, in which case B calls `beginSelfDestruct`. That B split is NOTE 110. The unshifted comma is not bound.
+
+`<` is the backtrack key. CONFIRMED. EIS `MainMenu.html` prints `<<>` Return to Previous Sector, and says the unshifted comma was discontinued as of v3.05. The v3.11 revision history says the same (v3.05: backtrack is `<` only; 02/04/97: `<` or `,` moves the ship to the last sector visited). `computer-b.txt` pressed `<` after a one-way hop from 157 to 50. The game tried to warp to 157, said the lane was not adjacent, plotted 4 hops, and asked to engage the autopilot. This cockpit warps at once when the previous sector is still a warp out. When it is not, the line is "You cannot backtrack to N from here." The plotted course is DIFFERENT. v3.11 text describes a move for adjacent port pairs and does not describe that plot, so the refuse stays. UNVERIFIED: `<` on an adjacent pair on live TWGS. The capture was a one-way.
+
+`>` quick stats. KEPT. DIFFERENT / UNVERIFIED against the docs. EIS `GlobalCommands.html` Quick-stats and `CompMisc.html` Personal Settings print the key as `</>`, the `/` key inside the docs' angle brackets. The v3.06 revision history says the quick-stats line appears when `/` is pressed. `GeneralNew.html` Quick-stats says type `</>` from any prompt. That is the same slash. It is not both `<` and `>`. No capture presses `>` or `/`. This cockpit still opens quick stats on `>`. `/` stays unbound. Do not add that key without a live press.
 
 | item | current value | live test | what to record | constant |
 |---|---|---|---|---|
-| Quick-stats and backtrack keys | `>` quick stats, `<` backtrack | From a prompt, press each key | Which screen opens | the two keys in the cockpit |
+| Quick-stats and backtrack keys | `>` quick stats, `<` adjacent backtrack. `/` is the documented quick-stats key and is not bound. A non-adjacent `<` plots on 3.34b and refuses here | From a prompt, press `>`, then `/`. After an adjacent hop, press `<`. After a one-way hop, press `<` | Which key opens quick stats. Whether each `<` warps or plots | the two keys in the cockpit |
 
 ## Live TWGS test queue (NOTE 97)
 

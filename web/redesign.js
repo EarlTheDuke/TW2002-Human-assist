@@ -5971,6 +5971,9 @@
       return;
     }
     if (k === "Enter") { if (courseCard || plotted) engage(); return; }
+    // NOTE 103. Prompt ">" opens quick stats. Prompt "<" backtracks one adjacent
+    // sector. Computer S and Computer B call the same two functions. See
+    // docs/playtests/note103-quick-backtrack-v1.md.
     if (k === ">") { quickStats(); return; }
     if (k === "<") { backtrack(); return; }
     if (inComputer) {
@@ -6961,6 +6964,9 @@
     if (ev.key === "Enter") { ev.preventDefault(); key("Enter"); return; }
     if (ev.key === "?") { ev.preventDefault(); key("?"); return; }
     if (ev.key === ".") { ev.preventDefault(); key("."); return; }
+    // NOTE 103. Name "<" and ">" before the letter case fold. "/" is the EIS
+    // quick-stats key and is not bound. The comma backtrack ended in v3.05.
+    if (ev.key === ">" || ev.key === "<") { ev.preventDefault(); key(ev.key); return; }
     if (ev.key.length === 1) { ev.preventDefault(); key(ev.key.toUpperCase()); }
   });
   window.__tw2kTest = {

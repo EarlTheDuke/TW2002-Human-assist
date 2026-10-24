@@ -86,6 +86,8 @@ _KEYS = (
     ("J", "Jettison cargo"),
     ("Q", "Quit"),
     ("?", "Help"),
+    (">", "Quick stats from the command prompt"),
+    ("<", "Backtrack to the previous sector when that lane is still open"),
     ("N", "Move colonists while landed"),
     ("Enter", "Engage Express when a course is plotted"),
 )

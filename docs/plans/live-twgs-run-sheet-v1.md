@@ -69,11 +69,11 @@ Settles: `V311_COURSE_MAX_HOPS`. The queue also names `COURSE_MAX_MODE`, the swi
 
 item_id: n103-quick-backtrack
 
-Keys: from a prompt, press `>`, then press `<`. The one move in this group's setup is the previous sector for `<`.
+Keys: from a prompt, press `>`, then `/`. The cockpit opens quick stats on `>` and does nothing on `/`. Then press `<` after one adjacent move, and again after a one-way move. The group's one move can be the adjacent hop. Do not fly a plotted course.
 
-Read: which screen opens for each key.
+Read: which key opens quick stats. Whether `<` warps back or plots a course, for the adjacent hop and for the one-way hop.
 
-Settles: the two keys in the cockpit. No engine constant.
+Settles: the two keys in the cockpit. No engine constant. `<` is already the backtrack key in EIS `MainMenu.html` and in `computer-b.txt`. `>` stays quick stats here. `/` is the documented quick-stats key and is not bound until a live press says which key opens the screen. A non-adjacent `<` plots on 3.34b and this cockpit refuses. See `docs/playtests/note103-quick-backtrack-v1.md`.
 
 ### Computer menu B
 
