@@ -575,3 +575,53 @@ Keys: after that port is rebuilt, kill it again, or kill a different special por
 Read: fighters spent and the rating on the second kill.
 
 Settles: `SPECIAL_PORT_FIGS_AFTER` (890,000) and `SPECIAL_PORT_RATING_AFTER` (5,000).
+
+### Type I TWarp price
+
+item_id: n117-twarp-1
+
+Keys: at StarDock, on a TransWarp hull, read the Type I price. Do not change the stored price.
+
+Read: the credit price.
+
+Settles: `SHIP_TW_TYPE1_COST` stays 12,500. Ven TWSTATS prints Type I TWarp=50,000 cr. DIFFERENT. Queued. No new switch.
+
+### Type II TWarp price
+
+item_id: n117-twarp-2
+
+Keys: at StarDock, read the Type II price.
+
+Read: the credit price.
+
+Settles: `SHIP_TW_TYPE2_COST` stays 20,000. Ven TWSTATS prints Type II TWarp=80,000 cr. DIFFERENT. Queued. No new switch.
+
+### TWarp upgrade price
+
+item_id: n117-twarp-upgrade
+
+Keys: at StarDock, read the TWarp upgrade price.
+
+Read: the credit price.
+
+Settles: `SHIP_TW_UPGRADE_COST` stays 9,000. Ven TWSTATS prints TWarp Upgrade=10,000 cr. DIFFERENT. Queued. No new switch.
+
+### Citadel transport unit
+
+item_id: n117-citadel-transport
+
+Keys: at StarDock, read the citadel transport unit price.
+
+Read: the credit price.
+
+Settles: `PLANET_TRANSPORTER_COST_FIRST` stays 50,000 for the planet buy. Ven TWSTATS prints Citadel Transport Unit=50,000 cr. The Hardware Emporium label is not a shop switch. DIFFERENT. Queued.
+
+### Citadel transport upgrade
+
+item_id: n117-citadel-transport-upgrade
+
+Keys: at StarDock, read the citadel transport upgrade price.
+
+Read: the credit price.
+
+Settles: `PLANET_TRANSPORTER_COST_EXTRA` stays 25,000 for an extra hop. Ven TWSTATS prints Citadel Transport Upgrade=25,000 cr. DIFFERENT. Queued. No new switch.

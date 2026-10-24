@@ -1,17 +1,86 @@
-# Confirmed Ven GameA TWSTATS [Costs] lines.
-# Source: GameA TWSTATS.TXT, v3.34b, Ven 2026-10-24.
-# The full capture lands in this path via PR #157. This stub is those
-# lines when the tip does not have the full file yet.
-# Comment lines are not labels. Tests read [Costs].
-# Atomic Detonator=15,000 cr is the #169 capture on the same card.
+# GameA TWSTATS.TXT — Costs / BigBang card (read-only Ven probe)
+# Source: C:\Games\TWGS\program files\EIS\TWGS\Game\GameA\OUTPUT\TWSTATS.TXT
+# Machine: VENGEANCE (89b0d9d2-d2d4-4d5b-8b34-9abf7cd9f545)
+# File mtime (Ven local): 2026-10-24 06:27:19 AM
+# Captured: 2026-10-24 ~10:48 AM America/Los_Angeles
+# Version header: Major=3 Minor=34 Revision=b
+# Touched nothing: AFK Slot A / GrokAFK24 / ports 8031-8037/8041 / twgs.exe
+#
+# Full [Costs] section + nearby Settings lines that touch hardware prices/timing.
 
-TWSTATS. Trade Wars 2002 ver 3.34b. Game: Ven GameA.
+[Version]
+Major Version=3
+Minor Version=34
+Revision=b
+
+[Settings]  # hardware-adjacent only
+Photon Missile Duration=20 Sec
+FedSpace Photons=False
+Photons Disable Players=True
+Cloak Fail Percent=3%
+Multiple Photons=False
 
 [Costs]
+Tavern Announcement=100 cr
+Limpet Removal=5,000 cr
+Reregister Ship=5,000 cr
+Citadel Transport Unit=50,000 cr
+Citadel Transport Upgrade=25,000 cr
+Genesis Torpedo=20,000 cr
+Armid Mine=1,000 cr
+Limpet Mine=10,000 cr
+Beacon=100 cr
 Type I TWarp=50,000 cr
 Type II TWarp=80,000 cr
 TWarp Upgrade=10,000 cr
-Citadel Transport Unit=50,000 cr
-Citadel Transport Upgrade=25,000 cr
+Psychic Probe=10,000 cr
+Planet Scanner=30,000 cr
 Atomic Detonator=15,000 cr
+Corbomite=1,000 cr
+Ether Probe=3,000 cr
 Photon Missile=40,000 cr
+Cloaking Device=25,000 cr
+Mine Disruptor=6,000 cr
+Holographic Scanner=25,000 cr
+Density Scanner=2,000 cr
+
+# Alignment for humans. Comment lines only. Not extra TWSTATS labels.
+# Tests read [Version], [Settings], and [Costs]. Stored prices are not switched here.
+#
+# Label                         Captured    Stored                              Note
+# Photon Missile                40,000 cr   PHOTON_MISSILE_COST 12,000          recorded; not switched here
+# Atomic Detonator              15,000 cr   ATOMIC_DETONATOR_COST 60,000        recorded; not switched here
+# Type I TWarp                  50,000 cr   SHIP_TW_TYPE1_COST 12,500           DIFFERENT, queued
+# Type II TWarp                 80,000 cr   SHIP_TW_TYPE2_COST 20,000           DIFFERENT, queued
+# TWarp Upgrade                 10,000 cr   SHIP_TW_UPGRADE_COST 9,000          DIFFERENT, queued
+# Citadel Transport Unit        50,000 cr   PLANET_TRANSPORTER_COST_FIRST       DIFFERENT shop label, queued
+# Citadel Transport Upgrade     25,000 cr   PLANET_TRANSPORTER_COST_EXTRA       DIFFERENT shop label, queued
+# Genesis Torpedo               20,000 cr   GENESIS_TORPEDO_COST_LIVE 20,000    already on the hardware card
+# Armid Mine                    1,000 cr    ARMID_MINE_COST_LIVE 1,000          already on the hardware card
+# Limpet Mine                   10,000 cr   LIMPET_MINE_COST_LIVE 10,000        already on the hardware card
+# Ether Probe                   3,000 cr    ETHER_PROBE_COST_LIVE 3,000         already on the hardware card
+# Psychic Probe                 10,000 cr   psychic_probe_cost live 10,000      already on detect gear
+# Mine Disruptor                6,000 cr    disruptor live 6,000                already on detect gear
+# Planet Scanner                30,000 cr   PLANET_SCANNER_COST 30,000          matches
+# Cloaking Device               25,000 cr   CLOAK_COST 25,000                   matches
+# Holographic Scanner           25,000 cr   HOLO_SCANNER_COST 25,000            matches
+# Density Scanner               2,000 cr    DENSITY_SCANNER_COST 2,000          matches
+# Beacon                        100 cr      BEACON_COST 100                     matches
+# Corbomite                     1,000 cr    CORBOMITE_COST 1,000                matches
+# Tavern Announcement           100 cr      TAVERN_ANNOUNCE_COST 100            matches
+# Limpet Removal                5,000 cr    LIMPET_REMOVAL_COST 1,250           recorded; not switched here
+# Reregister Ship               5,000 cr    SHIP_RENAME_COST 5,000              matches
+# Photon Missile Duration       20 Sec      PHOTON_WAVE_DURATION 1              recorded; not switched here
+# Cloak Fail Percent            3%          CLOAK_FAIL_RATE 0.03                matches
+# FedSpace Photons              False       recorded                            not switched here
+# Photons Disable Players       True        recorded                            not switched here
+# Multiple Photons              False       recorded                            not switched here
+# Tip lines kept with this full capture. Overlapping [Costs] numbers agree
+# (Type I TWarp=50,000 cr, Type II TWarp=80,000 cr, TWarp Upgrade=10,000 cr,
+# Citadel Transport Unit=50,000 cr, Citadel Transport Upgrade=25,000 cr).
+# No number disagreement.
+# Confirmed Ven GameA TWSTATS [Costs] lines for ship TransWarp.
+# Source: GameA TWSTATS.TXT, v3.34b, Ven 2026-10-24.
+# The full capture lands in this path via PR #157. This file is that capture,
+# not the earlier stub.
+# Comment lines are not labels. Tests read [Costs], [Version], and [Settings].
