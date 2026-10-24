@@ -278,8 +278,14 @@ def test_v311_fraction_on_empty_class_l_says_move_by_thousand(monkeypatch) -> No
     assert dumped.ok is False and dumped.error == K.COLONIST_MOVE_BY_THOUSAND
     assert sum(planet.colonists.values()) == 0
     assert ship.cargo[Commodity.COLONISTS] == 75
-    # A full world still names the cap. The thousand message is only for room that remains.
+    # One full row is not the whole planet: the other product rows still have the printed maximum.
+    # The thousand message stays, because room remains. The cap is named when every row is full.
     planet.colonists[Commodity.COLONISTS] = 40_000
+    one_row = {la.kind: la for la in legal_actions(u, "P1")}
+    assert one_row["dump_planet_cargo"].legal is False
+    assert one_row["dump_planet_cargo"].reason == K.COLONIST_MOVE_BY_THOUSAND
+    for pool in (Commodity.FUEL_ORE, Commodity.ORGANICS, Commodity.EQUIPMENT, Commodity.COLONISTS):
+        planet.colonists[pool] = 40_000
     full = {la.kind: la for la in legal_actions(u, "P1")}
     assert full["dump_planet_cargo"].legal is False
     assert full["dump_planet_cargo"].reason == "planet is at its class cap"

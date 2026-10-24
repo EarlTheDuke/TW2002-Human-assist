@@ -1412,7 +1412,7 @@ _SWITCH_PLAIN: dict[str, str] = {
     "PHOTON_FOLLOW_DAMP_MODE": "A ship that enters a sector while a photon wave is up also has the planet quasar damped.",
     "DEATH_DELAY_MODE": "Death Delay is yes or no. Past the day's death allowance, you wait until the next day.",
     "TREASURY_CAP_MODE": "A citadel treasury can hold the printed maximum.",
-    "COURSE_MAX_MODE": "A plotted course that is too long is refused.",
+    "COURSE_MAX_MODE": "A plotted course longer than this game's maximum course length is refused.",
     "BIG_BANG_DENSITY_MODE": "A new universe places ports and planets on the v3.11 spread, with no decorative Fed ports in the early sectors.",
     "BIG_BANG_BUILT_MODE": "A new universe builds 95 percent of the possible starports, as the Big Bang default does.",
     "ONE_WAY_SHARE_MODE": "A small share of lanes are one-way when the game does not set another share.",
