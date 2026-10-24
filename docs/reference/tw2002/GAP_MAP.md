@@ -85,7 +85,7 @@ Source tags across rows: CONFIRMED 128, SOURCE-CONFLICT 19, UNVERIFIED 24 (a row
 7. **Rob and steal factors**: Credits x3 vs x6 and holds /30 vs /21 (classic vs MBBS); John Pritchett's exp table differs again.
 8. **Port regeneration**: Standard 5%/day (v3.05 notes) vs 1% in the sample game vs ours about 10% effective.
 9. **Fighter and shield prices**: 160-239 on an 87-day cycle (Hekate) vs 110-234 on about 30 days (Iago, v1.03d) vs ours flat 50 / 10.
-10. **Hardware prices**: Bible values (Genesis 25,000 ...) vs one sample TEDIT (Genesis 80,000, photon 160,000 ...). Ours uses Bible-like Genesis, much cheaper others.
+10. **Hardware prices**: Bible values (Genesis 25,000 ...) vs one sample TEDIT (Genesis 80,000, photon 160,000 ...). Ours uses Bible-like Genesis, much cheaper others. Ven 2026-10-24 GameA TWSTATS (`docs/playtests/twgs-live/twstats-costs-ven.txt`) prints Photon Missile=40,000 cr and Atomic Detonator=15,000 cr. Stored prices stay 12,000 and 60,000. This note does not switch them. The same file prints Type I TWarp=50,000 cr, Type II TWarp=80,000 cr, TWarp Upgrade=10,000 cr, Citadel Transport Unit=50,000 cr, and Citadel Transport Upgrade=25,000 cr. Those five stay DIFFERENT and queued.
 11. **FedSpace fighter tow limit**: More than 50 fighters (Bible) vs 99 or more (Gypsy).
 12. **Federal commission**: Alignment 500 to apply, 1000 automatic (docs wiki, Gypsy, Iago, Bible agree); ours requires 2000 and a unique ship.
 13. **Atmospheric quasar**: x0.5 (TWGS Classic) vs x2 (MBBS); ours x2 by earlier decision.
@@ -190,7 +190,7 @@ Row 1.6 Class L colonist evidence: Sat Grok L3 (`82578bfe`) hit false class-cap 
 
 ## 4. Ship equipment and hardware
 
-> Hardware prices vary by sysop. Bible and one sample TEDIT (cabal twgs.html) disagree with each other and with ours, so no price gets a CONFIRMED tag. Ours = constants.py price constants and _handle_buy_equip. SSM is a red trading tactic (Sell-Steal-Move), covered by 2.12-2.14, not an item.
+> Hardware prices vary by sysop. Bible and one sample TEDIT (cabal twgs.html) disagree with each other and with ours, so no price gets a CONFIRMED tag. Ours = constants.py price constants and _handle_buy_equip. SSM is a red trading tactic (Sell-Steal-Move), covered by 2.12-2.14, not an item. Ven 2026-10-24 GameA [Costs] is `docs/playtests/twgs-live/twstats-costs-ven.txt`. Type I TWarp=50,000 cr, Type II TWarp=80,000 cr, TWarp Upgrade=10,000 cr, Citadel Transport Unit=50,000 cr, and Citadel Transport Upgrade=25,000 cr are DIFFERENT and queued. No new price switch.
 
 | # / item | (a) Original rule, source, confidence | (b) Ours | (c) Status | (d) Size / priority |
 |---|---|---|---|---|
@@ -240,7 +240,7 @@ Row 1.6 Class L colonist evidence: Sat Grok L3 (`82578bfe`) hit false class-cap 
 
 ## 6. Planets (remaining gaps only; shipped work B1-E3 is not re-listed)
 
-> Already built and not repeated: citadel L1-L6 effects, treasury and 2% interest, military reaction, planet shields, quasar sector/atmosphere, planet transwarp and transporter, planet_destroy, land/odds combat, corp-planet dissolve rules. See docs\plans\planetary-warfare-comparison.md (note: its "missing" list is stale) and docs\playtests\planetary-warfare\SUMMARY.md.
+> Already built and not repeated: citadel L1-L6 effects, treasury and 2% interest, military reaction, planet shields, quasar sector/atmosphere, planet transwarp and transporter, planet_destroy, land/odds combat, corp-planet dissolve rules. See docs\plans\planetary-warfare-comparison.md (note: its "missing" list is stale) and docs\playtests\planetary-warfare\SUMMARY.md. Ven 2026-10-24 GameA TWSTATS prints Citadel Transport Unit=50,000 cr and Citadel Transport Upgrade=25,000 cr. The planet transporter already charges `PLANET_TRANSPORTER_COST_FIRST` 50,000 and `PLANET_TRANSPORTER_COST_EXTRA` 25,000. Those Hardware Emporium labels are not a shop switch. DIFFERENT. Queued.
 
 | # / item | (a) Original rule, source, confidence | (b) Ours | (c) Status | (d) Size / priority |
 |---|---|---|---|---|
