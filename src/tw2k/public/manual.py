@@ -987,6 +987,11 @@ def _photon_wave() -> str:
             "a limpet still attaches while that wave is up. Armid mines still do not detonate.",
             "a limpet does not attach while that wave is up.",
         )
+        + _gated(
+            K.photon_cloak_settings_live(),
+            "FedSpace refuses a photon. Players in the target sector have their fighters offline for that wave, and that ship cannot fire a second photon until the wave ends. The measured 20-second duration is not a clock in this game.",
+            "FedSpace can still be the target. Players there are not scrambled, and another photon can be fired the same day.",
+        )
     )
 
 
@@ -1485,6 +1490,7 @@ _SWITCH_PLAIN: dict[str, str] = {
     "HAGGLE_ROUNDS_MODE": "A port haggles in rounds: a small ask is taken, a bigger one is countered, and past the product table it says get lost.",
     "LAND_CLAIM_MODE": "Landing on an unowned planet does not claim it; use Claim planet (v3.11 Claim Ownership).",
     "TRADE_PRIVATE_MODE": "Your port trades, with their quantities and prices, are not shown to other traders in the sector.",
+    "PHOTON_CLOAK_SETTINGS_MODE": "FedSpace refuses a photon. Players in that sector have their fighters offline for the wave, and that ship waits out the wave before firing again.",
 }
 
 
@@ -2025,7 +2031,7 @@ _COVERS: dict[str, tuple[str, ...]] = {
         "OFFENSIVE_CLASH_MODE", "KILL_CASH_MODE", "SHIP_FLEE_MODE", "ATTACK_TURN_MODE", "PLANET_LANDING_COMBAT_MODE",
         "RIVAL_STRENGTH_MODE", "SPECIAL_HULL_RULES_MODE", "PHOTON_FOLLOW_DAMP_MODE",
         "CAPTURE_CREDIT_LINE_MODE", "ATOMIC_DETONATOR_MODE", "ALIEN_COMBAT_FIX_MODE", "SHIP_EXIT_MODE",
-        "PHOTON_LIMPET_MODE",
+        "PHOTON_LIMPET_MODE", "PHOTON_CLOAK_SETTINGS_MODE",
     ),
     "ferrengi": (
         "FERRENGI_ENGAGE_MODE", "FERRENGI_GRUDGE_MODE", "FERRENGI_PACE_MODE", "FERRENGI_REWARD_MODE",

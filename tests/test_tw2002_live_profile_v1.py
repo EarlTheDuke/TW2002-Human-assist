@@ -132,6 +132,7 @@ HELPERS = (
     "fedsafe_fighter_cap_live",
     "fed_tow_limit_live",
     "corp_breakin_align_live",
+    "photon_cloak_settings_live",
 )
 
 
@@ -139,7 +140,7 @@ def test_profile_stays_off_and_helpers_stay_false() -> None:
     assert K.TW2002_LIVE_PROFILE == "legacy"
     assert K.tw2002_live_profile() is False
     names = HELPERS
-    assert len(names) == 130
+    assert len(names) == 131
     for name in names:
         assert getattr(K, name)() is False, name
 
@@ -218,4 +219,7 @@ def test_profile_on_turns_every_helper_on_without_moving_the_stored_flag(monkeyp
     assert K.FEDSAFE_FIGHTER_CAP_MODE == "legacy"
     assert K.FED_TOW_LIMIT_MODE == "legacy"
     assert K.CORP_BREAKIN_ALIGN_MODE == "legacy"
+    assert K.PHOTON_CLOAK_SETTINGS_MODE == "legacy"
+    assert K.PHOTON_WAVE_DURATION == 1
+    assert K.CLOAK_FAIL_RATE == 0.03
 
