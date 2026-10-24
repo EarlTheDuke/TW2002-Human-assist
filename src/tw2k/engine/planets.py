@@ -57,18 +57,30 @@ def _class_m_people(class_id: PlanetClass | str) -> bool:
 
 
 def _worked(class_id: PlanetClass | str, count: int) -> int:
-    """One product pool's workers in the handbook unit the S1 ratios divide.
+    """Workers one product pool contributes, in the unit the S1 ratio divides.
 
-    Class M under the switch stores people; NOTE 19: "production is
-    colonists(1000s)/ratio". S1 puts the class M peak at 15,000 (thousand) per
-    pool, half its 30,000 maximum, and prints that peak as Max/Day (5,000 /
-    2,142 / 1,153, fighters 829). S1 publishes no bell-curve shape, so output
-    stays at the peak above 15,000 instead of an invented falloff.
+    Class M under its switch stores people. NOTE 19 reads the printed maximum
+    as thousands, so 1,500,000 people are 1,500. Other classes use the printed
+    colonist count as stored.
+
+    With the S1 ratios on, output follows the printed curve. At or below half
+    the maximum, every worker counts: 1,500 class M fuel colonists make 500.
+    Above half, the count mirrors, so the printed maximum itself contributes
+    0. TWFAQ_20PLANET.txt: production is 0 when the colonists are maxed, and
+    half of that maximum is where Max/Day is reached. No other shape is printed.
     """
     n = int(count)
-    if not _class_m_people(class_id):
+    if _class_m_people(class_id):
+        n = n // int(K.CLASS_M_PEOPLE_PER_THOUSAND)
+    if not K.planet_prod_live():
+        if _class_m_people(class_id):
+            return min(n, int(K.PLANET_MAX_COLONISTS["M"]) // 2)
         return n
-    return min(n // int(K.CLASS_M_PEOPLE_PER_THOUSAND), int(K.PLANET_MAX_COLONISTS["M"]) // 2)
+    cap = int(K.PLANET_MAX_COLONISTS[_class_id(class_id).value])
+    half = cap // 2
+    if n <= half:
+        return n
+    return max(0, cap - n)
 
 
 def daily_production(class_id: PlanetClass | str, colonists: dict) -> dict[str, int]:
@@ -175,9 +187,10 @@ def colonist_trend(class_id: PlanetClass | str, total: int) -> str:
     count = int(total)
     if _class_id(class_id).value == "M" and K.class_m_fidelity_live():
         cap = int(K.CLASS_M_CATEGORY_CAP)
+        half = cap // 2
         shown = f"{count:,} (i.e. {count // 1000:,} thousands)"
-        if count > cap:
-            return f"{shown}; above a product pool cap, about 5% of the extra die off each day"
+        if count > half:
+            return f"{shown}; above half a product pool, about 5% die off each day"
         return f"{shown}; a pool below 15,000 thousand grows about 5% a day, and each product pool holds 30,000 thousand"
     if K.planet_growth_tw2002():
         cap = int(K.PLANET_MAX_COLONISTS[_class_id(class_id).value])
@@ -242,12 +255,25 @@ def _accrue_planet_treasury(universe: Universe) -> None:
         planet.treasury = min(cap, int(planet.treasury) + gain)
 
 
+# S1 fighter column: "n/10" on class M means one fighter per 10 product units.
+# "Fighter production is a percentage of the total daily production."
+_FIGHTER_PER_PRODUCTS = {"M": 10, "K": 15, "L": 12, "O": 15, "C": 25, "H": 50, "U": 0}
+
+
 def fighters_from_colonists(class_id: PlanetClass | str, colonists: dict) -> int:
     """Fighters one day of product-pool colonists would add, before the cap.
 
-    Each pool divides on its own, then the rate scales the sum. A divisor of
-    0 adds nothing. The idle colonists pool is not a product pool.
+    With the S1 ratios on, fighters are the printed share of that day's product
+    (the 500 fuel example is 50 fighters, and fuel plus organics is 60).
+    Otherwise each pool divides on its own, then the rate scales the sum.
+    A divisor of 0 adds nothing. The idle colonists pool is not a product pool.
     """
+    if K.planet_prod_live():
+        per = int(_FIGHTER_PER_PRODUCTS[_class_id(class_id).value])
+        if per <= 0:
+            return 0
+        total = sum(daily_production(class_id, colonists).values())
+        return total * int(K.PLANET_FIGHTER_RATE_PCT) // 100 // per
     table = K.PLANET_FIGHTER_COLONISTS_PER[_class_id(class_id).value]
     made = 0
     for name, divisor in table.items():
@@ -289,8 +315,14 @@ def _apply_one_day(planet) -> None:
 
 
 def _trim_class_m_excess(planet) -> None:
-    """Only colonists past a class M product pool die. The 5% is unverified."""
+    """Only colonists past a class M product pool die. The 5% is unverified.
+
+    The half-cap rule already takes 5% of a pool above half, so this extra
+    trim does not run on that path.
+    """
     if planet.class_id.value != "M" or not K.class_m_fidelity_live():
+        return
+    if K.planet_growth_tw2002():
         return
     cap = int(K.CLASS_M_CATEGORY_CAP)
     for name in ("fuel_ore", "organics", "equipment", "colonists"):
@@ -401,19 +433,26 @@ def _stock_product(planet, commodity: Commodity, produced: int) -> None:
     planet.stockpile[commodity] = before + added
 
 
-def _grow_class_m_pools(planet) -> None:
+def _grow_class_m_pools(planet, *, die_above_half: bool = False) -> None:
     """S1: "Colonists below the 50% mark tend to multiply and increase."
 
-    Class M under the switch caps each product pool at CLASS_M_CATEGORY_CAP, so
-    each pool below half of it grows on its own. S1 publishes no rate; 5% is
-    the rate this engine already used. A pool above half does not shrink;
-    only the extra above the pool cap dies back (NOTE 19 (c)).
+    Class M under its switch stores people. The printed maximum, 30,000, is
+    30,000 thousand people on that path. Each product pool below half of that
+    grows on its own. S1 publishes no rate; 5% is the rate this engine already
+    used. When the half-cap rule is on, a pool above that half dies off by the
+    same 5%. Otherwise only the extra above the pool cap dies back.
     """
     cap = int(K.CLASS_M_CATEGORY_CAP)
+    half = cap // 2
     for name in list(planet.colonists.keys()):
         have = int(planet.colonists[name] or 0)
-        if 0 < have < cap // 2:
+        if 0 < have < half:
             planet.colonists[name] = min(cap, have + int(have * 0.05))
+        elif die_above_half and have > half:
+            die = int(have * 0.05)
+            if die > 0:
+                planet.colonists[name] = have - die
+                spend_free_start(planet, die)
 
 
 def _grow_class_m_fed(planet) -> None:
@@ -428,40 +467,53 @@ def _grow_class_m_fed(planet) -> None:
     )
 
 
+def _grow_printed_pools(planet, *, eat_organics: bool) -> None:
+    """Each product row has its own printed maximum.
+
+    A pool below half of that maximum grows about 5%. A pool above half dies
+    off about 5%. S1 does not print the percent; this engine already used 5%
+    for that sentence. TWFAQ_20PLANET.txt staffs each product to its own half.
+    Organics are eaten only on the ratio path that still gates growth on them.
+    """
+    cap = int(K.PLANET_MAX_COLONISTS[planet.class_id.value])
+    half = cap // 2
+    stock = int(planet.stockpile.get(Commodity.ORGANICS, 0))
+    total = sum(int(v) for v in planet.colonists.values())
+    below = False
+    for name in list(planet.colonists.keys()):
+        have = int(planet.colonists[name] or 0)
+        if have <= 0 or have == half:
+            continue
+        if have < half:
+            below = True
+            if eat_organics and stock <= 0:
+                continue
+            growth = int(have * 0.05)
+            if growth > 0:
+                planet.colonists[name] = min(cap, have + growth)
+            continue
+        die = int(have * 0.05)
+        if die <= 0:
+            continue
+        planet.colonists[name] = max(0, have - die)
+        spend_free_start(planet, die)
+    # The burn stays on the old gate: the whole colony is under half. A small
+    # pool can still grow while another pool dies, and that day does not eat.
+    if eat_organics and stock > 0 and below and 0 < total < half:
+        planet.stockpile[Commodity.ORGANICS] = max(0, stock - organics_consumption(total))
+
+
 def _grow_by_half_cap(planet) -> None:
-    """5% toward half of the class cap. Nothing is taken from the stockpile.
+    """5% toward half of each product's printed maximum. Stock is not eaten.
 
     The handbook says a colony below half of its maximum multiplies, and one
     above that half dies off, at a proportional rate. It does not print the
-    percent. This engine already used 5% for that rule, so the new switch
-    keeps 5%.
+    percent. This engine already used 5% for that rule, so the switch keeps 5%.
     """
     if _class_m_people(planet.class_id):
-        _grow_class_m_pools(planet)
+        _grow_class_m_pools(planet, die_above_half=True)
         return
-    total_col = sum(int(v) for v in planet.colonists.values())
-    if total_col <= 0:
-        return
-    half = int(K.PLANET_MAX_COLONISTS[planet.class_id.value]) // 2
-    if total_col < half:
-        growth = int(total_col * 0.05)
-        room = K.planet_colonist_room(planet.class_id.value, total_col)
-        if room is not None:
-            growth = min(growth, room)
-        if growth <= 0:
-            return
-        for name in list(planet.colonists.keys()):
-            share = int(growth * int(planet.colonists[name]) / total_col)
-            planet.colonists[name] = int(planet.colonists[name]) + share
-        return
-    if total_col > half and not (planet.class_id.value == "M" and K.class_m_fidelity_live()):
-        die = int(total_col * 0.05)
-        if die <= 0:
-            return
-        for name in list(planet.colonists.keys()):
-            share = int(die * int(planet.colonists[name]) / total_col)
-            planet.colonists[name] = max(0, int(planet.colonists[name]) - share)
-            spend_free_start(planet, share)
+    _grow_printed_pools(planet, eat_organics=False)
 
 
 def _produce_and_grow_legacy(planet) -> None:
@@ -501,32 +553,7 @@ def _produce_and_grow_live(planet) -> None:
     if _class_m_people(planet.class_id):
         _grow_class_m_fed(planet)
         return
-    total_col = sum(int(v) for v in planet.colonists.values())
-    cap = int(K.PLANET_MAX_COLONISTS[planet.class_id.value])
-    half = cap // 2
-    if total_col < half and planet.stockpile.get(Commodity.ORGANICS, 0) > 0:
-        growth = int(total_col * 0.05)
-        room = K.planet_colonist_room(planet.class_id.value, total_col)
-        if room is not None:
-            growth = min(growth, room)
-        if total_col > 0 and growth > 0:
-            for c in list(planet.colonists.keys()):
-                share = int(growth * planet.colonists[c] / total_col)
-                planet.colonists[c] += share
-        planet.stockpile[Commodity.ORGANICS] = max(
-            0, planet.stockpile[Commodity.ORGANICS] - organics_consumption(total_col)
-        )
-    elif (
-        total_col > half
-        and total_col > 0
-        and not (planet.class_id.value == "M" and K.class_m_fidelity_live())
-    ):
-        die = int(total_col * 0.05)
-        if die > 0:
-            for c in list(planet.colonists.keys()):
-                share = int(die * planet.colonists[c] / total_col)
-                planet.colonists[c] = max(0, int(planet.colonists[c]) - share)
-                spend_free_start(planet, share)
+    _grow_printed_pools(planet, eat_organics=True)
 
 
 def _pay_planet_value_tax(universe: Universe) -> None:

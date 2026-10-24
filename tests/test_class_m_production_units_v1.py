@@ -101,21 +101,26 @@ def test_the_191000_start_on_fuel_makes_63_fuel_and_6_fighters(v311):
     }
 
 
-def test_class_m_output_stops_at_the_s1_max_per_day(v311):
-    """S1 class M table: Max Prod/Day at 15,000 colonists, Max/Day 5,000 / 2,142 / 1,153 and fighters 829 a day;
-    "The daily production of FOE products is based on a bell curve, so the maximum production occurs at 50% of
-    the maximum population." No curve shape is published, so above 15,000k a pool stays at the peak."""
-    for people in (15_000_000, 25_000_000):
-        planet = _world(fuel_ore=people, organics=people, equipment=people)
-        _apply_one_day(planet)
-        assert _made(planet) == (5_000, 2_142, 1_153, 829), people
-    assert fighters_from_colonists(PlanetClass.M, {"fuel_ore": 29_000_000, "organics": 29_000_000, "equipment": 29_000_000}) == 829
+def test_class_m_output_peaks_at_half_and_mirrors_down(v311):
+    """S1 class M table: Max Prod/Day at 15,000 colonists, Max/Day 5,000 / 2,142 / 1,153 and fighters 829.
+    TWFAQ_20PLANET.txt: production is 0 when the colonists are maxed. 25,000 thousand is the mirror of 5,000."""
+    peak = _world(fuel_ore=15_000_000, organics=15_000_000, equipment=15_000_000)
+    _apply_one_day(peak)
+    assert _made(peak) == (5_000, 2_142, 1_153, 829)
+    high = _world(fuel_ore=25_000_000, organics=25_000_000, equipment=25_000_000)
+    _apply_one_day(high)
+    assert _made(high) == (1_666, 714, 384, 276)
+    full = _world(fuel_ore=30_000_000, organics=30_000_000, equipment=30_000_000)
+    _apply_one_day(full)
+    assert _made(full) == (0, 0, 0, 0)
+    assert fighters_from_colonists(
+        PlanetClass.M, {"fuel_ore": 29_000_000, "organics": 29_000_000, "equipment": 29_000_000},
+    ) == 55
 
 
 def test_class_m_below_half_the_pool_cap_grows(v311):
-    """S1: "Colonists below the 50% mark tend to multiply and increase." Each class M product pool holds
-    30,000 thousand (NOTE 19 (b)); the rate is not published, so the engine's 5% stays. Above half a pool does
-    not shrink; only the extra above the pool cap dies back (NOTE 19 (c))."""
+    """S1: "Colonists below the 50% mark tend to multiply and increase" and above it "tend to die off".
+    Each class M product pool holds 30,000 thousand (NOTE 19). The rate is not published, so the engine's 5% stays."""
     planet = _world(fuel_ore=1_500_000, organics=700_000)
     assert planet_growth_status(planet.class_id, planet.colonists, 0)["growth_active"] is True
     _apply_one_day(planet)
@@ -127,16 +132,18 @@ def test_class_m_below_half_the_pool_cap_grows(v311):
     full = _world(fuel_ore=20_000_000)
     assert planet_growth_status(full.class_id, full.colonists, 0)["growth_active"] is False
     _apply_one_day(full)
-    assert full.colonists[Commodity.FUEL_ORE] == 20_000_000
+    assert full.colonists[Commodity.FUEL_ORE] == 19_000_000
     over = _world(fuel_ore=K.CLASS_M_CATEGORY_CAP + 10_000_000)
     _apply_one_day(over)
-    assert over.colonists[Commodity.FUEL_ORE] == K.CLASS_M_CATEGORY_CAP + 9_500_000
+    assert over.colonists[Commodity.FUEL_ORE] == 38_000_000
     assert "grows about 5% a day" in colonist_trend(PlanetClass.M, 191_000)
+    assert "die off" in colonist_trend(PlanetClass.M, 20_000_000)
 
 
 def test_a_day_paid_in_slices_matches_the_daily_number(v311):
-    """The day-slice split (_split_units, prod_remain) pays the corrected daily number once a day."""
-    planet = _world(fuel_ore=20_000_000)
+    """The day-slice split (_split_units, prod_remain) pays the corrected daily number once a day.
+    Half of the printed maximum does not grow or die, so the daily number stays put across the slices."""
+    planet = _world(fuel_ore=15_000_000)
     day = int(K.TURN_REGEN_DAY_SECONDS)
     for _ in range(4):
         _accrue_planet(planet, day // 4)
@@ -160,7 +167,7 @@ def test_profile_off_and_other_classes_are_unchanged():
             K.V311_PROFILE = "v311"
             class_l = _world(PlanetClass.L, fuel_ore=1_500, organics=700)
             _apply_one_day(class_l)
-            assert _made(class_l) == (750, 140, 0, 73)
+            assert _made(class_l) == (750, 140, 0, 74)
         finally:
             K.V311_PROFILE = old
     finally:
