@@ -59,13 +59,13 @@ Setup: the new test character, in a Merchant Cruiser, in a safe sector that is n
 
 item_id: n96-course-max
 
-Keys: from the command prompt open the computer, then the course plotter. On this project's cockpit that is C, then F. On the original TW2002 computer menu, press the letter printed beside the course plotter and write that letter in the notes. Plot one course you know is longer than 45 hops, and one of 45 or fewer. Do not fly either course.
+Keys: from the command prompt open the computer, then the course plotter. On this project's cockpit that is C, then F. On the original TW2002 computer menu, press the letter printed beside the course plotter and write that letter in the notes. Plot one course you know is longer than this game's Maximum Course Length, and one of that length. On GameA that length is 20. Do not fly either course.
 
-Read: the refusal text, or the plotted length. In the General Editor, read "Maximum Course Length".
+Read: the refusal text. Confirm whether the number in it is 20. TEDIT field bounds are still unread.
 
-Settles: `V311_COURSE_MAX_HOPS`. The queue also names `COURSE_MAX_MODE`, the switch that turns the cap on. This visit does not change the switch.
+Settles: the per-game length on `GameConfig.max_course_length`. `V311_COURSE_MAX_HOPS` stays the unset default, the published sample 45. `GAMEA_COURSE_MAX_HOPS` is the measured GameA value and is not applied until a game sets the field. This visit does not change `COURSE_MAX_MODE`.
 
-Status: still open. `V311_COURSE_MAX_HOPS` stays 45. No file in `docs/playtests/twgs-live/` reads "Maximum Course Length" or refuses a plot for length. `computer-b.txt` records a 4-hop plot that succeeded. The remake already refuses a computer plot longer than that constant and accepts a plot of that length, on `COURSE_MAX_MODE` live and on the v311 profile. This visit is the one that would confirm or replace 45.
+Status: GameA's setting is measured. `docs/playtests/twgs-live/plotted-course-limit.txt` records TWSTATS `Max Course Length=20` on 2026-10-24. The live plot that would show the refusal number, and the TEDIT numeric min and max, are still blocked. No plot was run. No TEDIT was opened.
 
 ### Quick-stats and backtrack keys
 

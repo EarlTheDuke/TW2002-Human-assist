@@ -4711,7 +4711,7 @@ V311_PROFILE_HELPERS: dict[str, tuple[str, str]] = {
     ),
     "course_max_live": (
         "COURSE_MAX_MODE",
-        "MOV-g (NOTE 78): a plotted course longer than 45 hops is refused; 45 hops is plotted (45 UNVERIFIED, NOTE 96)",
+        "MOV-g (NOTE 78): a plotted course longer than the game's Maximum Course Length is refused. Unset uses the published sample 45. GameA TWSTATS is 20 (NOTE 96)",
     ),
     "big_bang_density_live": (
         "BIG_BANG_DENSITY_MODE",
@@ -5629,44 +5629,50 @@ def planet_treasury_cap() -> int:
 
 
 COURSE_MAX_MODE = "legacy"  # "legacy" | "live"
-# UNVERIFIED, searched: docs/playtests/twgs-live/ (no "Maximum Course Length"
-# line and no over-limit plot; computer-b.txt is a 4-hop success on TWGS
-# v2.20b / TW 3.34b, "The shortest path (4 hops, 12 turns) from sector 50 to
-# sector 157") and uploads/ (no capture). Published samples that still print
-# 45, none of them a reading of this game:
-# cabal twgs.html line 214 and stardock_modernmanual/advanced__twgs-settings.md
-# line 171, General Editor Two, "Maximum Course Length : 45";
-# cabal twgs.html lines 69-71, option B default 45, range 20-255, the maximum
-# distance between two sectors on the map;
-# Big_Bang.html lines 201-210, option B shapes the map during creation (the
-# screen sample is 100; Traitor's note on line 210 says default 45);
-# Glossary.html line 203 and cabal blockades.html line 353, a failed plot,
-# "Error - No route within 45 warps from sector 10 to sector 11";
-# TWFAQ_20FAQ.txt lines 106-110, TEDIT can lower the plotter cap after the
-# bang (the example there is 25);
-# tw-attac revision history line 538, course-plot text past 160 characters.
-# When course_max_live(), a shortest path of this many hops is plotted and one
-# more hop is refused. Legacy searches PLOT_COURSE_MAX_DEPTH * 6.
-# Queued as NOTE 96, n96-course-max, in live-twgs-test-queue-v1.md.
+# UNVERIFIED, searched: the live plot that would show the refusal number, and
+# the TEDIT min/max. docs/playtests/twgs-live/plotted-course-limit.txt (Ven,
+# 2026-10-24, read-only; also uploads/plotted-course-limit-ven.txt) measures
+# GameA TWSTATS line 131 "Max Course Length=20". GameK and the GameA backups
+# in that note also say 20. That is this install, not a universal default.
+# The published 45 is sample text: cabal twgs.html line 214 and
+# stardock_modernmanual/advanced__twgs-settings.md line 171, General Editor
+# Two "Maximum Course Length : 45"; cabal twgs.html lines 69-71 and
+# Big_Bang.html lines 201-210 (option B shapes the map; the screen sample is
+# 100; Traitor's note says default 45, range 20-255). Glossary.html line 203
+# and cabal blockades.html line 353 print "Error - No route within 45 warps".
+# TWFAQ_20FAQ.txt line 102 "Max Course length 50" is a FAQ sample, and lines
+# 106-110 lower a plotter to 25 as an example. tw-attac line 538 is display
+# width. tw2002.exe has "No route within <N> warps" and "No possible route!";
+# N is a format gap. No plot was run. No TEDIT ceiling is in the strings.
+# Unset live games use V311_COURSE_MAX_HOPS. A game that sets
+# GameConfig.max_course_length uses that. Legacy searches
+# PLOT_COURSE_MAX_DEPTH * 6. Queued as NOTE 96, n96-course-max.
 V311_COURSE_MAX_HOPS = 45
+# Ven GameA TWSTATS, 2026-10-24. Applied only when a game sets max_course_length.
+GAMEA_COURSE_MAX_HOPS = 20
 
 
 def course_max_live() -> bool:
-    """True when a plotted course longer than V311_COURSE_MAX_HOPS is refused."""
+    """True when a plotted course longer than the game's hop limit is refused."""
     return COURSE_MAX_MODE == "live" or tw2002_live_profile() or v311_profile()
 
 
-def plot_course_hop_limit() -> int:
+def plot_course_hop_limit(config=None) -> int:
     """Hops a plotted course may take. Legacy is 60.
 
-    Live is 45. A path of this many hops is plotted. One more hop is refused.
-    UNVERIFIED, searched: docs/playtests/twgs-live/, uploads/, Big_Bang.html
-    option B, cabal twgs.html General Editor Two, Glossary.html
-    "No route within 45 warps".
+    Live, GameConfig.max_course_length is this game's BIGBANG/TEDIT value.
+    Unset, the published sample V311_COURSE_MAX_HOPS (45) is used. That 45 is
+    not the Ven GameA reading (GAMEA_COURSE_MAX_HOPS, 20). A path of this
+    many hops is plotted. One more hop is refused.
+    UNVERIFIED, searched: docs/playtests/twgs-live/plotted-course-limit.txt.
+    The binary refusal keeps N blank until a live plot.
     """
-    if course_max_live():
+    if not course_max_live():
+        return int(PLOT_COURSE_MAX_DEPTH) * 6
+    raw = getattr(config, "max_course_length", None) if config is not None else None
+    if raw is None:
         return int(V311_COURSE_MAX_HOPS)
-    return int(PLOT_COURSE_MAX_DEPTH) * 6
+    return int(raw)
 
 
 BIG_BANG_DENSITY_MODE = "legacy"  # "legacy" | "live"
