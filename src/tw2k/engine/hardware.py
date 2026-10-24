@@ -75,11 +75,21 @@ def decloak_sector(universe: Universe, sector_id: int) -> int:
     return n
 
 
+def _decay_photon_refire(ship) -> None:
+    left = int(getattr(ship, "photon_refire_ticks", 0) or 0)
+    if left > 0:
+        ship.photon_refire_ticks = left - 1
+
+
 def tick_photon_waves(universe: Universe) -> None:
     for sector in universe.sectors.values():
         rem = int(getattr(sector, "photon_wave_remaining", 0) or 0)
         if rem > 0:
             sector.photon_wave_remaining = rem - 1
+    for player in universe.players.values():
+        _decay_photon_refire(player.ship)
+    for parked in getattr(universe, "parked_ships", {}).values():
+        _decay_photon_refire(parked.ship)
 
 
 def tick_cloak_fails(universe: Universe, rng) -> None:
@@ -157,19 +167,63 @@ def _damp_planets_in_sector(universe: Universe, shooter_id: str, sector_id: int)
         other.photon_damped_sector_id = sector_id
 
 
+def photon_settings_block(player: Player, target_sector: int | None = None) -> str | None:
+    """GameA photon card refusal, or None when that card is off or the shot is allowed.
+
+    FedSpace Photons=False, Photons Disable Players=True, Multiple Photons=False.
+    The 20-second duration is not consulted. Cloak fail stays CLOAK_FAIL_RATE.
+    """
+    if not K.photon_cloak_settings_live():
+        return None
+    if int(getattr(player.ship, "photon_disabled_ticks", 0) or 0) > 0:
+        return "your fighters are offline (photon)"
+    if int(getattr(player.ship, "photon_refire_ticks", 0) or 0) > 0:
+        return "photon wave still up"
+    if int(player.sector_id) in K.FEDSPACE_SECTORS:
+        return "FedSpace photons are off"
+    if target_sector is not None and int(target_sector) in K.FEDSPACE_SECTORS:
+        return "FedSpace photons are off"
+    return None
+
+
+def _disable_players_for_wave(universe: Universe, sector_id: int) -> int:
+    """Photons Disable Players=True: fighters offline for the day-tick wave."""
+    if not K.photon_cloak_settings_live():
+        return 0
+    sector = universe.sectors.get(sector_id)
+    if sector is None:
+        return 0
+    span = int(K.PHOTON_WAVE_DURATION)
+    if span <= 0:
+        return 0
+    n = 0
+    for oid in list(sector.occupant_ids):
+        other = universe.players.get(oid)
+        if other is None or not other.alive:
+            continue
+        have = int(getattr(other.ship, "photon_disabled_ticks", 0) or 0)
+        other.ship.photon_disabled_ticks = max(have, span)
+        n += 1
+    return n
+
+
 def mark_sector_photon_wave(universe: Universe, shooter_id: str, sector_id: int) -> dict[str, Any]:
     """Apply photon wave to an adjacent sector (h7)."""
     sector = universe.sectors[sector_id]
     sector.photon_wave_remaining = int(K.PHOTON_WAVE_DURATION)
     decloaked = decloak_sector(universe, sector_id)
+    disabled = _disable_players_for_wave(universe, sector_id)
     _damp_planets_in_sector(universe, shooter_id, sector_id)
-    return {
+    out = {
         "sector_id": sector_id,
         "wave": int(sector.photon_wave_remaining),
         "decloaked": decloaked,
         "mines_sitting": total_sweepable_mines(sector),
         "fighters_sitting": int(sector.fighters.count) if sector.fighters else 0,
     }
+    if disabled:
+        out["disabled"] = disabled
+    return out
 
 
 def _allied(universe: Universe, a: str, b: str) -> bool:
@@ -317,7 +371,11 @@ def handle_photon_tw2002(universe: Universe, pid: str, action: Action) -> Action
         return ActionResult(ok=False, error="photon target must be an adjacent sector")
     if target_id not in universe.sectors:
         return ActionResult(ok=False, error="invalid target sector")
+    block = photon_settings_block(player, target_id)
+    if block:
+        return ActionResult(ok=False, error=block)
     # FedSpace: keep existing penalty shape when firing from FedSpace at a protected situation.
+    # The GameA card refuses above this, and does not dock alignment.
     if player.sector_id in K.FEDSPACE_SECTORS:
         # Align with legacy: firing weapons in FedSpace costs alignment when RANK_MODE off,
         # or when protected traders are involved. For sector-target photons, refuse in FedSpace
@@ -330,6 +388,12 @@ def handle_photon_tw2002(universe: Universe, pid: str, action: Action) -> Action
         return ActionResult(ok=False, error="out of turns")
     player.ship.photon_missiles -= 1
     info = mark_sector_photon_wave(universe, pid, target_id)
+    if K.photon_cloak_settings_live():
+        # Multiple Photons=False. The lock is the stored day-tick wave, not 20 seconds.
+        player.ship.photon_refire_ticks = int(K.PHOTON_WAVE_DURATION)
+    hit_payload = {"target_sector": target_id, "wave": info["wave"], "decloaked": info["decloaked"]}
+    if info.get("disabled"):
+        hit_payload["disabled"] = info["disabled"]
     universe.emit(
         EventKind.PHOTON_FIRED,
         actor_id=pid,
@@ -341,7 +405,7 @@ def handle_photon_tw2002(universe: Universe, pid: str, action: Action) -> Action
         EventKind.PHOTON_HIT,
         actor_id=pid,
         sector_id=target_id,
-        payload={"target_sector": target_id, "wave": info["wave"], "decloaked": info["decloaked"]},
+        payload=hit_payload,
         summary=(
             f"!!! Photon wave in {target_id}: mines/fighters neutralized for "
             f"{info['wave']} day-tick(s); {info['decloaked']} ship(s) decloaked !!!"

@@ -586,6 +586,7 @@ class Ship(BaseModel):
             "transwarp_drive": None, "fleet_id": None, "tow_lock": None,
             "corp_ticker": None, "ship_password": "",
             "dock_log": [], "planet_scanner": False,
+            "photon_refire_ticks": 0,
         })
 
     ship_class: ShipClass = ShipClass.MERCHANT_CRUISER
@@ -605,6 +606,9 @@ class Ship(BaseModel):
     scanner: str | None = None
     # If > 0, fighters are disabled for this many remaining ticks (photon hit).
     photon_disabled_ticks: int = 0
+    # GameA Multiple Photons=False. Days left before this hull may fire again.
+    # Omitted while 0 so a legacy dump stays put.
+    photon_refire_ticks: int = 0
     # HARDWARE_MODE tw2002 (SHIP_HARDWARE.md): cloaks / disruptors aboard and cloak state.
     cloaks: int = 0
     mine_disruptors: int = 0

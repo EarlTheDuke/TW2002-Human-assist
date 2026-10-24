@@ -46,7 +46,8 @@ Today kept as `HARDWARE_MODE = "legacy"`: armid hits = min(count, rand 1..10) x 
 - NavHaz, the full entry order (NavHaz then limpet then armid then quasar then fighters then avoid), corbomite, marker beacons, psychic probe and the atomic-detonator redesign are built in **ship-hardware-v2**: see `SHIP_HARDWARE_V2.md` (same `HARDWARE_MODE` switch).
 - Genesis empty-start seed 2500 stays as already documented in PLANET_ECONOMY_LIMITS.md.
 - Cloak "24 hours" maps to one day-tick fail check while still cloaked (turn-based), not a real-time clock.
-- Photon wave "1 second" maps to one day-tick of `photon_wave_remaining` (named constant).
+- Photon wave "1 second" maps to one day-tick of `photon_wave_remaining` (named constant). GameA `Photon Missile Duration=20 Sec` (`docs/playtests/twgs-live/twstats-costs-ven.txt`) is a SOURCE-CONFLICT with that 1 second and with Gypsy's 10 seconds, and stays deferred. `PHOTON_CLOAK_SETTINGS_MODE` does not invent a realtime clock.
+- GameA `Cloak Fail Percent=3%` is already `CLOAK_FAIL_RATE` 0.03. FedSpace Photons=False, Photons Disable Players=True, and Multiple Photons=False are that same card (row 230) and stay off until it is on.
 - Carried-photon blast spends the rest of the day's turns (`turns_today = turns_per_day`) rather than a wall-clock day end.
 - Disruptor clears a uniform random 1..12 mines (Bible ceiling), not an MBBS average curve.
 - Limpet removal fee uses the only TEDIT sample found (UNVERIFIED as 3.11 default).

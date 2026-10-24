@@ -13,7 +13,7 @@ Ben can rule on these. Each row is one that NOTEs 143, 148, 150, 151, 157, or 15
 | Row | Competing numbers | Sources | Current choice |
 |---|---|---|---|
 | 8.1 Ferrengi combat odds | FERRSPEC 1.0 / 1.2 / 1.4, or the Bible chart 1.2 / 1.4 / 1.4 | `docs/playtests/npc/FERRENGI.md` n2 picks FERRSPEC. The Bible ship chart is in `docs/reference/tw2002/S3_tw2002_bible_v1.htm`: Assault Trader 1.2:1 and 3,000 / 2,000 fighters, Battle Cruiser 1.4:1, Dreadnaught 1.4:1. The v3.05 revision lets the Assault Trader carry a density or holo scanner, and that chart prints Both. | `FERRENGI_ODDS_BY_HULL` keeps 1.0, 1.2, and 1.4. `FERRENGI_ODDS_MODE` (NOTE 164, row 200) reads the Bible chart when it is on, including the Assault Trader volley of 2,000 and the holo scanner. Off, FERRSPEC stays, and `FERRENGI_ATTACK_MODE` still caps that volley at 1,000. |
-| Photon wave duration | 1 second, or 10 seconds | Cabal `twgs.html` and the modern manual print 1 second. Gypsy's v2.03 V-screen prints 10 seconds. | `PHOTON_WAVE_DURATION` is already 1. NOTE 148 left it. |
+| Photon wave duration | 1 second, or 10 seconds, or 20 seconds | Cabal `twgs.html` and the modern manual print 1 second. Gypsy's v2.03 V-screen prints 10 seconds. GameA TWSTATS [Settings] prints `Photon Missile Duration=20 Sec` (`docs/playtests/twgs-live/twstats-costs-ven.txt`). | `PHOTON_WAVE_DURATION` stays 1 day-tick. The 20 seconds are DIFFERENT and deferred: there is no realtime photon clock. `PHOTON_CLOAK_SETTINGS_MODE` (row 230) does not change the duration. |
 
 ## NOTE 150 — ports, trading, haggling
 

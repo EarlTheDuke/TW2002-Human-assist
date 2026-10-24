@@ -154,3 +154,17 @@ Ven 2026-10-24 GameA TWSTATS (`docs/playtests/twgs-live/twstats-costs-ven.txt`) 
 | Type II TWarp price | Stored `SHIP_TW_TYPE2_COST` 20,000. Live card `ship_tw_type2_cost` 80,000 when `hardware_price_live`. OldFAQ v2 80,000. SOURCE-CONFLICT | Buy a Type II drive on a TransWarp hull at StarDock with the live card on | The credit price on the hardware screen | `SHIP_TW_TYPE2_COST` |
 | TWarp upgrade price | Stored `SHIP_TW_UPGRADE_COST` 9,000. Live card `ship_tw_upgrade_cost` 10,000 when `hardware_price_live`. OldFAQ v2 40,000. SOURCE-CONFLICT | Upgrade a fitted Type I drive at StarDock with the live card on | The credit price on the hardware screen | `SHIP_TW_UPGRADE_COST` |
 | Photon missile price | Stored `PHOTON_MISSILE_COST` 12,000. Live card `photon_missile_cost` 40,000 when `hardware_price_live`. Cabal sample 160,000. SOURCE-CONFLICT | Buy one photon on a Missile Frigate at StarDock with the live card on | The credit price on the hardware screen | `PHOTON_MISSILE_COST` |
+
+## GameA photon and cloak settings
+
+Capture: `docs/playtests/twgs-live/twstats-costs-ven.txt`, the Ven GameA TWSTATS [Settings] lines. Cabal twgs.html prints Photon Wave Dur. 1 second, Cloaking FailRate 3%, Multiple Photon Fire No, and FedSpace Photons No. Gypsy's v2.03 V-screen prints 10 seconds. The Bible does not print "Photons Disable Players".
+
+Photon Missile Duration=20 Sec is DIFFERENT and deferred. `PHOTON_WAVE_DURATION` stays 1 day-tick. No realtime clock was added. That is a SOURCE-CONFLICT with the 1-second and 10-second prints, logged in the source-conflicts note.
+
+FedSpace Photons=False is switched. `PHOTON_CLOAK_SETTINGS_MODE` row 230 refuses a photon from or into FedSpace. Off, today's fire stays, including the rank-off alignment penalty.
+
+Photons Disable Players=True is switched on the same card. Players in the target sector are fighter-offline for the day-tick wave. Other verbs are not newly locked.
+
+Cloak Fail Percent=3% is already `CLOAK_FAIL_RATE` 0.03. No new switch.
+
+Multiple Photons=False is switched on the same card. That ship cannot fire again until the day-tick wave ends. The lock is not 20 seconds.
