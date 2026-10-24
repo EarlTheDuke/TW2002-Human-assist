@@ -4,7 +4,7 @@ n96-ferrengi-align,FERRENGI_ALIGN_ON_KILL,"+10, and only when alignment is alrea
 n96-ferrengal-quasar,FERRENGAL_QUASAR_FUEL; FERRENGAL_QUASAR_PCT,"10,000 fuel at 10 percent",,,,,"Ferrengal quasar"
 n96-ferrengi-banding,FERRENGI_BAND_STRONG,more_fighters_than_this_ship,,,,,Ferrengi banding cutoff
 n96-ferrengi-clock,FERRENGI_PACE_MODE,legacy: a pace hop relocates and the tribute menu opens on the day tick,,,,,Ferrengi attack clock
-n96-course-max,V311_COURSE_MAX_HOPS,45,,,,,Plotted course limit
+n96-course-max,V311_COURSE_MAX_HOPS,"unset live default 45 (published sample). GameA TWSTATS Max Course Length=20. See docs/playtests/twgs-live/plotted-course-limit.txt",,,,,"Plotted course limit"
 n96-death-delay-max,GameConfig.death_delay,"CLOSED. Yes/No, default Yes. No numeric maximum. S7 day count is not this field",,,,,Death delay maximum
 n96-deaths-per-day-max,GameConfig.deaths_per_day,"any whole number, default 0. TEDIT maximum unmeasured. BLOCKED",,,,,Deaths Per Day maximum
 n96-flying-pod,death_delay_days,S7 sentence is not the v3 field. A new day starts a new Deaths Per Day allowance,,,,,Flying pod sentence
@@ -24,7 +24,7 @@ n103-quick-backtrack,the two keys in the cockpit,"> quick stats, < adjacent back
 n97-haggle-good,HAGGLE_EXP_GOOD,+1,,,,,Good haggle experience
 n97-haggle-great,HAGGLE_EXP_GREAT,"+2, when the accepted price reaches the hidden bound",,,,,"Great haggle experience"
 n97-ship-rename,SHIP_RENAME_COST; SHIP_RENAME_NAME_MAX,"5000 credits, 30 characters, 0 turns",,,,,"Ship rename"
-n110-computer-b,"none, cockpit key, not an engine constant","This cockpit's Computer menu uses B for backtrack. The original backtrack key is <",,,,,"Computer menu B"
+n110-computer-b,"none, cockpit key, not an engine constant","Under the v3.11 profile, Computer B is Begin Self Destruct. N aborts. Y reuses the existing self-destruct. < stays the previous-sector key. A legacy Computer menu still uses B for backtrack",,,,,"Computer menu B"
 n112-shield-price,"a shield price, only if the screen prints one",no saved unit price. The flat 10 stays. The fighter wave is 160 to 239,,,,,Shield unit price
 n112-ship-odds,docs/plans/ship-odds-exchange-v1.md,already queued under NOTE 96. No new switch,,,,,Ship-odds loss split
 n112-attack-turns,TURN_COST attack,an attack spends 5 turns,,,,,Attack turn cost

@@ -26,6 +26,9 @@ ALLOW = {
     "GameConfig.deaths_per_day": (
         "Whole-number allowance on tw2k.engine.models.GameConfig. The TEDIT maximum is unmeasured."
     ),
+    "GameConfig.max_course_length": (
+        "Field on tw2k.engine.models.GameConfig. A game's BIGBANG/TEDIT Maximum Course Length. Unset keeps the published sample."
+    ),
     "docs/plans/ship-odds-exchange-v1.md": (
         "The ship-odds ruling is this doc. No engine constant and no new switch."
     ),
