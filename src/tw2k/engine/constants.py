@@ -162,7 +162,10 @@ def port_class_trades(class_id: int) -> tuple[bool | None, bool | None, bool | N
     if port_class_number_fix() and port_class_live() and cid == 7:
         return (False, False, False)
     return table.get(cid, (None, None, None))
-# First successful trade of a visit. A later trade in that sector costs 0.
+# GAP 2.7. First successful trade of a visit. A later trade in that sector
+# costs 0. docs/playtests/ports/TURNS_REGEN.md. The October 3 map said this
+# was 3 per trade. A stored game does not charge 3. The saved Bible prints
+# "Docking...One turn deducted" and does not print a second trade cost.
 PORT_DOCK_TURN_COST = 1
 
 # Hidden port personality. docs/playtests/ports/PRICE_MODEL.md.
@@ -3545,9 +3548,11 @@ def planet_nw_live() -> bool:
     return PLANET_NW_MODE == "live" or tw2002_live_profile() or v311_profile()
 
 
-# trade-dock-turn-v1. Appended so later slices can rebase cleanly.
+# trade-dock-turn-v1. GAP 2.7. Appended so later slices can rebase cleanly.
 # The visit rule is already the engine: the first deal costs 1 turn, later
 # deals in that sector cost 0. "legacy" keeps that. "live" names the same rule.
+# Row 227 stays open. Putting 3 back on the legacy path would change stored
+# games. docs/playtests/ports/TURNS_REGEN.md.
 TRADE_TURN_MODE = "legacy"  # "legacy" | "live"
 
 
