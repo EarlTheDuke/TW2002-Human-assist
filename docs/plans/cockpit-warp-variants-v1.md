@@ -29,3 +29,5 @@ On the 1280x720 run the page built a jump in 2.2 ms. Laying out that frame took 
 ## The older warp test
 
 `tests/test_cockpit_warp_ship_clips_v1.py` used to require the played id to be exactly `<hull>.streak.01`, which was the only row. That check now accepts any id for the hull. The call that asks for the first row still expects `<hull>.streak.01`.
+
+The captured files for these ten pictures, and how to drop clip 11 or a live-generated webm, are in `docs/plans/cockpit-warp-clip-library-v1.md`.

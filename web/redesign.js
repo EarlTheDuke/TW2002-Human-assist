@@ -1329,6 +1329,8 @@
     };
   }
   function shuffleWarp(ids) {
+    const api = window.TW2KWarpVariants;
+    if (api && api.drawBag) return api.drawBag(ids, lastWarpId);
     const bag = ids.slice();
     for (let i = bag.length - 1; i > 0; i--) {
       const j = Math.floor(Math.random() * (i + 1));
@@ -1346,6 +1348,13 @@
   }
   function takeWarpClip(list) {
     const ids = list.map((row) => String(row.id));
+    const api = window.TW2KWarpVariants;
+    if (api && api.takeId) {
+      const step = api.takeId(ids, { bag: warpBag, last: lastWarpId });
+      warpBag = step.bag;
+      lastWarpId = step.last;
+      return list.find((row) => String(row.id) === step.id) || list[0];
+    }
     const same = warpBag.length > 0 && warpBag.every((id) => ids.indexOf(id) >= 0);
     if (!same) warpBag = shuffleWarp(ids);
     let id = warpBag.pop();
@@ -1522,15 +1531,15 @@
       ? window.TW2KWarpVariants.stars(chosen.id, style.stars)
       : warpStars();
     const flash = style && style.exit === "flash"
-      ? '<ellipse data-testid="warp-flash" cx="200" cy="130" rx="'
+      ? '<ellipse class="warp-flash" data-testid="warp-flash" cx="200" cy="130" rx="'
         + (22 + Number(style.plume || 12) * 0.35).toFixed(1)
         + '" ry="16" fill="' + style.flash + '" opacity="0.32"/>'
       : "";
     svg.innerHTML = field + flash
-      + '<g class="warp-ship" data-testid="warp-ship"><g data-testid="warp-body" data-model="'
+      + '<g class="warp-rig"><g class="warp-ship" data-testid="warp-ship"><g data-testid="warp-body" data-model="'
       + drawn.model + '"' + drawn.xform + ">"
-      + drawn.html + "</g></g>";
-    svg.querySelectorAll(".warp-ship, .streaks, .warp-stars").forEach((el) => {
+      + drawn.html + "</g></g></g>";
+    svg.querySelectorAll(".warp-ship, .streaks, .warp-stars, .warp-rig, .warp-flash").forEach((el) => {
       el.style.animationDuration = ms + "ms";
     });
     root.setAttribute("data-paint-ms", (performance.now() - paintAt).toFixed(2));

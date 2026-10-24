@@ -12,70 +12,70 @@
         "id": "escape_pod.streak.01",
         "webm": "escape_pod/01.webm",
         "duration_ms": 1600,
-        "bytes": 8433
+        "bytes": 117847
       },
       {
         "n": "02",
         "id": "escape_pod.chase.02",
         "webm": "escape_pod/02.webm",
         "duration_ms": 1800,
-        "bytes": 9430
+        "bytes": 107996
       },
       {
         "n": "03",
         "id": "escape_pod.headon.03",
         "webm": "escape_pod/03.webm",
         "duration_ms": 2100,
-        "bytes": 12679
+        "bytes": 121285
       },
       {
         "n": "04",
         "id": "escape_pod.top.04",
         "webm": "escape_pod/04.webm",
         "duration_ms": 2400,
-        "bytes": 4265
+        "bytes": 26743
       },
       {
         "n": "05",
         "id": "escape_pod.side.05",
         "webm": "escape_pod/05.webm",
         "duration_ms": 2700,
-        "bytes": 5048
+        "bytes": 28887
       },
       {
         "n": "06",
         "id": "escape_pod.gate.06",
         "webm": "escape_pod/06.webm",
         "duration_ms": 1500,
-        "bytes": 9347
+        "bytes": 73556
       },
       {
         "n": "07",
         "id": "escape_pod.headon.07",
         "webm": "escape_pod/07.webm",
         "duration_ms": 1900,
-        "bytes": 3065
+        "bytes": 17834
       },
       {
         "n": "08",
         "id": "escape_pod.top.08",
         "webm": "escape_pod/08.webm",
         "duration_ms": 2300,
-        "bytes": 9969
+        "bytes": 117561
       },
       {
         "n": "09",
         "id": "escape_pod.side.09",
         "webm": "escape_pod/09.webm",
         "duration_ms": 2600,
-        "bytes": 14465
+        "bytes": 127286
       },
       {
         "n": "10",
         "id": "escape_pod.chase.10",
         "webm": "escape_pod/10.webm",
         "duration_ms": 3000,
-        "bytes": 6161
+        "bytes": 37340
       }
     ],
     "merchant_cruiser": [
@@ -84,70 +84,70 @@
         "id": "merchant_cruiser.streak.01",
         "webm": "merchant_cruiser/01.webm",
         "duration_ms": 1600,
-        "bytes": 9893
+        "bytes": 125072
       },
       {
         "n": "02",
         "id": "merchant_cruiser.chase.02",
         "webm": "merchant_cruiser/02.webm",
         "duration_ms": 1800,
-        "bytes": 11953
+        "bytes": 114183
       },
       {
         "n": "03",
         "id": "merchant_cruiser.headon.03",
         "webm": "merchant_cruiser/03.webm",
         "duration_ms": 2100,
-        "bytes": 16311
+        "bytes": 160422
       },
       {
         "n": "04",
         "id": "merchant_cruiser.top.04",
         "webm": "merchant_cruiser/04.webm",
         "duration_ms": 2400,
-        "bytes": 8580
+        "bytes": 48079
       },
       {
         "n": "05",
         "id": "merchant_cruiser.side.05",
         "webm": "merchant_cruiser/05.webm",
         "duration_ms": 2700,
-        "bytes": 6512
+        "bytes": 37516
       },
       {
         "n": "06",
         "id": "merchant_cruiser.gate.06",
         "webm": "merchant_cruiser/06.webm",
         "duration_ms": 1500,
-        "bytes": 11399
+        "bytes": 90264
       },
       {
         "n": "07",
         "id": "merchant_cruiser.headon.07",
         "webm": "merchant_cruiser/07.webm",
         "duration_ms": 1900,
-        "bytes": 5130
+        "bytes": 22645
       },
       {
         "n": "08",
         "id": "merchant_cruiser.top.08",
         "webm": "merchant_cruiser/08.webm",
         "duration_ms": 2300,
-        "bytes": 15747
+        "bytes": 148150
       },
       {
         "n": "09",
         "id": "merchant_cruiser.side.09",
         "webm": "merchant_cruiser/09.webm",
         "duration_ms": 2600,
-        "bytes": 17552
+        "bytes": 145007
       },
       {
         "n": "10",
         "id": "merchant_cruiser.chase.10",
         "webm": "merchant_cruiser/10.webm",
         "duration_ms": 3000,
-        "bytes": 9747
+        "bytes": 58195
       }
     ],
     "scout_marauder": [
@@ -156,70 +156,70 @@
         "id": "scout_marauder.streak.01",
         "webm": "scout_marauder/01.webm",
         "duration_ms": 1600,
-        "bytes": 8848
+        "bytes": 114781
       },
       {
         "n": "02",
         "id": "scout_marauder.chase.02",
         "webm": "scout_marauder/02.webm",
         "duration_ms": 1800,
-        "bytes": 11246
+        "bytes": 120504
       },
       {
         "n": "03",
         "id": "scout_marauder.headon.03",
         "webm": "scout_marauder/03.webm",
         "duration_ms": 2100,
-        "bytes": 17577
+        "bytes": 160838
       },
       {
         "n": "04",
         "id": "scout_marauder.top.04",
         "webm": "scout_marauder/04.webm",
         "duration_ms": 2400,
-        "bytes": 6208
+        "bytes": 37200
       },
       {
         "n": "05",
         "id": "scout_marauder.side.05",
         "webm": "scout_marauder/05.webm",
         "duration_ms": 2700,
-        "bytes": 5302
+        "bytes": 32721
       },
       {
         "n": "06",
         "id": "scout_marauder.gate.06",
         "webm": "scout_marauder/06.webm",
         "duration_ms": 1500,
-        "bytes": 10865
+        "bytes": 86368
       },
       {
         "n": "07",
         "id": "scout_marauder.headon.07",
         "webm": "scout_marauder/07.webm",
         "duration_ms": 1900,
-        "bytes": 4077
+        "bytes": 21043
       },
       {
         "n": "08",
         "id": "scout_marauder.top.08",
         "webm": "scout_marauder/08.webm",
         "duration_ms": 2300,
-        "bytes": 12696
+        "bytes": 136618
       },
       {
         "n": "09",
         "id": "scout_marauder.side.09",
         "webm": "scout_marauder/09.webm",
         "duration_ms": 2600,
-        "bytes": 16925
+        "bytes": 152826
       },
       {
         "n": "10",
         "id": "scout_marauder.chase.10",
         "webm": "scout_marauder/10.webm",
         "duration_ms": 3000,
-        "bytes": 7826
+        "bytes": 49188
       }
     ],
     "missile_frigate": [
@@ -228,70 +228,70 @@
         "id": "missile_frigate.streak.01",
         "webm": "missile_frigate/01.webm",
         "duration_ms": 1600,
-        "bytes": 9362
+        "bytes": 126825
       },
       {
         "n": "02",
         "id": "missile_frigate.chase.02",
         "webm": "missile_frigate/02.webm",
         "duration_ms": 1800,
-        "bytes": 12307
+        "bytes": 127225
       },
       {
         "n": "03",
         "id": "missile_frigate.headon.03",
         "webm": "missile_frigate/03.webm",
         "duration_ms": 2100,
-        "bytes": 14659
+        "bytes": 139012
       },
       {
         "n": "04",
         "id": "missile_frigate.top.04",
         "webm": "missile_frigate/04.webm",
         "duration_ms": 2400,
-        "bytes": 7104
+        "bytes": 43224
       },
       {
         "n": "05",
         "id": "missile_frigate.side.05",
         "webm": "missile_frigate/05.webm",
         "duration_ms": 2700,
-        "bytes": 5855
+        "bytes": 35412
       },
       {
         "n": "06",
         "id": "missile_frigate.gate.06",
         "webm": "missile_frigate/06.webm",
         "duration_ms": 1500,
-        "bytes": 11758
+        "bytes": 88417
       },
       {
         "n": "07",
         "id": "missile_frigate.headon.07",
         "webm": "missile_frigate/07.webm",
         "duration_ms": 1900,
-        "bytes": 4854
+        "bytes": 22903
       },
       {
         "n": "08",
         "id": "missile_frigate.top.08",
         "webm": "missile_frigate/08.webm",
         "duration_ms": 2300,
-        "bytes": 14095
+        "bytes": 142171
       },
       {
         "n": "09",
         "id": "missile_frigate.side.09",
         "webm": "missile_frigate/09.webm",
         "duration_ms": 2600,
-        "bytes": 16809
+        "bytes": 144716
       },
       {
         "n": "10",
         "id": "missile_frigate.chase.10",
         "webm": "missile_frigate/10.webm",
         "duration_ms": 3000,
-        "bytes": 9443
+        "bytes": 54968
       }
     ],
     "battleship": [
@@ -300,70 +300,70 @@
         "id": "battleship.streak.01",
         "webm": "battleship/01.webm",
         "duration_ms": 1600,
-        "bytes": 9551
+        "bytes": 116246
       },
       {
         "n": "02",
         "id": "battleship.chase.02",
         "webm": "battleship/02.webm",
         "duration_ms": 1800,
-        "bytes": 12606
+        "bytes": 127521
       },
       {
         "n": "03",
         "id": "battleship.headon.03",
         "webm": "battleship/03.webm",
         "duration_ms": 2100,
-        "bytes": 12896
+        "bytes": 135059
       },
       {
         "n": "04",
         "id": "battleship.top.04",
         "webm": "battleship/04.webm",
         "duration_ms": 2400,
-        "bytes": 7743
+        "bytes": 45734
       },
       {
         "n": "05",
         "id": "battleship.side.05",
         "webm": "battleship/05.webm",
         "duration_ms": 2700,
-        "bytes": 7244
+        "bytes": 41553
       },
       {
         "n": "06",
         "id": "battleship.gate.06",
         "webm": "battleship/06.webm",
         "duration_ms": 1500,
-        "bytes": 11479
+        "bytes": 89601
       },
       {
         "n": "07",
         "id": "battleship.headon.07",
         "webm": "battleship/07.webm",
         "duration_ms": 1900,
-        "bytes": 5109
+        "bytes": 24532
       },
       {
         "n": "08",
         "id": "battleship.top.08",
         "webm": "battleship/08.webm",
         "duration_ms": 2300,
-        "bytes": 14574
+        "bytes": 146062
       },
       {
         "n": "09",
         "id": "battleship.side.09",
         "webm": "battleship/09.webm",
         "duration_ms": 2600,
-        "bytes": 18782
+        "bytes": 161930
       },
       {
         "n": "10",
         "id": "battleship.chase.10",
         "webm": "battleship/10.webm",
         "duration_ms": 3000,
-        "bytes": 9892
+        "bytes": 56261
       }
     ],
     "corporate_flagship": [
@@ -372,70 +372,70 @@
         "id": "corporate_flagship.streak.01",
         "webm": "corporate_flagship/01.webm",
         "duration_ms": 1600,
-        "bytes": 11543
+        "bytes": 141083
       },
       {
         "n": "02",
         "id": "corporate_flagship.chase.02",
         "webm": "corporate_flagship/02.webm",
         "duration_ms": 1800,
-        "bytes": 13755
+        "bytes": 123029
       },
       {
         "n": "03",
         "id": "corporate_flagship.headon.03",
         "webm": "corporate_flagship/03.webm",
         "duration_ms": 2100,
-        "bytes": 15371
+        "bytes": 143516
       },
       {
         "n": "04",
         "id": "corporate_flagship.top.04",
         "webm": "corporate_flagship/04.webm",
         "duration_ms": 2400,
-        "bytes": 10207
+        "bytes": 57882
       },
       {
         "n": "05",
         "id": "corporate_flagship.side.05",
         "webm": "corporate_flagship/05.webm",
         "duration_ms": 2700,
-        "bytes": 8418
+        "bytes": 46572
       },
       {
         "n": "06",
         "id": "corporate_flagship.gate.06",
         "webm": "corporate_flagship/06.webm",
         "duration_ms": 1500,
-        "bytes": 12410
+        "bytes": 95506
       },
       {
         "n": "07",
         "id": "corporate_flagship.headon.07",
         "webm": "corporate_flagship/07.webm",
         "duration_ms": 1900,
-        "bytes": 6079
+        "bytes": 24670
       },
       {
         "n": "08",
         "id": "corporate_flagship.top.08",
         "webm": "corporate_flagship/08.webm",
         "duration_ms": 2300,
-        "bytes": 17158
+        "bytes": 165569
       },
       {
         "n": "09",
         "id": "corporate_flagship.side.09",
         "webm": "corporate_flagship/09.webm",
         "duration_ms": 2600,
-        "bytes": 15937
+        "bytes": 137995
       },
       {
         "n": "10",
         "id": "corporate_flagship.chase.10",
         "webm": "corporate_flagship/10.webm",
         "duration_ms": 3000,
-        "bytes": 11665
+        "bytes": 68352
       }
     ],
     "colonial_transport": [
@@ -444,70 +444,70 @@
         "id": "colonial_transport.streak.01",
         "webm": "colonial_transport/01.webm",
         "duration_ms": 1600,
-        "bytes": 11123
+        "bytes": 137931
       },
       {
         "n": "02",
         "id": "colonial_transport.chase.02",
         "webm": "colonial_transport/02.webm",
         "duration_ms": 1800,
-        "bytes": 13285
+        "bytes": 141910
       },
       {
         "n": "03",
         "id": "colonial_transport.headon.03",
         "webm": "colonial_transport/03.webm",
         "duration_ms": 2100,
-        "bytes": 16299
+        "bytes": 161916
       },
       {
         "n": "04",
         "id": "colonial_transport.top.04",
         "webm": "colonial_transport/04.webm",
         "duration_ms": 2400,
-        "bytes": 8903
+        "bytes": 48523
       },
       {
         "n": "05",
         "id": "colonial_transport.side.05",
         "webm": "colonial_transport/05.webm",
         "duration_ms": 2700,
-        "bytes": 7885
+        "bytes": 46277
       },
       {
         "n": "06",
         "id": "colonial_transport.gate.06",
         "webm": "colonial_transport/06.webm",
         "duration_ms": 1500,
-        "bytes": 11523
+        "bytes": 86879
       },
       {
         "n": "07",
         "id": "colonial_transport.headon.07",
         "webm": "colonial_transport/07.webm",
         "duration_ms": 1900,
-        "bytes": 5332
+        "bytes": 22911
       },
       {
         "n": "08",
         "id": "colonial_transport.top.08",
         "webm": "colonial_transport/08.webm",
         "duration_ms": 2300,
-        "bytes": 15493
+        "bytes": 148264
       },
       {
         "n": "09",
         "id": "colonial_transport.side.09",
         "webm": "colonial_transport/09.webm",
         "duration_ms": 2600,
-        "bytes": 21347
+        "bytes": 148277
       },
       {
         "n": "10",
         "id": "colonial_transport.chase.10",
         "webm": "colonial_transport/10.webm",
         "duration_ms": 3000,
-        "bytes": 10206
+        "bytes": 57494
       }
     ],
     "cargotran": [
@@ -516,70 +516,70 @@
         "id": "cargotran.streak.01",
         "webm": "cargotran/01.webm",
         "duration_ms": 1600,
-        "bytes": 10572
+        "bytes": 128629
       },
       {
         "n": "02",
         "id": "cargotran.chase.02",
         "webm": "cargotran/02.webm",
         "duration_ms": 1800,
-        "bytes": 13522
+        "bytes": 125208
       },
       {
         "n": "03",
         "id": "cargotran.headon.03",
         "webm": "cargotran/03.webm",
         "duration_ms": 2100,
-        "bytes": 14334
+        "bytes": 127764
       },
       {
         "n": "04",
         "id": "cargotran.top.04",
         "webm": "cargotran/04.webm",
         "duration_ms": 2400,
-        "bytes": 10090
+        "bytes": 51690
       },
       {
         "n": "05",
         "id": "cargotran.side.05",
         "webm": "cargotran/05.webm",
         "duration_ms": 2700,
-        "bytes": 8112
+        "bytes": 46376
       },
       {
         "n": "06",
         "id": "cargotran.gate.06",
         "webm": "cargotran/06.webm",
         "duration_ms": 1500,
-        "bytes": 11973
+        "bytes": 90795
       },
       {
         "n": "07",
         "id": "cargotran.headon.07",
         "webm": "cargotran/07.webm",
         "duration_ms": 1900,
-        "bytes": 5469
+        "bytes": 23746
       },
       {
         "n": "08",
         "id": "cargotran.top.08",
         "webm": "cargotran/08.webm",
         "duration_ms": 2300,
-        "bytes": 16763
+        "bytes": 155701
       },
       {
         "n": "09",
         "id": "cargotran.side.09",
         "webm": "cargotran/09.webm",
         "duration_ms": 2600,
-        "bytes": 22892
+        "bytes": 158045
       },
       {
         "n": "10",
         "id": "cargotran.chase.10",
         "webm": "cargotran/10.webm",
         "duration_ms": 3000,
-        "bytes": 11090
+        "bytes": 64454
       }
     ],
     "merchant_freighter": [
@@ -588,70 +588,70 @@
         "id": "merchant_freighter.streak.01",
         "webm": "merchant_freighter/01.webm",
         "duration_ms": 1600,
-        "bytes": 11557
+        "bytes": 113120
       },
       {
         "n": "02",
         "id": "merchant_freighter.chase.02",
         "webm": "merchant_freighter/02.webm",
         "duration_ms": 1800,
-        "bytes": 12178
+        "bytes": 119794
       },
       {
         "n": "03",
         "id": "merchant_freighter.headon.03",
         "webm": "merchant_freighter/03.webm",
         "duration_ms": 2100,
-        "bytes": 14544
+        "bytes": 129766
       },
       {
         "n": "04",
         "id": "merchant_freighter.top.04",
         "webm": "merchant_freighter/04.webm",
         "duration_ms": 2400,
-        "bytes": 8507
+        "bytes": 47456
       },
       {
         "n": "05",
         "id": "merchant_freighter.side.05",
         "webm": "merchant_freighter/05.webm",
         "duration_ms": 2700,
-        "bytes": 8978
+        "bytes": 48658
       },
       {
         "n": "06",
         "id": "merchant_freighter.gate.06",
         "webm": "merchant_freighter/06.webm",
         "duration_ms": 1500,
-        "bytes": 12024
+        "bytes": 92091
       },
       {
         "n": "07",
         "id": "merchant_freighter.headon.07",
         "webm": "merchant_freighter/07.webm",
         "duration_ms": 1900,
-        "bytes": 5718
+        "bytes": 23755
       },
       {
         "n": "08",
         "id": "merchant_freighter.top.08",
         "webm": "merchant_freighter/08.webm",
         "duration_ms": 2300,
-        "bytes": 15258
+        "bytes": 154850
       },
       {
         "n": "09",
         "id": "merchant_freighter.side.09",
         "webm": "merchant_freighter/09.webm",
         "duration_ms": 2600,
-        "bytes": 20385
+        "bytes": 162214
       },
       {
         "n": "10",
         "id": "merchant_freighter.chase.10",
         "webm": "merchant_freighter/10.webm",
         "duration_ms": 3000,
-        "bytes": 10186
+        "bytes": 60300
       }
     ],
     "havoc_gunstar": [
@@ -660,70 +660,70 @@
         "id": "havoc_gunstar.streak.01",
         "webm": "havoc_gunstar/01.webm",
         "duration_ms": 1600,
-        "bytes": 9204
+        "bytes": 129251
       },
       {
         "n": "02",
         "id": "havoc_gunstar.chase.02",
         "webm": "havoc_gunstar/02.webm",
         "duration_ms": 1800,
-        "bytes": 11769
+        "bytes": 123655
       },
       {
         "n": "03",
         "id": "havoc_gunstar.headon.03",
         "webm": "havoc_gunstar/03.webm",
         "duration_ms": 2100,
-        "bytes": 13540
+        "bytes": 134268
       },
       {
         "n": "04",
         "id": "havoc_gunstar.top.04",
         "webm": "havoc_gunstar/04.webm",
         "duration_ms": 2400,
-        "bytes": 7628
+        "bytes": 47454
       },
       {
         "n": "05",
         "id": "havoc_gunstar.side.05",
         "webm": "havoc_gunstar/05.webm",
         "duration_ms": 2700,
-        "bytes": 6492
+        "bytes": 36874
       },
       {
         "n": "06",
         "id": "havoc_gunstar.gate.06",
         "webm": "havoc_gunstar/06.webm",
         "duration_ms": 1500,
-        "bytes": 11526
+        "bytes": 91280
       },
       {
         "n": "07",
         "id": "havoc_gunstar.headon.07",
         "webm": "havoc_gunstar/07.webm",
         "duration_ms": 1900,
-        "bytes": 5120
+        "bytes": 23629
       },
       {
         "n": "08",
         "id": "havoc_gunstar.top.08",
         "webm": "havoc_gunstar/08.webm",
         "duration_ms": 2300,
-        "bytes": 14368
+        "bytes": 140028
       },
       {
         "n": "09",
         "id": "havoc_gunstar.side.09",
         "webm": "havoc_gunstar/09.webm",
         "duration_ms": 2600,
-        "bytes": 17552
+        "bytes": 148486
       },
       {
         "n": "10",
         "id": "havoc_gunstar.chase.10",
         "webm": "havoc_gunstar/10.webm",
         "duration_ms": 3000,
-        "bytes": 9295
+        "bytes": 54873
       }
     ],
     "imperial_starship": [
@@ -732,70 +732,70 @@
         "id": "imperial_starship.streak.01",
         "webm": "imperial_starship/01.webm",
         "duration_ms": 1600,
-        "bytes": 14378
+        "bytes": 153675
       },
       {
         "n": "02",
         "id": "imperial_starship.chase.02",
         "webm": "imperial_starship/02.webm",
         "duration_ms": 1800,
-        "bytes": 19178
+        "bytes": 150710
       },
       {
         "n": "03",
         "id": "imperial_starship.headon.03",
         "webm": "imperial_starship/03.webm",
         "duration_ms": 2100,
-        "bytes": 18974
+        "bytes": 160283
       },
       {
         "n": "04",
         "id": "imperial_starship.top.04",
         "webm": "imperial_starship/04.webm",
         "duration_ms": 2400,
-        "bytes": 17516
+        "bytes": 109777
       },
       {
         "n": "05",
         "id": "imperial_starship.side.05",
         "webm": "imperial_starship/05.webm",
         "duration_ms": 2700,
-        "bytes": 12734
+        "bytes": 76153
       },
       {
         "n": "06",
         "id": "imperial_starship.gate.06",
         "webm": "imperial_starship/06.webm",
         "duration_ms": 1500,
-        "bytes": 16517
+        "bytes": 125621
       },
       {
         "n": "07",
         "id": "imperial_starship.headon.07",
         "webm": "imperial_starship/07.webm",
         "duration_ms": 1900,
-        "bytes": 8615
+        "bytes": 31426
       },
       {
         "n": "08",
         "id": "imperial_starship.top.08",
         "webm": "imperial_starship/08.webm",
         "duration_ms": 2300,
-        "bytes": 23675
+        "bytes": 182321
       },
       {
         "n": "09",
         "id": "imperial_starship.side.09",
         "webm": "imperial_starship/09.webm",
         "duration_ms": 2600,
-        "bytes": 27009
+        "bytes": 205572
       },
       {
         "n": "10",
         "id": "imperial_starship.chase.10",
         "webm": "imperial_starship/10.webm",
         "duration_ms": 3000,
-        "bytes": 17659
+        "bytes": 90246
       }
     ],
     "star_master": [
@@ -804,70 +804,70 @@
         "id": "star_master.streak.01",
         "webm": "star_master/01.webm",
         "duration_ms": 1600,
-        "bytes": 8685
+        "bytes": 110894
       },
       {
         "n": "02",
         "id": "star_master.chase.02",
         "webm": "star_master/02.webm",
         "duration_ms": 1800,
-        "bytes": 10873
+        "bytes": 123562
       },
       {
         "n": "03",
         "id": "star_master.headon.03",
         "webm": "star_master/03.webm",
         "duration_ms": 2100,
-        "bytes": 14441
+        "bytes": 149837
       },
       {
         "n": "04",
         "id": "star_master.top.04",
         "webm": "star_master/04.webm",
         "duration_ms": 2400,
-        "bytes": 6001
+        "bytes": 35903
       },
       {
         "n": "05",
         "id": "star_master.side.05",
         "webm": "star_master/05.webm",
         "duration_ms": 2700,
-        "bytes": 6052
+        "bytes": 35266
       },
       {
         "n": "06",
         "id": "star_master.gate.06",
         "webm": "star_master/06.webm",
         "duration_ms": 1500,
-        "bytes": 10745
+        "bytes": 84814
       },
       {
         "n": "07",
         "id": "star_master.headon.07",
         "webm": "star_master/07.webm",
         "duration_ms": 1900,
-        "bytes": 4239
+        "bytes": 20532
       },
       {
         "n": "08",
         "id": "star_master.top.08",
         "webm": "star_master/08.webm",
         "duration_ms": 2300,
-        "bytes": 12091
+        "bytes": 134531
       },
       {
         "n": "09",
         "id": "star_master.side.09",
         "webm": "star_master/09.webm",
         "duration_ms": 2600,
-        "bytes": 16397
+        "bytes": 127566
       },
       {
         "n": "10",
         "id": "star_master.chase.10",
         "webm": "star_master/10.webm",
         "duration_ms": 3000,
-        "bytes": 8190
+        "bytes": 49086
       }
     ],
     "constellation": [
@@ -876,70 +876,70 @@
         "id": "constellation.streak.01",
         "webm": "constellation/01.webm",
         "duration_ms": 1600,
-        "bytes": 12331
+        "bytes": 138727
       },
       {
         "n": "02",
         "id": "constellation.chase.02",
         "webm": "constellation/02.webm",
         "duration_ms": 1800,
-        "bytes": 15761
+        "bytes": 136791
       },
       {
         "n": "03",
         "id": "constellation.headon.03",
         "webm": "constellation/03.webm",
         "duration_ms": 2100,
-        "bytes": 16285
+        "bytes": 140381
       },
       {
         "n": "04",
         "id": "constellation.top.04",
         "webm": "constellation/04.webm",
         "duration_ms": 2400,
-        "bytes": 11495
+        "bytes": 81410
       },
       {
         "n": "05",
         "id": "constellation.side.05",
         "webm": "constellation/05.webm",
         "duration_ms": 2700,
-        "bytes": 9729
+        "bytes": 60529
       },
       {
         "n": "06",
         "id": "constellation.gate.06",
         "webm": "constellation/06.webm",
         "duration_ms": 1500,
-        "bytes": 14343
+        "bytes": 118150
       },
       {
         "n": "07",
         "id": "constellation.headon.07",
         "webm": "constellation/07.webm",
         "duration_ms": 1900,
-        "bytes": 6436
+        "bytes": 26291
       },
       {
         "n": "08",
         "id": "constellation.top.08",
         "webm": "constellation/08.webm",
         "duration_ms": 2300,
-        "bytes": 18507
+        "bytes": 164255
       },
       {
         "n": "09",
         "id": "constellation.side.09",
         "webm": "constellation/09.webm",
         "duration_ms": 2600,
-        "bytes": 23555
+        "bytes": 166484
       },
       {
         "n": "10",
         "id": "constellation.chase.10",
         "webm": "constellation/10.webm",
         "duration_ms": 3000,
-        "bytes": 12847
+        "bytes": 70416
       }
     ],
     "tkhasi_orion": [
@@ -948,70 +948,70 @@
         "id": "tkhasi_orion.streak.01",
         "webm": "tkhasi_orion/01.webm",
         "duration_ms": 1600,
-        "bytes": 9570
+        "bytes": 124485
       },
       {
         "n": "02",
         "id": "tkhasi_orion.chase.02",
         "webm": "tkhasi_orion/02.webm",
         "duration_ms": 1800,
-        "bytes": 11841
+        "bytes": 128259
       },
       {
         "n": "03",
         "id": "tkhasi_orion.headon.03",
         "webm": "tkhasi_orion/03.webm",
         "duration_ms": 2100,
-        "bytes": 19586
+        "bytes": 159022
       },
       {
         "n": "04",
         "id": "tkhasi_orion.top.04",
         "webm": "tkhasi_orion/04.webm",
         "duration_ms": 2400,
-        "bytes": 6867
+        "bytes": 39012
       },
       {
         "n": "05",
         "id": "tkhasi_orion.side.05",
         "webm": "tkhasi_orion/05.webm",
         "duration_ms": 2700,
-        "bytes": 6011
+        "bytes": 33390
       },
       {
         "n": "06",
         "id": "tkhasi_orion.gate.06",
         "webm": "tkhasi_orion/06.webm",
         "duration_ms": 1500,
-        "bytes": 10678
+        "bytes": 86097
       },
       {
         "n": "07",
         "id": "tkhasi_orion.headon.07",
         "webm": "tkhasi_orion/07.webm",
         "duration_ms": 1900,
-        "bytes": 4605
+        "bytes": 22575
       },
       {
         "n": "08",
         "id": "tkhasi_orion.top.08",
         "webm": "tkhasi_orion/08.webm",
         "duration_ms": 2300,
-        "bytes": 12982
+        "bytes": 122594
       },
       {
         "n": "09",
         "id": "tkhasi_orion.side.09",
         "webm": "tkhasi_orion/09.webm",
         "duration_ms": 2600,
-        "bytes": 15581
+        "bytes": 140398
       },
       {
         "n": "10",
         "id": "tkhasi_orion.chase.10",
         "webm": "tkhasi_orion/10.webm",
         "duration_ms": 3000,
-        "bytes": 8430
+        "bytes": 49869
       }
     ],
     "tholian_sentinel": [
@@ -1020,70 +1020,70 @@
         "id": "tholian_sentinel.streak.01",
         "webm": "tholian_sentinel/01.webm",
         "duration_ms": 1600,
-        "bytes": 10884
+        "bytes": 133839
       },
       {
         "n": "02",
         "id": "tholian_sentinel.chase.02",
         "webm": "tholian_sentinel/02.webm",
         "duration_ms": 1800,
-        "bytes": 11569
+        "bytes": 125703
       },
       {
         "n": "03",
         "id": "tholian_sentinel.headon.03",
         "webm": "tholian_sentinel/03.webm",
         "duration_ms": 2100,
-        "bytes": 15813
+        "bytes": 145388
       },
       {
         "n": "04",
         "id": "tholian_sentinel.top.04",
         "webm": "tholian_sentinel/04.webm",
         "duration_ms": 2400,
-        "bytes": 6830
+        "bytes": 38211
       },
       {
         "n": "05",
         "id": "tholian_sentinel.side.05",
         "webm": "tholian_sentinel/05.webm",
         "duration_ms": 2700,
-        "bytes": 7571
+        "bytes": 42648
       },
       {
         "n": "06",
         "id": "tholian_sentinel.gate.06",
         "webm": "tholian_sentinel/06.webm",
         "duration_ms": 1500,
-        "bytes": 11367
+        "bytes": 90353
       },
       {
         "n": "07",
         "id": "tholian_sentinel.headon.07",
         "webm": "tholian_sentinel/07.webm",
         "duration_ms": 1900,
-        "bytes": 4909
+        "bytes": 22425
       },
       {
         "n": "08",
         "id": "tholian_sentinel.top.08",
         "webm": "tholian_sentinel/08.webm",
         "duration_ms": 2300,
-        "bytes": 13146
+        "bytes": 129945
       },
       {
         "n": "09",
         "id": "tholian_sentinel.side.09",
         "webm": "tholian_sentinel/09.webm",
         "duration_ms": 2600,
-        "bytes": 19921
+        "bytes": 138045
       },
       {
         "n": "10",
         "id": "tholian_sentinel.chase.10",
         "webm": "tholian_sentinel/10.webm",
         "duration_ms": 3000,
-        "bytes": 8831
+        "bytes": 50940
       }
     ],
     "taurean_mule": [
@@ -1092,70 +1092,70 @@
         "id": "taurean_mule.streak.01",
         "webm": "taurean_mule/01.webm",
         "duration_ms": 1600,
-        "bytes": 10657
+        "bytes": 119166
       },
       {
         "n": "02",
         "id": "taurean_mule.chase.02",
         "webm": "taurean_mule/02.webm",
         "duration_ms": 1800,
-        "bytes": 12532
+        "bytes": 130992
       },
       {
         "n": "03",
         "id": "taurean_mule.headon.03",
         "webm": "taurean_mule/03.webm",
         "duration_ms": 2100,
-        "bytes": 12140
+        "bytes": 112848
       },
       {
         "n": "04",
         "id": "taurean_mule.top.04",
         "webm": "taurean_mule/04.webm",
         "duration_ms": 2400,
-        "bytes": 8469
+        "bytes": 45948
       },
       {
         "n": "05",
         "id": "taurean_mule.side.05",
         "webm": "taurean_mule/05.webm",
         "duration_ms": 2700,
-        "bytes": 8045
+        "bytes": 42228
       },
       {
         "n": "06",
         "id": "taurean_mule.gate.06",
         "webm": "taurean_mule/06.webm",
         "duration_ms": 1500,
-        "bytes": 11741
+        "bytes": 86438
       },
       {
         "n": "07",
         "id": "taurean_mule.headon.07",
         "webm": "taurean_mule/07.webm",
         "duration_ms": 1900,
-        "bytes": 5213
+        "bytes": 22165
       },
       {
         "n": "08",
         "id": "taurean_mule.top.08",
         "webm": "taurean_mule/08.webm",
         "duration_ms": 2300,
-        "bytes": 15112
+        "bytes": 151797
       },
       {
         "n": "09",
         "id": "taurean_mule.side.09",
         "webm": "taurean_mule/09.webm",
         "duration_ms": 2600,
-        "bytes": 17180
+        "bytes": 142857
       },
       {
         "n": "10",
         "id": "taurean_mule.chase.10",
         "webm": "taurean_mule/10.webm",
         "duration_ms": 3000,
-        "bytes": 10421
+        "bytes": 59468
       }
     ],
     "interdictor_cruiser": [
@@ -1164,70 +1164,70 @@
         "id": "interdictor_cruiser.streak.01",
         "webm": "interdictor_cruiser/01.webm",
         "duration_ms": 1600,
-        "bytes": 10819
+        "bytes": 123730
       },
       {
         "n": "02",
         "id": "interdictor_cruiser.chase.02",
         "webm": "interdictor_cruiser/02.webm",
         "duration_ms": 1800,
-        "bytes": 13602
+        "bytes": 126400
       },
       {
         "n": "03",
         "id": "interdictor_cruiser.headon.03",
         "webm": "interdictor_cruiser/03.webm",
         "duration_ms": 2100,
-        "bytes": 16745
+        "bytes": 139859
       },
       {
         "n": "04",
         "id": "interdictor_cruiser.top.04",
         "webm": "interdictor_cruiser/04.webm",
         "duration_ms": 2400,
-        "bytes": 8293
+        "bytes": 52069
       },
       {
         "n": "05",
         "id": "interdictor_cruiser.side.05",
         "webm": "interdictor_cruiser/05.webm",
         "duration_ms": 2700,
-        "bytes": 8528
+        "bytes": 51337
       },
       {
         "n": "06",
         "id": "interdictor_cruiser.gate.06",
         "webm": "interdictor_cruiser/06.webm",
         "duration_ms": 1500,
-        "bytes": 12384
+        "bytes": 94581
       },
       {
         "n": "07",
         "id": "interdictor_cruiser.headon.07",
         "webm": "interdictor_cruiser/07.webm",
         "duration_ms": 1900,
-        "bytes": 5748
+        "bytes": 25614
       },
       {
         "n": "08",
         "id": "interdictor_cruiser.top.08",
         "webm": "interdictor_cruiser/08.webm",
         "duration_ms": 2300,
-        "bytes": 14584
+        "bytes": 152337
       },
       {
         "n": "09",
         "id": "interdictor_cruiser.side.09",
         "webm": "interdictor_cruiser/09.webm",
         "duration_ms": 2600,
-        "bytes": 21627
+        "bytes": 160752
       },
       {
         "n": "10",
         "id": "interdictor_cruiser.chase.10",
         "webm": "interdictor_cruiser/10.webm",
         "duration_ms": 3000,
-        "bytes": 11457
+        "bytes": 65303
       }
     ]
   }

@@ -51,3 +51,7 @@ Reduced motion and Stills use `poster` when the chosen row is a file. A file row
 ## Generating a clip on the fly
 
 The svg row is that generator: `kind: "svg"` draws the current hull from the NOTE 77 art at the moment of the jump, so a new ship class needs a manifest row and a `SHIPS` entry, not a rendered file. Recording that 2 second sequence to the file names above can be done later without a new library. Calling out to a video model is not part of this slice.
+
+## Where the files are now
+
+The player reads `web/warp-video/<hull>/01.webm` through `10.webm`, not `web/media/clips/warp/`. Names, clip 11, and the live-gen slot (`manifest.json` → `generated.clips`) are in `docs/plans/cockpit-warp-clip-library-v1.md`. A refused warp still does not play.

@@ -2,8 +2,9 @@
 """Record the ten redesign warp scenes for every hull.
 
 Headless Chromium paints the same SVG the cockpit uses (NOTE 126 meshes,
-web/warp-variants.js cameras). Frames are stepped by seeking the CSS
-animations, then ffmpeg packs each scene into a short VP9 webm.
+web/warp-variants.js cameras, plume, and flash). Frames are stepped by
+seeking the CSS animations, then ffmpeg packs each scene into a short
+VP9 webm at 800x520, 16 fps, at or under 300 KB.
 
 Output:
   web/warp-video/<hull>/NN.webm
@@ -34,7 +35,9 @@ STAGE = ROOT / "scripts" / "warp_video_stage.html"
 OUT = WEB / "warp-video"
 CLIPS = WEB / "media" / "warp-clips.json"
 ART = Path("/opt/cursor/artifacts/note135-warp-video")
-FPS = 10
+FPS = 16
+VIEW_W = 800
+VIEW_H = 520
 MAX_BYTES = 300 * 1024
 
 GENERATED_ABOUT = (
@@ -115,8 +118,8 @@ def encode(frames: Path, dest: Path, crf: int) -> None:
         "-pix_fmt", "yuv420p",
         "-b:v", "0",
         "-crf", str(crf),
-        "-deadline", "realtime",
-        "-cpu-used", "8",
+        "-deadline", "good",
+        "-cpu-used", "4",
         "-lag-in-frames", "0",
         "-row-mt", "1",
         "-an",
@@ -126,12 +129,27 @@ def encode(frames: Path, dest: Path, crf: int) -> None:
     subprocess.check_call(cmd)
 
 
+def ffprobe_size(path: Path) -> tuple[int, int]:
+    out = subprocess.check_output(
+        [
+            "ffprobe", "-v", "error", "-select_streams", "v:0",
+            "-show_entries", "stream=width,height", "-of", "csv=p=0", str(path),
+        ],
+        text=True,
+    ).strip()
+    width, height = out.split(",")
+    return int(width), int(height)
+
+
 def good_file(path: Path, duration_ms: int) -> bool:
     if not path.is_file() or path.stat().st_size < 800 or path.stat().st_size > MAX_BYTES:
         return False
     try:
         dur = ffprobe_duration(path)
+        width, height = ffprobe_size(path)
     except (subprocess.CalledProcessError, ValueError):
+        return False
+    if width < VIEW_W or height < VIEW_H:
         return False
     return abs(dur - duration_ms / 1000) <= 0.2 and 1.5 <= dur <= 3.05
 
@@ -152,12 +170,12 @@ def record_one(page, hull: str, number: str, duration_ms: int, dest: Path, thumb
         if int(count) < 1:
             raise RuntimeError(f"{hull} {number} lost animation at {at}")
         shot = work / f"{index:03d}.png"
-        page.screenshot(path=str(shot), clip={"x": 0, "y": 0, "width": 400, "height": 260})
+        page.screenshot(path=str(shot), clip={"x": 0, "y": 0, "width": VIEW_W, "height": VIEW_H})
         if at == mid:
             thumb.parent.mkdir(parents=True, exist_ok=True)
             shutil.copyfile(shot, thumb)
     last_error = None
-    for crf in (42, 48, 52):
+    for crf in (28, 34, 40):
         try:
             encode(work, dest, crf)
         except subprocess.CalledProcessError as exc:
@@ -277,7 +295,7 @@ def main() -> None:
                 browser = pw.chromium.launch(args=["--force-device-scale-factor=1"])
             except Exception:
                 browser = pw.chromium.launch(channel="chrome", args=["--force-device-scale-factor=1"])
-            page = browser.new_page(viewport={"width": 400, "height": 260}, device_scale_factor=1)
+            page = browser.new_page(viewport={"width": VIEW_W, "height": VIEW_H}, device_scale_factor=1)
             page.goto(f"http://127.0.0.1:{port}/stage.html", wait_until="domcontentloaded")
             page.wait_for_function(
                 "() => window.TW2KWarpHull && window.TW2KWarpHull.source === 'note126' && window.prepareClip",
