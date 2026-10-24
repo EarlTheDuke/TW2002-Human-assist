@@ -234,3 +234,11 @@ def test_a_hull_trip_alone_may_sail_with_an_empty_shelf(monkeypatch) -> None:
     monkeypatch.setattr(t, "_hull_trip", lambda: True)
     monkeypatch.setattr(t, "_refit_item", lambda: None)
     assert "not (self._shelf_open() or hull)" in __import__("inspect").getsource(type(t)._should_shop)
+
+
+def test_a_rich_seat_still_missing_fighters_sails_for_the_yard() -> None:
+    # NOTE 172d: seed 99 never bought fighters, so the hull trip never fired.
+    t = _rich()
+    t.bought.discard("fighters")
+    t.credits = 46_000
+    assert t._hull_trip()
