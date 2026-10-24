@@ -19,7 +19,7 @@ Today kept as `HARDWARE_MODE = "legacy"`: armid hits = min(count, rand 1..10) x 
 | h7 | Wave effect | For Photon Wave duration: neutralize sector mines and sector fighters; damp Quasar / CCC / Interdictor on planets there; decloak every cloaked ship in that sector. L5+200 shields still ignores damp. | CONFIRMED: HardwareMenu + planet handbook / existing planet photon damp. Duration: TEDIT sample "Photon Wave Dur.: 1 seconds". | Built: `K.PHOTON_WAVE_DURATION = 1` day-tick of sector damp (`Sector.photon_wave_remaining`). Mines/fighters inert while > 0; planet damp marked for approach; immediate decloak. |
 | h8 | Carried-photon blast | Carrying a photon into offensive fighters or mines can detonate the missile and cost the rest of the day's turns. | CONFIRMED: Bible. | Built: on warp entry with hostile armids or hostile offensive fighters while `photon_missiles > 0`, all photons aboard are lost and `turns_today = turns_per_day`. Documented turn-based mapping (no partial-day clock). |
 | h9 | FedSpace | Existing FedSpace weapon penalty / RANK_MODE protection. | Partial already. | Keep / align existing FedSpace photon/attack rules; no new Fed invention. |
-| h10 | Price | Photon ~12,000. | CONFIRMED in shape (existing constant). | Unchanged `PHOTON_MISSILE_COST = 12_000`. |
+| h10 | Price | Live GameA TWSTATS 40,000. Stored constant 12,000. Cabal sample 160,000. | SOURCE-CONFLICT. | Stored `PHOTON_MISSILE_COST` stays 12,000. `photon_missile_cost()` is 40,000 when `hardware_price_live` (Ven 2026-10-24). |
 | **Cloaking device (gap 4.5)** | | | | |
 | h11 | Buy | StarDock Hardware Emporium. | CONFIRMED: Bible, HardwareMenu. | Built: `buy_equip item=cloak`. |
 | h12 | Price | Bible 25,000. TEDIT sample 6,250. | SOURCE-CONFLICT. | Built: `K.CLOAK_COST = 25_000` (Bible). Easy to flip. |
@@ -50,6 +50,7 @@ Today kept as `HARDWARE_MODE = "legacy"`: armid hits = min(count, rand 1..10) x 
 - Carried-photon blast spends the rest of the day's turns (`turns_today = turns_per_day`) rather than a wall-clock day end.
 - Disruptor clears a uniform random 1..12 mines (Bible ceiling), not an MBBS average curve.
 - Limpet removal fee uses the only TEDIT sample found (UNVERIFIED as 3.11 default).
+- Photon price: stored 12,000 stays. Live GameA is 40,000 behind `hardware_price_live`. SOURCE-CONFLICT. Cabal sample is 160,000. DIFFERENT on the stored card.
 
 ## What the engine does (HARDWARE_MODE tw2002)
 

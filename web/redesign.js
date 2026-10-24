@@ -41,6 +41,8 @@
     ["D", "Daily Log", null],
     ["M", "Read Mail", null],
     ["N", "NavPoints", null],
+    // Legacy label. A game that already has self_destruct shows Begin Self Destruct
+    // (docs/playtests/twgs-live/computer-b.txt). "<" stays backtrack().
     ["B", "Backtrack", null],
     ["S", "Quick stats", null],
     ["E", "Find route", null],
@@ -4663,6 +4665,8 @@
   function selfDestructInGame() {
     return !!LA("self_destruct");
   }
+  // NOTE 110 / NOTE 129. The confirm and the abort line are computer-b.txt.
+  // Y posts the existing self_destruct action. "<" does not come through here.
   function beginSelfDestruct() {
     const m = $("menu");
     m.hidden = false;

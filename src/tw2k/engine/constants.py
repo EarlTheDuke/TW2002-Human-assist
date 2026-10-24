@@ -1492,12 +1492,16 @@ ETHER_PROBE_COST = 5_000
 GENESIS_TORPEDO_COST = 25000
 ARMID_DAMAGE = 100
 
-# "legacy": the four shop prices and the armid hit stay as written above
+# "legacy": the shop prices and the armid hit stay as written above
 # (and the hardware-mode hit of 20). "live": the v3.34b shop card.
 # Armid 1,000 and "up to 30" points. Limpet 10,000. Genesis 20,000.
-# Ether probe 3,000. Combat was not played, so 30 is the shop's ceiling,
-# not a measured hit. Atomic detonators stay out of this switch: the live
-# item is a planet killer, and this copy's atomic mine is a different thing.
+# Ether probe 3,000. Photon missile 40,000.
+# Combat was not played, so 30 is the shop's ceiling, not a measured hit.
+# Atomic detonators stay out of this switch: the live item is a planet
+# killer, and this copy's atomic mine is a different thing.
+# Ven 2026-10-24 GameA TWSTATS prints Photon Missile=40,000 cr
+# (docs/playtests/twgs-live/twstats-costs-ven.txt). Stored photon default
+# stays 12,000. SOURCE-CONFLICT with the cabal sample (160,000).
 # Ship TransWarp quotes are on this same card. Ven 2026-10-24 GameA TWSTATS
 # (docs/playtests/twgs-live/twstats-costs-ven.txt): Type I 50,000, Type II
 # 80,000, upgrade 10,000. Stored cabal TEDIT samples stay 12,500 / 20,000 /
@@ -1513,11 +1517,12 @@ GENESIS_TORPEDO_COST_LIVE = 20_000
 SHIP_TW_TYPE1_COST_LIVE = 50_000
 SHIP_TW_TYPE2_COST_LIVE = 80_000
 SHIP_TW_UPGRADE_COST_LIVE = 10_000
+PHOTON_MISSILE_COST_LIVE = 40_000
 ARMID_DAMAGE_LIVE = 30
 
 
 def hardware_price_live() -> bool:
-    """True when the shop uses the live armid, limpet, genesis, ether, and ship TransWarp prices."""
+    """True when the shop uses the live armid, limpet, genesis, ether, ship TransWarp, and photon prices."""
     return HARDWARE_PRICE_MODE == "live" or tw2002_live_profile() or v311_profile()
 
 
@@ -1591,6 +1596,18 @@ def ship_tw_drive_value(drive: str | None) -> int:
     if kind == "type2":
         return ship_tw_type2_cost()
     return 0
+
+
+def photon_missile_cost() -> int:
+    """Shop price. Stored 12,000. The live/v311 card is 40,000.
+
+    hardware_price_live() is that BigBang card. TW2002_LIVE_PROFILE and
+    V311_PROFILE turn the card on without moving HARDWARE_PRICE_MODE.
+    Atomic detonators stay off this switch.
+    """
+    if hardware_price_live():
+        return PHOTON_MISSILE_COST_LIVE
+    return PHOTON_MISSILE_COST
 
 
 def armid_hit_damage() -> int:
@@ -1969,7 +1986,7 @@ def planet_colonist_room(class_id: str, current: int) -> int | None:
 
 def planet_stock_room(class_id: str, commodity: str, current: int) -> int | None:
     """How many more units of one good fit. None means the legacy path has no cap."""
-    if not planet_limits_on():
+    if not planet_limits_on() and not planet_handbook_on():
         return None
     return max(0, PLANET_MAX_STOCK[class_id][commodity] - int(current))
 
@@ -3756,9 +3773,11 @@ def colonists_per_hold() -> int:
 
 # planet-production-ratios-v1. Appended so later slices can rebase cleanly.
 # "legacy": units per 100 colonists, and a flat 5 percent growth.
-# "live": colonists per unit from the S1 table. Below half the class cap
-# the same 5 percent is growth. Above half it is a die-off. The 1,500 fuel
-# example makes 500, so the ratio is not scaled by a second curve.
+# "live": colonists per unit from the S1 table. At or below half the printed
+# maximum, output is workers/ratio (1,500 class M fuel colonists make 500).
+# Above half, output mirrors down to 0 at the maximum (TWFAQ_20PLANET.txt).
+# Below half a pool grows about 5 percent. Above half it dies off about 5
+# percent. S1 prints no percent; 5 is the rate this engine already used.
 PLANET_PROD_MODE = "legacy"  # "legacy" | "live"
 # Fuel, organics, equipment. 0 means that class does not make that good.
 PLANET_PROD_PER_UNIT = {
@@ -4514,6 +4533,19 @@ def planet_growth_tw2002() -> bool:
     return PLANET_GROWTH_MODE == "tw2002" or tw2002_live_profile() or v311_profile()
 
 
+def planet_handbook_on() -> bool:
+    """True when the day tick uses the S1 printed curve.
+
+    Off on a stored game, so today's production stays. ``V311_PROFILE`` turns
+    it on, and so do ``PLANET_PROD_MODE`` live and ``PLANET_GROWTH_MODE``
+    tw2002. ``PLANET_ECONOMY_MODE`` tw2002 is already the stored default: it
+    caps stock, caps total colonists, and stops a sixth planet. It does not
+    by itself replace the production curve, because that would change games
+    already running that default.
+    """
+    return planet_prod_live() or planet_growth_tw2002()
+
+
 # cockpit-ai-seat-v1. Legacy games do not start this seat. tw2002 lets a
 # test run the client that reads only the cockpit harness. The server never
 # constructs that client. Ben decides any flip.
@@ -4711,7 +4743,7 @@ V311_PROFILE_HELPERS: dict[str, tuple[str, str]] = {
     ),
     "course_max_live": (
         "COURSE_MAX_MODE",
-        "MOV-g (NOTE 78): a plotted course longer than 45 hops is refused (45 UNVERIFIED for 3.11)",
+        "MOV-g (NOTE 78): a plotted course longer than the game's Maximum Course Length is refused. Unset uses the published sample 45. GameA TWSTATS is 20 (NOTE 96)",
     ),
     "big_bang_density_live": (
         "BIG_BANG_DENSITY_MODE",
@@ -5105,6 +5137,13 @@ def colonist_drop_room(class_id: str, pools: dict, total: int) -> int | None:
             have = int(pools.get(name, 0) or 0)
             best = max(best, CLASS_M_CATEGORY_CAP - have)
         return max(0, best)
+    if planet_handbook_on():
+        cap = int(PLANET_MAX_COLONISTS[class_id])
+        best = 0
+        for name in ("fuel_ore", "organics", "equipment", "colonists"):
+            have = int(pools.get(name, 0) or 0)
+            best = max(best, cap - have)
+        return max(0, best)
     return planet_colonist_room(class_id, total)
 
 
@@ -5113,6 +5152,11 @@ def colonist_drop_error(class_id: str, pool_count: int, total: int, qty: int) ->
     if class_id == "M" and class_m_fidelity_live():
         if int(pool_count) + int(qty) > CLASS_M_CATEGORY_CAP:
             return f"planet colonist cap is {CLASS_M_CATEGORY_CAP}"
+        return None
+    if planet_handbook_on():
+        cap = int(PLANET_MAX_COLONISTS[class_id])
+        if int(pool_count) + int(qty) > cap:
+            return f"planet colonist cap is {cap}"
         return None
     room = planet_colonist_room(class_id, total)
     if room is not None and int(qty) > room:
@@ -5629,27 +5673,50 @@ def planet_treasury_cap() -> int:
 
 
 COURSE_MAX_MODE = "legacy"  # "legacy" | "live"
-# UNVERIFIED, searched: classictw_docs_wiki/Big_Bang.html "B - Maximum Course
-# Length" (lines 201-210: the setting shapes the map and slows course plots;
-# it is not the refusal limit); cabal twgs.html line 214, post-bang General
-# Editor Two, "<:> Maximum Course Length : 45" (a sample value, not stated as
-# the plot cap; range 20-255 is option B); tw-attac revision history line 538
-# "Long course plots are not longer truncated at 160 characters" (display
-# width, not hops). The clone autopilot searches PLOT_COURSE_MAX_DEPTH * 6.
-# Queued in live-twgs-test-queue-v1.md.
+# UNVERIFIED, searched: the live plot that would show the refusal number, and
+# the TEDIT min/max. docs/playtests/twgs-live/plotted-course-limit.txt (Ven,
+# 2026-10-24, read-only; also uploads/plotted-course-limit-ven.txt) measures
+# GameA TWSTATS line 131 "Max Course Length=20". GameK and the GameA backups
+# in that note also say 20. That is this install, not a universal default.
+# The published 45 is sample text: cabal twgs.html line 214 and
+# stardock_modernmanual/advanced__twgs-settings.md line 171, General Editor
+# Two "Maximum Course Length : 45"; cabal twgs.html lines 69-71 and
+# Big_Bang.html lines 201-210 (option B shapes the map; the screen sample is
+# 100; Traitor's note says default 45, range 20-255). Glossary.html line 203
+# and cabal blockades.html line 353 print "Error - No route within 45 warps".
+# TWFAQ_20FAQ.txt line 102 "Max Course length 50" is a FAQ sample, and lines
+# 106-110 lower a plotter to 25 as an example. tw-attac line 538 is display
+# width. tw2002.exe has "No route within <N> warps" and "No possible route!";
+# N is a format gap. No plot was run. No TEDIT ceiling is in the strings.
+# Unset live games use V311_COURSE_MAX_HOPS. A game that sets
+# GameConfig.max_course_length uses that. Legacy searches
+# PLOT_COURSE_MAX_DEPTH * 6. Queued as NOTE 96, n96-course-max.
 V311_COURSE_MAX_HOPS = 45
+# Ven GameA TWSTATS, 2026-10-24. Applied only when a game sets max_course_length.
+GAMEA_COURSE_MAX_HOPS = 20
 
 
 def course_max_live() -> bool:
-    """True when a plotted course longer than V311_COURSE_MAX_HOPS is refused."""
+    """True when a plotted course longer than the game's hop limit is refused."""
     return COURSE_MAX_MODE == "live" or tw2002_live_profile() or v311_profile()
 
 
-def plot_course_hop_limit() -> int:
-    """Hops a plotted course may take. Legacy is 60. Live is 45 (UNVERIFIED, searched: Big_Bang.html option B and cabal twgs.html General Editor Two)."""
-    if course_max_live():
+def plot_course_hop_limit(config=None) -> int:
+    """Hops a plotted course may take. Legacy is 60.
+
+    Live, GameConfig.max_course_length is this game's BIGBANG/TEDIT value.
+    Unset, the published sample V311_COURSE_MAX_HOPS (45) is used. That 45 is
+    not the Ven GameA reading (GAMEA_COURSE_MAX_HOPS, 20). A path of this
+    many hops is plotted. One more hop is refused.
+    UNVERIFIED, searched: docs/playtests/twgs-live/plotted-course-limit.txt.
+    The binary refusal keeps N blank until a live plot.
+    """
+    if not course_max_live():
+        return int(PLOT_COURSE_MAX_DEPTH) * 6
+    raw = getattr(config, "max_course_length", None) if config is not None else None
+    if raw is None:
         return int(V311_COURSE_MAX_HOPS)
-    return int(PLOT_COURSE_MAX_DEPTH) * 6
+    return int(raw)
 
 
 BIG_BANG_DENSITY_MODE = "legacy"  # "legacy" | "live"
@@ -5882,6 +5949,9 @@ def ship_rename_live() -> bool:
 # Rows 162 and 163 stay unused: backtrack, quick stats, and find route read
 # the seat's known map in the cockpit, and fighter reports are lines on the
 # daily log the owner can already see. NavPoints are NOTE 159, row 181.
+# NOTE 110 / NOTE 129 does not take a row. Computer B is Begin Self Destruct
+# when this switch is on (docs/playtests/twgs-live/computer-b.txt). Y reuses
+# handle_self_destruct. "<" stays the previous-sector key.
 MAIL_MODE = "legacy"  # "legacy" | "live"
 HAIL_SHOW_SECONDS = 10
 NAVPOINT_SLOTS = 4  # EIS GeneralNew.html: four programmable NavPoints

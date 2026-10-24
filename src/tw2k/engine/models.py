@@ -983,7 +983,7 @@ class Player(BaseModel):
             + self.ship.mines.get(MineType.ARMID, 0) * K.armid_mine_cost()
             + self.ship.mines.get(MineType.LIMPET, 0) * K.limpet_mine_cost()
             + self.ship.mines.get(MineType.ATOMIC, 0) * K.ATOMIC_MINE_COST
-            + self.ship.photon_missiles * K.PHOTON_MISSILE_COST
+            + self.ship.photon_missiles * K.photon_missile_cost()
             + int(getattr(self.ship, "cloaks", 0) or 0) * getattr(K, "CLOAK_COST", 25_000)
             + (int(K.PLANET_SCANNER_COST) if getattr(self.ship, "planet_scanner", False) else 0)
             + int(getattr(self.ship, "mine_disruptors", 0) or 0) * K.disruptor_cost()
@@ -1321,6 +1321,28 @@ class GameConfig(BaseModel):
             return None
         return count
 
+    # NOTE 96. None uses V311_COURSE_MAX_HOPS when the course cap is live.
+    # A number is this game's BIGBANG/TEDIT Maximum Course Length. GameA
+    # TWSTATS is 20. The published sample 45 stays the unset default. The
+    # TEDIT field's min and max were not in the readable strings, so this
+    # field has no ceiling. Left out of dumps while None.
+    max_course_length: int | None = None
+
+    @field_validator("max_course_length", mode="before")
+    @classmethod
+    def _check_max_course_length(cls, value: Any) -> Any:
+        if value is None or value == "":
+            return None
+        if isinstance(value, bool):
+            raise ValueError("maximum course length must be a whole number of hops")
+        try:
+            hops = int(value)
+        except (TypeError, ValueError):
+            raise ValueError("maximum course length must be a whole number of hops") from None
+        if hops < 0:
+            raise ValueError("maximum course length must be a whole number of hops")
+        return hops
+
     @field_validator("turn_regen_day_seconds", mode="before")
     @classmethod
     def _check_day_seconds(cls, value: Any) -> Any:
@@ -1372,6 +1394,8 @@ class GameConfig(BaseModel):
             data.pop("death_delay", None)
         if isinstance(data, dict) and data.get("deaths_per_day", 0) is None:
             data.pop("deaths_per_day", None)
+        if isinstance(data, dict) and data.get("max_course_length", 0) is None:
+            data.pop("max_course_length", None)
         return data
 
 
