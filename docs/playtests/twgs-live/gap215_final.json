@@ -1,0 +1,171 @@
+{
+  "gap": "2.15",
+  "game": "TW Test Game 2 (Slot A)",
+  "engine": "TW2002 v3.34b / TWGS v2.20b",
+  "captured_at": "2026-10-24 America/Los_Angeles",
+  "method_notes": [
+    "0-fighter commit aborts after def/shield text without ship loss",
+    "1-fighter commit yields laser barrage battle points; usually destroys Merchant / pod",
+    "Defensive rating VARIES within the same port class (samples differ)",
+    "Class 7 captured via GrokGap217 (alias GapP3) AP-scan then 1-fig attack; Gap215 was turn-starved"
+  ],
+  "rows": [
+    {
+      "class": 0,
+      "port": "Sol",
+      "sector": 1,
+      "def": null,
+      "laser": null,
+      "shield": null,
+      "status": "BLOCKED",
+      "notes": "FedSpace / Terra ? attack prohibited / unsafe"
+    },
+    {
+      "class": 1,
+      "port": "H'Catha",
+      "sector": 478,
+      "def": 46,
+      "laser": 337,
+      "shield": "No shielding evident, plasma lasers on dock.",
+      "status": "CONFIRMED",
+      "notes": "GrokAFK24 pod death; align -5; also Leipzig@708 def=49 (variance)",
+      "verbatim_def": "This port has a defensive rating of 46\nNo shielding evident, plasma lasers on dock.",
+      "verbatim_laser": "Incoming laser barrage from H'Catha\nThe console reports damages of 337 battle points!"
+    },
+    {
+      "class": 2,
+      "port": "New Cesium",
+      "sector": 160,
+      "def": 55,
+      "laser": null,
+      "shield": "No shielding evident, plasma lasers on dock.",
+      "status": "DEF_ONLY",
+      "notes": "0-fighter abort; also Mastro@173 def=71 (variance)",
+      "verbatim_def": "This port has a defensive rating of 55\nNo shielding evident, plasma lasers on dock."
+    },
+    {
+      "class": 3,
+      "port": "Peleus",
+      "sector": 436,
+      "def": 86,
+      "laser": null,
+      "shield": "Class 2 shielding evident, Halos missile battery.",
+      "status": "DEF_ONLY",
+      "notes": "0-fighter abort; also Anaxagoras Primus@913 def=60 plasma (variance)",
+      "verbatim_def": "This port has a defensive rating of 86\nClass 2 shielding evident, Halos missile battery."
+    },
+    {
+      "class": 4,
+      "port": "Duriron Minor",
+      "sector": 122,
+      "def": 110,
+      "laser": 1419,
+      "shield": "(no separate shielding line; captain warning: massive port)",
+      "status": "CONFIRMED",
+      "notes": "GrokAFK24 Merchant death; align -5; exp -3",
+      "verbatim_def": "This port has a defensive rating of 110\nCaptain!@!@!  That's a massive port!  We don't stand a chance!",
+      "verbatim_laser": "Incoming laser barrage from Duriron Minor\nThe console reports damages of 1419 battle points!"
+    },
+    {
+      "class": 5,
+      "port": "Aesculapius",
+      "sector": 404,
+      "def": 59,
+      "laser": null,
+      "shield": "No shielding evident, plasma lasers on dock.",
+      "status": "DEF_ONLY",
+      "notes": "0-fighter abort; also Mirador Outpost@121 def=44 (variance)",
+      "verbatim_def": "This port has a defensive rating of 59\nNo shielding evident, plasma lasers on dock."
+    },
+    {
+      "class": 6,
+      "port": "Khancuhn Primus",
+      "sector": 534,
+      "def": 98,
+      "laser": 598,
+      "shield": "Class 4 shielding, Sunstorm Ion battery",
+      "status": "KNOWN",
+      "notes": "REPORT2 prior GameA sample (sector may differ in this BigBang)"
+    },
+    {
+      "class": 7,
+      "port": "Balmer",
+      "sector": 688,
+      "def": 98,
+      "laser": 1121,
+      "shield": "Class 4 shielding evident, Sunstorm Ion battery.",
+      "status": "CONFIRMED",
+      "notes": "GrokGap217 1-fig attack; pod at 579 after; align -5",
+      "verbatim_def": "This port has a defensive rating of 98\nClass 4 shielding evident, Sunstorm Ion battery.",
+      "verbatim_laser": "Incoming laser barrage from Balmer\nThe console reports damages of 1121 battle points!"
+    },
+    {
+      "class": 8,
+      "port": "Vergil Minor",
+      "sector": 119,
+      "def": 99,
+      "laser": null,
+      "shield": "Class 4 shielding evident, Sunstorm Ion battery.",
+      "status": "DEF_ONLY",
+      "notes": "NON-FED sample via 0-fighter abort. Fed prior REPORT.md: def 91 / laser 701 / class 3 shielding (Fed BBB).",
+      "verbatim_def": "This port has a defensive rating of 99\nClass 4 shielding evident, Sunstorm Ion battery.",
+      "fed_prior": {
+        "def": 91,
+        "laser": 701,
+        "shield": "class 3 shielding",
+        "source": "REPORT.md"
+      }
+    },
+    {
+      "class": 9,
+      "port": "Stargate Alpha I",
+      "sector": 842,
+      "def": null,
+      "laser": null,
+      "shield": null,
+      "status": "BLOCKED",
+      "notes": "StarDock / FedSpace ? skip attack"
+    }
+  ],
+  "extra_samples": [
+    {
+      "class": 1,
+      "port": "Leipzig",
+      "sector": 708,
+      "def": 49,
+      "shield": "plasma"
+    },
+    {
+      "class": 2,
+      "port": "Mastro",
+      "sector": 173,
+      "def": 71,
+      "shield": "plasma"
+    },
+    {
+      "class": 3,
+      "port": "Anaxagoras Primus",
+      "sector": 913,
+      "def": 60,
+      "shield": "plasma"
+    },
+    {
+      "class": 5,
+      "port": "Mirador Outpost",
+      "sector": 121,
+      "def": 44,
+      "shield": "plasma"
+    },
+    {
+      "class": 8,
+      "port": "Flexos",
+      "sector": 996,
+      "def": null,
+      "notes": "seen Class 8 BBB at Gap217 home; not probed"
+    }
+  ],
+  "lockouts": [
+    "GrokAFK24: 1-day lockout after second death (pod wipe)",
+    "GrokGap217: in Escape Pod after Class 7 attack (ship destroyed once)"
+  ]
+}

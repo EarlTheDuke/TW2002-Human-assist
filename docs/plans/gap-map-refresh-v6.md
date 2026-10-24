@@ -186,7 +186,7 @@ Most of those are stored defaults that are already tw2002, or switches the profi
 2.12 Match. Robbing a port is on. `rob_steal.handle_rob`.
 2.13 Match. Stealing from a port is on. `rob_steal.handle_steal`.
 2.14 Match-behind-flag `BUST_CLEAR_MODE` row 94, NOTE 82. Clearing can be every Extern or every 7 days. Legacy still clears every Extern. `rob_steal.busts_clear_this_extern`, `rob_steal.clear_all_busts`.
-2.15 Partial. Blowing a port is behind `PORT_ATTACK_MODE` row 30 and `PORT_ATTACK_ALL_CLASSES_MODE` row 138, NOTE 98. Classes 0-5 and 7-9 still have no measured rating. `runner._handle_port_attack`.
+2.15 Partial. Blowing a port is behind `PORT_ATTACK_MODE` row 30 and `PORT_ATTACK_ALL_CLASSES_MODE` row 138, NOTE 98. At this regrade the constants held class 6 only. Ven GameA 2026-10-24 later measured the other classes (`docs/playtests/twgs-live/gap215-port-attack-2026-10-24.md`); those samples are not wired, so the grade stays Partial. `runner._handle_port_attack`.
 2.16 Match. Building and upgrading a port is on. `constants.port_upgrade_on`.
 2.17 Match-behind-flag `DETECT_GEAR_MODE` row 34. The psychic probe price peek is coded and off. `constants.detect_gear_live`.
 2.18 Match. StarDock trading is on. `economy.execute_trade`.
