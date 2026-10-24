@@ -5932,6 +5932,9 @@ def ship_rename_live() -> bool:
 # Rows 162 and 163 stay unused: backtrack, quick stats, and find route read
 # the seat's known map in the cockpit, and fighter reports are lines on the
 # daily log the owner can already see. NavPoints are NOTE 159, row 181.
+# NOTE 110 / NOTE 129 does not take a row. Computer B is Begin Self Destruct
+# when this switch is on (docs/playtests/twgs-live/computer-b.txt). Y reuses
+# handle_self_destruct. "<" stays the previous-sector key.
 MAIL_MODE = "legacy"  # "legacy" | "live"
 HAIL_SHOW_SECONDS = 10
 NAVPOINT_SLOTS = 4  # EIS GeneralNew.html: four programmable NavPoints
