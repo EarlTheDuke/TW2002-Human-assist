@@ -118,7 +118,7 @@
   let SC = "";
   let TD = "";
   let TL = "";
-  let S = null, plotted = null, courseEvent = null, ignorePlotSeq = 0, mapSig = "", inComputer = false, sceneTable = null, openFormKind = null, formFocus = "", pending = null, heldLabel = "", waitStreak = 0, alertedSeq = 0, noticeLine = "", noticeSeq = 0, surface = false, surfaceTurn = 0, pendingPlanetKey = "";
+  let S = null, plotted = null, courseEvent = null, ignorePlotSeq = 0, mapSig = "", inComputer = false, sceneTable = null, openFormKind = null, formFocus = "", pending = null, pendingRest = [], heldLabel = "", waitStreak = 0, alertedSeq = 0, noticeLine = "", noticeSeq = 0, surface = false, surfaceTurn = 0, pendingPlanetKey = "";
   let courseCard = null, cameFrom = null, mapEnlarged = false, mapSuppressClick = false, engageFocus = false, refreshCount = 0;
   const mapView = { k: 1, x: 0, y: 0 };
   const mapPointers = new Map();
@@ -2648,9 +2648,20 @@
     const el = ev.target;
     if (el && el.dataset && el.dataset.n && el.closest && el.closest("#formSlot")) el.dataset.touched = "1";
   }
+  let hereSector = null;
   function here() {
     const saved = {};
     const touched = new Set();
+    // Playtest 4: a form left open at one port kept the whole HERE panel
+    // (port table and trade form) frozen after a warp. A new sector closes it.
+    const nowSector = S && S.sector ? S.sector.id : null;
+    if (hereSector != null && nowSector !== hereSector && openFormKind) {
+      openFormKind = null;
+      formFocus = "";
+      const oldSlot = $("formSlot");
+      if (oldSlot) oldSlot.innerHTML = "";
+    }
+    hereSector = nowSector;
     let restore = openFormKind;
     if (onSurface() && (restore === "fighters" || restore === "mines")) {
       openFormKind = null;
@@ -3226,7 +3237,10 @@
         const key = item ? item.value : "";
         const price = prices[key];
         const mx = maxes[key];
-        note.textContent = gearName(key) + ": " + fmt(price) + " cr each, up to " + fmt(mx);
+        // Playtest 4: holds rise in price per hold, so "each" misled; the total line below has the sum.
+        note.textContent = key === "holds"
+          ? gearName(key) + ": " + fmt(price) + " cr each for the next hold, then the price rises per hold, up to " + fmt(mx)
+          : gearName(key) + ": " + fmt(price) + " cr each, up to " + fmt(mx);
       };
       if (item) item.addEventListener("change", paint);
       paint();
@@ -4479,6 +4493,49 @@
       });
     });
   }
+  // Playtest 4: CIM I and R printed nothing. The engine sends the report in a
+  // cim_report event (facts: query, sectors, ports, route); show the newest one.
+  const CIM_GOODS = [["fuel_ore", "Fuel Ore"], ["organics", "Organics"], ["equipment", "Equipment"]];
+  function cimReportBody(f) {
+    const q = String(f.query || "").toUpperCase();
+    if (q === "I") {
+      const rows = f.sectors || [];
+      if (!rows.length) return '<div class="row" data-cim-row="none">No sectors in your computer yet.</div>';
+      return rows.map((r) => '<div class="row" data-cim-row="sector"><span class="y">' + esc(r.sector_id) + "</span> warps " + esc((r.warps || []).join(" - ") || "unknown") + "</div>").join("");
+    }
+    if (q === "R") {
+      const rows = f.ports || [];
+      if (!rows.length) return '<div class="row" data-cim-row="none">No ports in your computer yet.</div>';
+      return rows.map((r) => {
+        if (r.info === "unavailable") return '<div class="row" data-cim-row="port"><span class="y">' + esc(r.sector_id) + "</span> report unavailable</div>";
+        const goods = r.goods || {};
+        const bits = CIM_GOODS.filter(([k]) => goods[k]).map(([k, label]) => label + " " + (goods[k].side === "buying" ? "buying " : "selling ") + fmt(goods[k].qty) + " (" + goods[k].pct + "%)");
+        const seen = r.last_seen_day != null ? ", seen day " + r.last_seen_day : "";
+        return '<div class="row" data-cim-row="port"><span class="y">' + esc(r.sector_id) + "</span> class " + esc(r.class == null ? "?" : r.class) + seen + (bits.length ? ": " + esc(bits.join(", ")) : "") + "</div>";
+      }).join("");
+    }
+    if (q === "F") {
+      const route = f.route;
+      const hops = Array.isArray(route) ? route : (route && (route.path || route.hops)) || [];
+      return '<div class="row" data-cim-row="route">' + (hops.length ? esc(hops.join(" > ")) : "No known route.") + "</div>";
+    }
+    return '<div class="row" data-cim-row="quit">CIM closed.</div>';
+  }
+  function showCimReport(afterSeq, tries) {
+    let best = null;
+    streamLog.concat((S && S.recent_events) || []).forEach((row) => {
+      if (!row || row.kind !== "cim_report" || row.actor_id !== (S && S.self_id) || (row.seq || 0) <= afterSeq) return;
+      if (!best || (row.seq || 0) > (best.seq || 0)) best = row;
+    });
+    if (!best) {
+      if ((tries || 0) < 5) setTimeout(() => { fetchEvents().catch(() => {}).then(() => showCimReport(afterSeq, (tries || 0) + 1)); }, 300);
+      return;
+    }
+    const f = eventFacts(best);
+    if (String(f.query || "").toUpperCase() === "Q") return;
+    overlay("CIM " + esc(String(f.query || "")), cimReportBody(f));
+    $("menu").dataset.screen = "cim-report";
+  }
   function navPoints() {
     const spec = LA("navpoint");
     if (!spec) { setResult("That is not a computer command.", true); return; }
@@ -5514,12 +5571,16 @@
       : "";
     const deal = "Trade-in " + fmt(credit) + " cr"
       + (price == null ? "" : ", the new ship is " + fmt(price) + " cr")
-      + ", net " + fmt(net) + " cr. ";
+      + (net < 0 ? ", you get " + fmt(-net) + " cr back. " : ", net " + fmt(net) + " cr. ");
     const oldKey = ship.ship_class || ship.class || "";
     const newCost = Number((stats[key] || {}).cost);
     const oldCost = Number((stats[oldKey] || {}).cost);
     let worth = "";
-    if (Number.isFinite(newCost) && Number.isFinite(oldCost) && Number.isFinite(net)) {
+    const nwDelta = (shipParams.net_worth_delta_by || {})[key];
+    if (nwDelta != null && Number.isFinite(Number(nwDelta))) {
+      // Playtest 4: the engine's own net worth after the swap (hull, holds, gear left behind).
+      worth = " Net worth " + (Number(nwDelta) < 0 ? "−" : "+") + fmt(Math.abs(Number(nwDelta))) + " cr.";
+    } else if (Number.isFinite(newCost) && Number.isFinite(oldCost) && Number.isFinite(net)) {
       const delta = Math.round((newCost - oldCost) / 2) - net;
       worth = " Net worth " + (delta < 0 ? "−" : "+") + fmt(Math.abs(delta)) + " cr for the hull (a hull counts at half its price)"
         + (left ? ", less the gear you leave" : "") + ".";
@@ -5965,8 +6026,8 @@
   function flushPending() {
     if (!state.awaiting || state.busy || !pending) return;
     const job = pending;
-    pending = null;
-    act(job.kind, job.args, job.label);
+    pending = pendingRest.length ? pendingRest.shift() : null;
+    act(job.kind, job.args, job.label, true);
   }
   function clearStaleWait() {
     const el = $("lastResult");
@@ -6119,24 +6180,38 @@
     line = withCaptureCredits(line, (best.seq || 1) - 1);
     if (line) setResult(line, /ship destroyed/i.test(line));
   }
-  async function act(kind, args, label) {
+  const QUEUE_MOVES = new Set(["warp", "attack", "retreat", "plot_course", "express", "land_planet", "liftoff", "ship_transwarp", "wait"]);
+  async function act(kind, args, label, fromQueue) {
     taxFresh = false;
     dayNote = false;
     if (kind === "bank") { setResult("That command was not accepted.", true); return; }
     if (kind !== "wait") waitStreak = 0;
     if (state.busy || !state.awaiting) {
       if (outOfTurns()) { setResult(noTurnsLine(), true); return; }
-      if (pending && pending.kind === kind && JSON.stringify(pending.args || {}) === JSON.stringify(args || {})) {
+      const last = pendingRest.length ? pendingRest[pendingRest.length - 1] : pending;
+      if (last && last.kind === kind && JSON.stringify(last.args || {}) === JSON.stringify(args || {})) {
         setResult(capFirst((label || kind) + " will run when your turn comes."), true);
         return;
       }
-      const dropped = pending ? (pending.label || pending.kind) : "";
-      pending = { kind, args, label };
+      // Playtest 4: only a new move replaces a queued move. Anything else
+      // (a StarDock purchase, a trade) waits in line instead of being dropped.
+      const job = { kind, args, label };
+      let dropped = "";
+      if (last && QUEUE_MOVES.has(kind) && QUEUE_MOVES.has(last.kind)) {
+        dropped = last.label || last.kind;
+        if (pendingRest.length) pendingRest[pendingRest.length - 1] = job; else pending = job;
+      } else if (pending) pendingRest.push(job);
+      else pending = job;
       heldLabel = label || kind;
       setResult(capFirst((label || kind) + " will run when your turn comes.") + (dropped ? " This replaces your queued " + dropped + "." : ""), true);
       return;
     }
-    pending = null;
+    if (pending && !fromQueue) {
+      // Our turn came before the queue ran: run the queue first, keep this click.
+      pendingRest.push({ kind, args, label });
+      flushPending();
+      return;
+    }
     state.busy = true;
     keys();
     const creditsBefore = S ? S.credits : 0;
@@ -6152,6 +6227,7 @@
       const resp = await api("/" + state.seat + "/action", { method: "POST", body: JSON.stringify({ turn_seq: state.turnSeq, action: { kind, args: args || {} } }) });
       state.awaiting = false;
       justActed = true;
+      if (kind === "cim") { const since = maxSeq; setTimeout(() => showCimReport(since, 0), 400); }
       await refresh();
       let spent = Math.max(0, turnsBefore - (S ? S.turns_remaining : turnsBefore));
       let cameBack = 0;
@@ -6816,7 +6892,7 @@
     setAwaiting(flag) {
       state.awaiting = !!flag;
       state.holdAwait = !flag;
-      if (flag) pending = null;
+      if (flag) { pending = null; pendingRest = []; }
       if (S) render();
     },
     release() {
@@ -6824,6 +6900,9 @@
       state.awaiting = true;
       if (pending) flushPending();
     },
+    cimBody(f) { return cimReportBody(f); },
+    queue(kind, args, label) { return act(kind, args, label); },
+    queued() { return [pending].concat(pendingRest).filter(Boolean).map((j) => j.kind); },
     serverWaits() { return Number(state.waitStreak || 0); },
     resetWaits() { waitStreak = 0; state.waitStreak = 0; },
     do(kind, args) { return act(kind, args || {}, kind); },
