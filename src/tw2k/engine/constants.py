@@ -1367,6 +1367,12 @@ def equip_room(class_key: str, item: str, have: int) -> int | None:
         return max(0, hardware_v2_cap(class_key, item) - int(have))
     if item == "genesis" and planet_class_live() and class_key == "merchant_freighter":
         return max(0, 1 - int(have))
+    if item in ("armid_mines", "limpet_mines", "atomic_mines", "genesis", "photon_missiles"):
+        # GAP 3.15. Off, these stay unlimited (the stored buy). On, the chart.
+        # Holds are not in this gate: max_holds on the tw2002 roster already caps them.
+        if not ship_capacity_live():
+            return None
+        return chart_capacity_room(class_key, item, have)
     spec = hull_spec(class_key) or {}
     field = _EQUIP_CAP_FIELD.get(item)
     if field is None:
@@ -5184,6 +5190,11 @@ V311_PROFILE_HELPERS: dict[str, tuple[str, str]] = {
         "ATTACK_TURN_MODE",
         "NOTE 112: a ship attack spends 0 turns (KillTest Merchant Cruiser). Stored TURN_COST attack stays 5",
     ),
+    # GAP 3.15. Row 229. Rows 225-227 are NOTE 129. Row 228 is attack turns.
+    "ship_capacity_live": (
+        "SHIP_CAPACITY_MODE",
+        "GAP 3.15: mines, genesis, photons, and the printed TransWarp hop range follow the ship chart",
+    ),
 }
 
 
@@ -5725,10 +5736,11 @@ def bust_record_clear_live() -> bool:
     return BUST_CLEAR_MODE == "live" or tw2002_live_profile() or v311_profile()
 
 
-# v311-extern-gaps-v1 (NOTE 82) SD-e, row 96. The Bible ship chart already
-# caps mines, genesis and photons on SHIP_SPECS_TW2002, and cloaks are 5
-# (CLOAK_MAX, "the maximum any ship can carry is five"). Probes were uncapped.
-# The Bible says any ship carries at most 25. "legacy" leaves probes uncapped.
+# v311-extern-gaps-v1 (NOTE 82) SD-e, row 96. Cloaks are 5
+# (CLOAK_MAX, "the maximum any ship can carry is five").
+# Mines, genesis and photons are SHIP_CAPACITY_MODE (row 229), not this switch.
+# Probes were uncapped. The Bible says any ship carries at most 25.
+# "legacy" leaves probes uncapped.
 PROBE_CHART_MAX = 25
 SHIP_CHART_CAP_MODE = "legacy"  # "legacy" | "live"
 
@@ -6974,3 +6986,108 @@ def attack_turn_cost() -> int:
     if attack_turn_live():
         return 0
     return int(TURN_COST["attack"])
+
+
+# GAP 3.15, profile row 229. One switch. Stored default stays "legacy", so a
+# game that does not set it keeps unlimited mines, genesis and photons, and a
+# TransWarp jump is still fuel ore divided by 3 with no extra hop ceiling.
+# "live" or V311_PROFILE "v311" reads the chart. "1" does not turn this on.
+# Holds are not here. SHIP_SPECS_TW2002 max_holds is already what buy_equip
+# enforces while ECONOMY_SCALE_MODE is tw2002 (Merchant Cruiser 75, not a flat
+# 150). HOLD_RULES_MODE (row 19) is wording only. Do not fold holds into this.
+#
+# Mines and genesis: Bible ship chart "Mine Cap." / "Genesis Torpedoes"
+# (S3_tw2002_bible_v1.htm and Bible_TWGS_edit_2007_Clme.htm, same cells) and
+# MBBS page 2 "Mines" / "Genesis Torpedo" (Someguy_MBBS_manual.txt lines
+# 524-569). Those two columns agree. A dash on the MBBS page is 0. Armid and
+# limpet (and the atomic mine, while it is still sold) share Mine Cap.
+# Photons are the Bible "Photon" column only. MBBS page 2 has no photon
+# column. MBBS prose line 624 says the Missile Frigate carries 10, which
+# matches the chart. N is 0.
+#
+# Bible cell lines (mines, T-Warp, photon, transporter, genesis):
+#   escape pod            8195 0, 8207 N, 8231 N, 8243 0, 8267 0
+#   merchant cruiser      8365 50, 8377 N, 8401 N, 8413 5, 8437 5
+#   scout marauder        8535 0, 8547 N, 8571 N, 8583 0, 8607 0
+#   missile frigate       8705 5, 8717 N, 8741 10, 8753 2, 8777 0
+#   battleship            8875 25, 8887 N, 8911 N, 8923 8, 8947 1
+#   corporate flagship    9045 100, 9057 Y/28, 9081 N, 9093 10, 9117 10
+#   colonial transport    9215 0, 9227 N, 9251 N, 9263 7, 9287 5
+#   cargotran             9385 1, 9397 N, 9421 N, 9433 5, 9457 2
+#   merchant freighter    9555 2, 9567 N, 9591 N, 9603 5, 9627 2
+#   imperial starship     9915 125, 9927 Y/50, 9951 5, 9963 10, 9987 10
+#   havoc gunstar         10085 5, 10097 Y/16, 10121 N, 10133 6, 10157 1
+#   star master           10255 50, 10267 N, 10291 N, 10303 3, 10327 5
+#   constellation         10425 25, 10437 N, 10461 N, 10473 6, 10497 2
+#   t'khasi orion         10595 5, 10607 N, 10631 N, 10643 3, 10667 1
+#   tholian sentinel      10765 50, 10777 N, 10801 N, 10813 3, 10837 1
+#   taurean mule          10935 0, 10947 N, 10971 N, 10983 5, 11007 1
+#   interdictor cruiser   11105 200, 11117 N, 11141 N, 11153 20, 11177 20
+# MBBS page 2 lines 531-563 are the same mines and genesis, in that hull order.
+#
+# TransWarp range is the Bible "T-Warp / Range" column only. MBBS page 2 does
+# not print it. Y/28, Y/50 and Y/16 are the hop ceilings. N means no drive
+# (SHIP_TW_HULLS already refuses those hulls). No second number to conflict with.
+#
+# Ship-transporter range is already SHIP_TRANSPORT_RANGE (the same Bible
+# "Transporter Range" column and the MBBS "Teleport Range" column). It is not
+# gated here, so a stored game keeps that table. MBBS prose line 1444 says the
+# ISS beams 15 hops. Both charts say 10. That SOURCE-CONFLICT stays on the
+# chart figure. Ferrengi hulls are not a buy_equip ship class; FERRSPEC lines
+# 16-21 agree with the Bible and are not a second player table.
+SHIP_CAPACITY_MODE = "legacy"  # "legacy" | "live"
+# mines, genesis, photons. A hull missing from this dict stays unlimited.
+SHIP_CAPACITY_CHART: dict[str, dict[str, int]] = {
+    "escape_pod": {"mines": 0, "genesis": 0, "photons": 0},
+    "merchant_cruiser": {"mines": 50, "genesis": 5, "photons": 0},
+    "scout_marauder": {"mines": 0, "genesis": 0, "photons": 0},
+    "missile_frigate": {"mines": 5, "genesis": 0, "photons": 10},
+    "battleship": {"mines": 25, "genesis": 1, "photons": 0},
+    "corporate_flagship": {"mines": 100, "genesis": 10, "photons": 0},
+    "colonial_transport": {"mines": 0, "genesis": 5, "photons": 0},
+    "cargotran": {"mines": 1, "genesis": 2, "photons": 0},
+    "merchant_freighter": {"mines": 2, "genesis": 2, "photons": 0},
+    "imperial_starship": {"mines": 125, "genesis": 10, "photons": 5},
+    "havoc_gunstar": {"mines": 5, "genesis": 1, "photons": 0},
+    "star_master": {"mines": 50, "genesis": 5, "photons": 0},
+    "constellation": {"mines": 25, "genesis": 2, "photons": 0},
+    "tkhasi_orion": {"mines": 5, "genesis": 1, "photons": 0},
+    "tholian_sentinel": {"mines": 50, "genesis": 1, "photons": 0},
+    "taurean_mule": {"mines": 0, "genesis": 1, "photons": 0},
+    "interdictor_cruiser": {"mines": 200, "genesis": 20, "photons": 0},
+}
+# Bible T-Warp hop ceiling. Hulls that print N are absent.
+SHIP_TW_CHART_RANGE = {
+    "corporate_flagship": 28,
+    "imperial_starship": 50,
+    "havoc_gunstar": 16,
+}
+
+
+def ship_capacity_live() -> bool:
+    """True when mines, genesis, photons and the TransWarp hop ceiling use the chart."""
+    return SHIP_CAPACITY_MODE == "live" or v311_profile()
+
+
+def chart_capacity_room(class_key: str, item: str, have: int) -> int | None:
+    """How many more of a chart item this hull can take. None: hull not on the chart."""
+    row = SHIP_CAPACITY_CHART.get(str(class_key))
+    if row is None:
+        return None
+    if item == "genesis":
+        cap = row["genesis"]
+    elif item == "photon_missiles":
+        cap = row["photons"]
+    else:
+        cap = row["mines"]
+    return max(0, int(cap) - int(have))
+
+
+def chart_transwarp_hops(class_key: str) -> int | None:
+    """Printed TransWarp hop ceiling, or None when the switch is off or the chart prints N."""
+    if not ship_capacity_live():
+        return None
+    cap = SHIP_TW_CHART_RANGE.get(str(class_key))
+    if cap is None:
+        return None
+    return int(cap)
