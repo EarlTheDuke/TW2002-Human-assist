@@ -363,7 +363,7 @@ Row 1.6 Class L colonist evidence: Sat Grok L3 (`82578bfe`) hit false class-cap 
 
 | # / item | (a) Original rule, source, confidence | (b) Ours | (c) Status | (d) Size / priority |
 |---|---|---|---|---|
-| 14.1 Computer menu helpers | Avoids, backtrack, NavPoints, quick stats, Find Route, CIM mapping. [EIS GeneralNew.html, Navigate, cabal glossary.html] CONFIRMED | `NAVPOINT_MODE` (NOTE 159) sets, lists, and clears four named NavPoints and plots a course to one. Legacy has no NavPoints menu. Avoids and the course plotter were already in. Not every helper. | Partial | M / Low |
+| 14.1 Computer menu helpers | Avoids, backtrack, NavPoints, quick stats, Find Route, CIM mapping. [EIS GeneralNew.html, Navigate, cabal glossary.html] CONFIRMED | `NAVPOINT_MODE` (NOTE 159) sets, lists, and clears four named NavPoints and plots a course to one. Legacy has no NavPoints menu. Avoids and the course plotter were already in. NOTE 110 / NOTE 129: under the profile, Computer B is Begin Self Destruct (`computer-b.txt`). N aborts. Y reuses `handle_self_destruct`. `<` stays the previous-sector key. A legacy Computer menu still labels B Backtrack. No new switch. Not every helper. | Partial | M / Low |
 | 14.2 Towing and tractor beam | Tow another ship (furbing, carrying fighters); pre-lock before combat. [cabal glossary.html, docs wiki Furbing] CONFIRMED | Missing. | Missing | L / Low |
 | 14.3 Planet busting for exp | Create then destroy planets for 75 exp per loop. [cabal glossary.html] CONFIRMED | genesis xp 100, planet_destroy; loop cost vs reward not examined. | Different | S / Low |
 | 14.4 Unmanned-ship fighters | Fighters on unmanned ships are excluded from universe totals. [docs wiki Interdictor_Cruiser] CONFIRMED | n/a (single ship). | Missing | S / Low |

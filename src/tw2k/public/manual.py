@@ -329,12 +329,14 @@ def _command_keys(_f: dict) -> str:
                 f"NavPoints. Set, list, and clear {_n(K.NAVPOINT_SLOTS)} named sectors. "
                 "Terra and StarDock are already listed. Plot lays in a course.",
             ))
-            if K.v311_profile():
-                meaning = (
-                    "Begin Self Destruct. The prompt is ARE YOU SURE CAPTAIN? (Y/N) [N]. "
-                    "N or Enter prints Self Destruct Aborted... and changes nothing. Y destroys the ship. "
-                    "< returns to the previous sector."
-                )
+        # NOTE 110 / NOTE 129. computer-b.txt. Ship exit already destroys the
+        # ship. This menu only names that command. "<" stays the previous sector.
+        if key == "B" and K.ship_exit_on():
+            meaning = (
+                "Begin Self Destruct. The prompt is ARE YOU SURE CAPTAIN? (Y/N) [N]. "
+                "N or Enter prints Self Destruct Aborted... and changes nothing. Y destroys the ship. "
+                "< returns to the previous sector."
+            )
         computer.append((key, meaning))
     return (
         "<p>These are the redesign cockpit keys. They are the original Trade Wars letters. "

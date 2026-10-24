@@ -85,7 +85,7 @@ Keys: open the original TW2002 Computer menu. Read the label next to B before yo
 
 Read: the menu label for B, and whether B and `<` do the same thing.
 
-Settles: none, cockpit key, not an engine constant. NOTE 103 made B backtrack on this cockpit. The original backtrack key is `<`.
+Settles: none, cockpit key, not an engine constant. Measured in `computer-b.txt`. Under the v3.11 profile, Computer B is Begin Self Destruct and `<` stays the previous-sector key. A legacy Computer menu still uses B for backtrack.
 
 ### Real-time hop time
 

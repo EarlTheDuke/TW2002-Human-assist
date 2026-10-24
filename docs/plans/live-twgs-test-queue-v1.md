@@ -30,7 +30,7 @@ Solo steal-dump-flee. BLOCKED. The one ship never got a steal prompt, and no sol
 
 Economy price scale. DIFFERENT, recorded, anchors kept. Opening quotes, experience 0 or 1, and the screen does not print MCIC. Fuel selling at 100 percent of max: 11. Fuel buying at 100 percent: 27. Organics selling at 100 percent: 31. Organics buying at 94 percent: 66. Equipment selling at 100 percent: 56. The chart anchors behind `PRICE_SCALE_SELL_250` and `PRICE_SCALE_BUY_250` stay the economy2 100% totals: about 15, 35, 28, 71 and 49 for those same sides, and 128 for equipment buying, which this screen did not quote. `PRICE_SCALE_MODE` already quotes that chart when the flag is live or the v3.11 profile is on. The stored flag stays legacy. The day-1 numbers were not written into the anchors. The organics buy is 94 percent, equipment buying is missing, and MCIC was not printed, so these quotes are not a new formula. Gap row 2.5 stays the two printed lists (ports on the economy2 chart, ships on the Bible chart). `docs/playtests/twgs-live/price-scale.txt`. `tests/test_note129_price_scale_v1.py`.
 
-Computer menu B. DIFFERENT. The live label is "Begin Self Destruct". B asks "ARE YOU SURE CAPTAIN?" and N says "Self Destruct Aborted...". The `<` key plots a course back to the previous sector. This cockpit uses B for backtrack. No engine constant. `computer-b.txt`.
+Computer menu B. DIFFERENT, wired under the profile. The live label is "Begin Self Destruct". B asks "ARE YOU SURE CAPTAIN?" and N says "Self Destruct Aborted...". Y reuses `handle_self_destruct`. `<` stays the previous-sector key and is not B. A legacy Computer menu still uses B for backtrack. No new engine constant. `computer-b.txt`.
 
 Death delay maximum. CLOSED. 24 Oct 2026, Ven GameA / Slot A. TEDIT was not opened. Sources are tedit.exe strings, `GameA\OUTPUT\TWSTATS.TXT`, and `REVISION.TXT`. Death Delay is Yes/No. The prompt is "Enable Death Delay?". The default is Yes. TWSTATS reads `Death Delay=True`. The help forces a podded player out for a day. If it is disabled, they re-enter immediately and death does not affect turns. Gold is what can disable it. S7 #16's 0/1/2 day count is the older SoftDocs model and is not this TEDIT field. There is no numeric maximum. `GameConfig.death_delay` is that yes/no switch. `docs/playtests/twgs-live/death-delay-max.txt`.
 
@@ -104,7 +104,7 @@ One added check. NOTE 103 mapped Computer B to backtrack on this cockpit. The or
 
 | item | current value | live test | what to record | constant |
 |---|---|---|---|---|
-| Computer menu B | This cockpit's Computer menu uses B for backtrack. The original backtrack key is `<` | On the original TW2002 Computer menu, read the label next to B. Press B. From a prompt, after one move, press `<` | The menu label for B, and whether B and `<` do the same thing | none, cockpit key, not an engine constant |
+| Computer menu B | Under the v3.11 profile, Computer B is Begin Self Destruct. N aborts. Y reuses the existing self-destruct. `<` stays the previous-sector key. A legacy Computer menu still uses B for backtrack | On the original TW2002 Computer menu, read the label next to B. Press B. From a prompt, after one move, press `<` | The menu label for B, and whether B and `<` do the same thing | none, cockpit key, not an engine constant |
 
 ## Live TWGS test queue (NOTE 112)
 

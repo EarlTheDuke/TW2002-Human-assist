@@ -1,9 +1,10 @@
-"""NOTE 134 version-fixes-v1.
+"""NOTE 134 version-fixes-v1. NOTE 110 / NOTE 129 Computer B.
 
 Computer B follows the profile. A v3.11 game, where self-destruct is already a
-real command, asks before it destroys the ship. A legacy game still backtracks.
-The old /bot page is unchanged. StarDock, quotes, the name change and the
-Cineplex stay as they are.
+real command, asks before it destroys the ship. The prompt and the abort line
+are read from docs/playtests/twgs-live/computer-b.txt. A legacy game still
+backtracks. "<" stays the previous-sector key. The old /bot page is unchanged.
+StarDock, quotes, the name change and the Cineplex stay as they are.
 """
 
 from __future__ import annotations
@@ -28,8 +29,46 @@ from tw2k.public.manual import render
 
 ROOT = Path(__file__).resolve().parents[1]
 CASES = ("v311", "legacy")
-PROMPT = "ARE YOU SURE CAPTAIN? (Y/N) [N]"
-ABORTED = "Self Destruct Aborted..."
+CAPTURE_PATH = ROOT / "docs/playtests/twgs-live/computer-b.txt"
+CAPTURE = CAPTURE_PATH.read_text(encoding="utf-8")
+_CAPTURE_LINES = [line.strip() for line in CAPTURE.splitlines() if line.strip()]
+LABEL = next(line for line in _CAPTURE_LINES if line.startswith("<B>"))
+PROMPT = next(line for line in _CAPTURE_LINES if line.startswith("ARE YOU SURE"))
+ABORTED = next(line for line in _CAPTURE_LINES if line.startswith("Self Destruct Aborted"))
+MENU_LABEL = LABEL.split(">", 1)[1].strip()
+
+
+def test_computer_b_capture_is_the_menu_copy() -> None:
+    """The live screen, not a retyped sentence, is what the cockpit asks."""
+    assert CAPTURE_PATH.is_file()
+    assert LABEL == "<B> Begin Self Destruct"
+    assert "Answered N." in CAPTURE
+    assert "Engage the Autopilot?" in CAPTURE
+    assert "not the same command" in CAPTURE
+    js = (ROOT / "web" / "redesign.js").read_text(encoding="utf-8")
+    assert PROMPT in js
+    assert ABORTED in js
+    assert MENU_LABEL in js
+    less = js.index('if (k === "<") { backtrack(); return; }')
+    computer_b = js.index(
+        'if (k === "B") return selfDestructInGame() ? beginSelfDestruct() : backtrack();'
+    )
+    assert less < computer_b
+    assert "beginSelfDestruct" not in js[less:less + 80]
+
+
+def test_ship_exit_names_computer_b_without_navpoints(monkeypatch) -> None:
+    monkeypatch.setattr(K, "V311_PROFILE", "legacy")
+    monkeypatch.setattr(K, "SHIP_EXIT_MODE", "tw2002")
+    monkeypatch.setattr(K, "NAVPOINT_MODE", "legacy")
+    assert K.ship_exit_on() is True
+    assert K.navpoint_live() is False
+    page = render("Galaxy War Command")
+    assert MENU_LABEL in page
+    assert PROMPT in page
+    assert ABORTED in page
+    assert "Backtrack one sector" not in page
+    assert "returns to the previous sector." in page
 
 
 def test_the_manual_computer_list_follows_the_profile(monkeypatch) -> None:
@@ -40,7 +79,7 @@ def test_the_manual_computer_list_follows_the_profile(monkeypatch) -> None:
     assert "Backtrack one sector" in render("Galaxy War Command")
     monkeypatch.setattr(K, "V311_PROFILE", "v311")
     live = render("Galaxy War Command")
-    assert "Begin Self Destruct" in live
+    assert MENU_LABEL in live
     assert PROMPT in live
     assert ABORTED in live
     assert "Backtrack one sector" not in live
@@ -49,7 +88,7 @@ def test_the_manual_computer_list_follows_the_profile(monkeypatch) -> None:
 
 def test_bot_pages_do_not_grow_a_self_destruct_computer_key() -> None:
     js = (ROOT / "web" / "redesign.js").read_text(encoding="utf-8")
-    assert "Begin Self Destruct" in js
+    assert MENU_LABEL in js
     assert PROMPT in js
     assert ABORTED in js
     for name in ("bot.html", "bot.js", "bot-parity.js"):
@@ -162,7 +201,7 @@ def _browser(kind: str) -> None:
                 menu = page.locator("#menu").inner_text()
                 if kind == "legacy":
                     assert "Backtrack" in menu
-                    assert "Begin Self Destruct" not in menu
+                    assert MENU_LABEL not in menu
                     page.keyboard.press("b")
                     page.wait_for_function(
                         "() => /No previous sector/.test(document.querySelector('#lastResult').textContent || '')",
@@ -170,7 +209,7 @@ def _browser(kind: str) -> None:
                     )
                     assert page.locator("[data-ask=destruct]").is_hidden()
                 else:
-                    assert "Begin Self Destruct" in menu
+                    assert MENU_LABEL in menu
                     assert "Backtrack" not in menu
                     _abort(page, host, "n")
                     _abort(page, host, "Enter")
