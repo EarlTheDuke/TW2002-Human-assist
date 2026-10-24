@@ -17,7 +17,7 @@ import httpx
 
 from . import worker as W
 from .config import LobbyConfig, assert_lobby_port
-from .security import ai_label
+from .security import ai_label, ai_seat_label
 
 BOT_NAMES = ("Vega", "Orion", "Lyra", "Rigel", "Talon")
 _STRIP_ENV_PREFIXES = ("TW2K_", "TW2002_")
@@ -169,7 +169,12 @@ def serve_command(settings: dict[str, Any], port: int, game_dir: Path, *, python
     ai = ai_count(settings)
     cockpit = cockpit_count(settings)
     names = [f"Guest {i + 1}" for i in range(humans)]
-    names += [ai_label(str(settings.get("ai_brain") or "heuristic")) for _ in range(ai)]
+    brain = str(settings.get("ai_brain") or "heuristic")
+    if brain == "tinybox":
+        models = [str(m) for m in (settings.get("ai_models") or [])]
+        names += [ai_seat_label(brain, models[i % len(models)] if models else "") for i in range(ai)]
+    else:
+        names += [ai_label(brain) for _ in range(ai)]
     if cockpit <= 1:
         names += ["AI cockpit"] * cockpit
     else:

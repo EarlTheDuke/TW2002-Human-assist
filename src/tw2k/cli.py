@@ -619,8 +619,16 @@ def lobby(
     port: int = typer.Option(None, help="Lobby port on 127.0.0.1 (default 8099, env TW2K_LOBBY_PORT)."),
     game_ports: str = typer.Option(None, help="Game worker ports, e.g. 8100-8119 (env TW2K_GAME_PORTS)."),
     root: str = typer.Option(None, help="State folder (default saves/selfhost, env TW2K_LOBBY_ROOT)."),
+    env_file: str = typer.Option(None, "--env-file",
+                                 help="Load KEY=VALUE settings (e.g. TinyBox TW2K_CUSTOM_*) from this .env file."),
 ) -> None:
     """Self-host closed beta: a lobby that starts one game worker per game and proxies /g/<id>/."""
+    if env_file:
+        from .public import tinybox as _tb
+
+        loaded = _tb.load_env_file(env_file)
+        console.print(f"[dim]loaded {len(loaded)} settings from {env_file}; "
+                      f"TinyBox {'ready' if _tb.ready() else 'NOT configured'}[/]")
     from .public import config as _lc
     from .public import lobby as _lobby
 

@@ -259,10 +259,17 @@ class CockpitSeat:
                 await asyncio.sleep(0.05)
                 continue
             last_progress = time.monotonic()
-            kind, args, why = _pick_turn(
-                obs, cockpit, brain, lobby=lobby, llm_key=llm_key, llm_ask=llm_ask,
-                fallback_line=fallback_line, announced=announced,
-            )
+            if getattr(llm_ask, "threaded", False):
+                # A long-thinking model (TinyBox) must not block the lobby's event loop.
+                kind, args, why = await asyncio.to_thread(
+                    _pick_turn, obs, cockpit, brain, lobby=lobby, llm_key=llm_key, llm_ask=llm_ask,
+                    fallback_line=fallback_line, announced=announced,
+                )
+            else:
+                kind, args, why = _pick_turn(
+                    obs, cockpit, brain, lobby=lobby, llm_key=llm_key, llm_ask=llm_ask,
+                    fallback_line=fallback_line, announced=announced,
+                )
             day = int(obs.get("day") or 0)
             row = table[day]
             report["posts"] += 1
