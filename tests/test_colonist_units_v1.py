@@ -225,3 +225,100 @@ def test_seed_250925_n1_net_worth_stays_under_340k(monkeypatch) -> None:
     # scored as people would clear this by itself.
     assert n1["net_worth"] < 340_000
     assert n1["net_worth"] - n1["public_net_worth"] < 20_000
+
+
+def test_v311_class_m_refuses_a_fraction_of_a_thousand(monkeypatch) -> None:
+    """75 people are not a thousand. They must not leave a class M pool, or land back on one."""
+    monkeypatch.setattr(K, "V311_PROFILE", "v311")
+    u = _world()
+    home = _land(u, PlanetClass.M)
+    home.colonists[Commodity.ORGANICS] = 63_000
+    home.colonists[Commodity.FUEL_ORE] = 91_000
+    refused = _act(u, "load_planet_cargo", planet_id=home.id, commodity="colonists", qty=75, pool="organics")
+    assert refused.ok is False
+    assert refused.error == "class M colonists move by the thousand"
+    assert u.players["P1"].ship.cargo.get(Commodity.COLONISTS, 0) == 0
+    assert home.colonists[Commodity.ORGANICS] == 63_000
+    to_ship = _act(u, "assign_colonists", planet_id=home.id, **{"from": "organics", "to": "ship", "qty": 75})
+    assert to_ship.ok is False and to_ship.error == "class M colonists move by the thousand"
+    assert home.colonists[Commodity.ORGANICS] == 63_000
+    # A pool-to-pool move is still people already on the world. 75 may shift.
+    shifted = _act(u, "assign_colonists", planet_id=home.id, **{"from": "organics", "to": "equipment", "qty": 75})
+    assert shifted.ok, shifted.error
+    assert home.colonists[Commodity.ORGANICS] == 62_925
+    assert home.colonists[Commodity.EQUIPMENT] == 75
+    ship = u.players["P1"].ship
+    ship.cargo[Commodity.COLONISTS] = 75
+    onto = _act(u, "dump_planet_cargo", planet_id=home.id, commodity="colonists", qty=75, pool="fuel_ore")
+    assert onto.ok is False and onto.error == "class M colonists move by the thousand"
+    assert home.colonists[Commodity.FUEL_ORE] == 91_000
+    assert ship.cargo[Commodity.COLONISTS] == 75
+    back = _act(u, "assign_colonists", planet_id=home.id, **{"from": "ship", "to": "fuel_ore", "qty": 75})
+    assert back.ok is False and back.error == "class M colonists move by the thousand"
+    assert home.colonists[Commodity.FUEL_ORE] == 91_000
+
+
+def test_v311_fraction_on_empty_class_l_says_move_by_thousand(monkeypatch) -> None:
+    """75 people in the hold are not a class-cap failure on an empty class L that still has room."""
+    monkeypatch.setattr(K, "V311_PROFILE", "v311")
+    u = _world()
+    planet = _land(u, PlanetClass.L)
+    assert sum(planet.colonists.values()) == 0
+    assert K.planet_colonist_cap("L") == 40_000
+    ship = u.players["P1"].ship
+    ship.cargo[Commodity.COLONISTS] = 75
+    listed = {la.kind: la for la in legal_actions(u, "P1")}
+    assert listed["dump_planet_cargo"].legal is False
+    assert listed["dump_planet_cargo"].reason == K.COLONIST_MOVE_BY_THOUSAND
+    assert listed["assign_colonists"].legal is False
+    assert listed["assign_colonists"].reason == K.COLONIST_MOVE_BY_THOUSAND
+    assert "cap" not in listed["dump_planet_cargo"].reason
+    assert "40000" not in listed["assign_colonists"].reason
+    dumped = _act(u, "dump_planet_cargo", planet_id=planet.id, commodity="colonists", qty=75, pool="organics")
+    assert dumped.ok is False and dumped.error == K.COLONIST_MOVE_BY_THOUSAND
+    assert sum(planet.colonists.values()) == 0
+    assert ship.cargo[Commodity.COLONISTS] == 75
+    # A full world still names the cap. The thousand message is only for room that remains.
+    planet.colonists[Commodity.COLONISTS] = 40_000
+    full = {la.kind: la for la in legal_actions(u, "P1")}
+    assert full["dump_planet_cargo"].legal is False
+    assert full["dump_planet_cargo"].reason == "planet is at its class cap"
+
+
+def test_v311_class_m_thousands_land_as_handbook_on_class_l(monkeypatch) -> None:
+    """1,000 class M people are 1 handbook colonist. 40,000 people are 40. The L cap stays 40,000."""
+    monkeypatch.setattr(K, "V311_PROFILE", "v311")
+    u = _world()
+    home = _land(u, PlanetClass.M)
+    home.colonists[Commodity.ORGANICS] = 63_000
+    loaded = _act(u, "load_planet_cargo", planet_id=home.id, commodity="colonists", qty=1_000, pool="organics")
+    assert loaded.ok, loaded.error
+    assert home.colonists[Commodity.ORGANICS] == 62_000
+    assert u.players["P1"].ship.cargo[Commodity.COLONISTS] == 1_000
+    assert u.players["P1"].ship.cargo_used == 1
+    colony = _land(u, PlanetClass.L)
+    assert sum(colony.colonists.values()) == 0
+    dumped = _act(u, "dump_planet_cargo", planet_id=colony.id, commodity="colonists", qty=1_000, pool="organics")
+    assert dumped.ok, dumped.error
+    assert colony.colonists[Commodity.ORGANICS] == 1
+    assert sum(colony.colonists.values()) == 1
+    assert u.players["P1"].ship.cargo.get(Commodity.COLONISTS, 0) == 0
+    assert K.planet_colonist_cap("L") == 40_000
+    assert K.PLANET_MAX_COLONISTS["L"] == 40_000
+
+    u2 = _world()
+    home2 = _land(u2, PlanetClass.M)
+    home2.colonists[Commodity.FUEL_ORE] = 113_000
+    loaded2 = _act(u2, "load_planet_cargo", planet_id=home2.id, commodity="colonists", qty=40_000, pool="fuel_ore")
+    assert loaded2.ok, loaded2.error
+    assert home2.colonists[Commodity.FUEL_ORE] == 73_000
+    ship2 = u2.players["P1"].ship
+    assert ship2.cargo[Commodity.COLONISTS] == 40_000
+    assert ship2.cargo_used == 40
+    colony2 = _land(u2, PlanetClass.L)
+    dumped2 = _act(u2, "dump_planet_cargo", planet_id=colony2.id, commodity="colonists", qty=40_000, pool="fuel_ore")
+    assert dumped2.ok, dumped2.error
+    assert colony2.colonists[Commodity.FUEL_ORE] == 40
+    assert sum(colony2.colonists.values()) == 40
+    assert ship2.cargo.get(Commodity.COLONISTS, 0) == 0
+    assert K.planet_colonist_cap(colony2.class_id.value) == 40_000

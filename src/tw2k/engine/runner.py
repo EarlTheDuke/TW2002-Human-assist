@@ -2266,9 +2266,9 @@ def _handle_load_planet_cargo(universe: Universe, pid: str, action: Action) -> A
         return ActionResult(ok=False, error="out of turns")
     cargo_move = qty
     if commodity == Commodity.COLONISTS and K.class_m_transfer_on(planet.class_id):
-        cargo_move = K.class_m_cargo_for_people(qty)
-        if cargo_move <= 0 or K.class_m_people_for_cargo(cargo_move) != qty:
+        if not K.class_m_people_quantity_ok(qty):
             return ActionResult(ok=False, error="class M colonists move by the thousand")
+        cargo_move = K.class_m_cargo_for_people(qty)
     elif commodity == Commodity.COLONISTS and K.colonist_handbook_transfer(planet.class_id):
         cargo_move = K.colonist_handbook_to_people(qty)
     holds_needed = K.colonist_holds_for_cargo(cargo_move) if commodity == Commodity.COLONISTS else qty
@@ -2343,6 +2343,8 @@ def _handle_dump_planet_cargo(universe: Universe, pid: str, action: Action) -> A
             return error
         pool = _production_pool(pool)
         if K.class_m_transfer_on(planet.class_id):
+            if not K.class_m_cargo_quantity_ok(qty):
+                return ActionResult(ok=False, error="class M colonists move by the thousand")
             planet_add = K.class_m_people_for_cargo(qty)
         elif K.colonist_handbook_transfer(planet.class_id):
             handbook, whole = K.colonist_people_to_handbook(qty)
@@ -2438,11 +2440,13 @@ def _handle_assign_colonists(universe: Universe, pid: str, action: Action) -> Ac
     planet_qty = qty
     if K.class_m_transfer_on(planet.class_id):
         if src == "ship" and dst != "ship":
+            if not K.class_m_cargo_quantity_ok(qty):
+                return ActionResult(ok=False, error="class M colonists move by the thousand")
             planet_qty = K.class_m_people_for_cargo(qty)
         elif dst == "ship" and src != "ship":
-            ship_qty = K.class_m_cargo_for_people(qty)
-            if ship_qty <= 0 or K.class_m_people_for_cargo(ship_qty) != qty:
+            if not K.class_m_people_quantity_ok(qty):
                 return ActionResult(ok=False, error="class M colonists move by the thousand")
+            ship_qty = K.class_m_cargo_for_people(qty)
             planet_qty = qty
     elif K.colonist_handbook_transfer(planet.class_id):
         if src == "ship" and dst != "ship":
