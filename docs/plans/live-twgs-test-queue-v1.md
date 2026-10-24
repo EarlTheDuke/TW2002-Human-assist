@@ -8,21 +8,21 @@ The ordered run, with setup, keys, and turn and credit estimates, is `docs/plans
 
 ## NOTE 129 results
 
-Played 19 Oct 2026 on TWGS v2.20b, Trade Wars 2002 ver 3.34b, in TW Test Game 2, as a new character. No other trader was logged in or attacked. No engine constant was changed. Captures are in `docs/playtests/twgs-live/`. Two confirmed, five different, four blocked.
+Played 19 Oct 2026 on TWGS v2.20b, Trade Wars 2002 ver 3.34b, in TW Test Game 2, as a new character. No other trader was logged in or attacked. No engine constant was changed that day. Captures are in `docs/playtests/twgs-live/`. Two confirmed, five different, four blocked. A later slice put the measured StarDock prices behind switches. The stored defaults were not retuned. `V311_PROFILE` `v311` turns the switches on. The string `1` does not. `TW2002_LIVE_PROFILE` does not.
 
 Unnamed nightly jobs. CONFIRMED. The journal line is "The Ferrengi moved at 12:00:01 AM, on 10/19/54", and the same single line is the journal on 10/11, 10/12, 10/13 and 10/18. No other job is named. Gap row 12.4 gets no new job. `nightly-jobs.txt`.
 
 Fed hunt. BLOCKED. Twenty colonist holds jettisoned and alignment stayed 0 Neutral, so the evil-ship pass was not run. A neutral Merchant Cruiser walked FedSpace sectors 1 through 7 and was left alone. No Federal ship was in them. `fed-hunt.txt`.
 
-StarDock menus. DIFFERENT. Live sector 144, Stargate Alpha I, class 9. The where-to list is Cineplex, Bank, Hardware, Libram Universitatus, Police, Shipyards, Tavern. B is a singles bar and U is the Underground door, and neither letter is on that list. Drink is 80 credits, food is 24 a plate, announcement is 100. Class 0 fighters are 218 and shields are 131 a point. Ours has no library and no singles bar. `TAVERN_DRINK_COST` is 20, `TAVERN_FOOD_COST` is 20, and the shield price is the flat 10. Unlocks gap row 1.8 for the library, the singles bar, and the 131 shield price. `stardock-menus.txt`.
+StarDock menus. DIFFERENT, then applied behind flags. Live sector 144, Stargate Alpha I, class 9. The where-to list is Cineplex, Bank, Hardware, Libram Universitatus, Police, Shipyards, Tavern. B is a singles bar and U is the Underground door, and neither letter is on that list. Drink is 80 credits, food is 24 a plate, announcement is 100. Class 0 fighters are 218 and shields are 131 a point. Announcement 100 already matched `TAVERN_ANNOUNCE_COST`. Drink 80 and food 24 are `TAVERN_BAR_PRICE_MODE`. Shields at 131 a point are `SHIELD_POINT_MODE`. The stored drink and food prices stay 20, and the stored shield price stays the wave (flat 10 when `SHIELD_PRICE_MODE` is flat). Fighters at 218 were not retuned: that reading sits in the 160-239 wave and may be stock-dependent (UNVERIFIED). Day-to-day shield drift is UNVERIFIED. The menu said 131 a point, and the purse went from 228 to 96, which is 132. The price used is the stated 131. The library and the singles bar are still deferred. Gap row 1.8 stays Match-behind-flag. `stardock-menus.txt`.
 
 Second rob table. BLOCKED. At alignment 0 the port list is Attack, Trade, Quit. No second table was printed. `rob-table.txt`.
 
-Underground name change. DIFFERENT. At 1 experience the screen said "Seems you're a total unknown, this'll be cheap" and "We can give you a new identity for 100 credits." The deal was declined. `UG_NAME_CHANGE` is false. Unlocks gap row 11.7 with that 100 credit price for a total unknown. A second experience point was not measured. `name-change.txt`.
+Underground name change. DIFFERENT, then applied behind the existing switch. At 1 experience the screen said "Seems you're a total unknown, this'll be cheap" and "We can give you a new identity for 100 credits." The deal was declined. `UG_NAME_CHANGE` stays false. `UG_NAME_MODE` charges 100 credits for that total unknown (experience at most 1). Experience 0 was not on the screen, so that edge is UNVERIFIED. A second experience point was not measured, and that trader is refused. Gap row 11.7 stays Match-behind-flag. `name-change.txt`.
 
 Tri-Cron. CONFIRMED. Ante 100, 10 rounds, three crons from 0 to 9, positions 1, 2 and 3, greater total wins, payback 2 to 1, jackpot 5,000, champion score 5,000. One match paid "You win 100 credits!" and the balance went from 128 to 228. Matches `TRICRON_ANTE`, `TRICRON_ROUNDS` and `TRICRON_OPENING_JACKPOT`. Gap row 11.8 already has those numbers. `tricron.txt`.
 
-Illegal-goods prices. DIFFERENT. The Underground menu sells no good. The singles bar printed no item and no price; the balance fell from 140 to 93, which is 47 credits. Cineplex show 1 asked "100 Credits Please" for Vulcan Thunder. `CINEPLEX_COST` is 0. Unlocks gap rows 1.8 and 11.7 with the 100 credit ticket. The 47 credit bar charge has no item name. `illegal-goods.txt`.
+Illegal-goods prices. DIFFERENT, then the ticket was applied. The Underground menu sells no good, so no goods constant was added. The singles bar printed no item and no price; the balance fell from 140 to 93, which is 47 credits. That charge is not a constant. Cineplex show 1 asked "100 Credits Please" for Vulcan Thunder. `CINEPLEX_COST` stays 0. Show 1 is 100 credits behind `CINEPLEX_PRICE_MODE`. The other titles were not opened. Gap rows 1.8 and 11.7 stay Match-behind-flag. `illegal-goods.txt`.
 
 Per-attempt alignment and experience awards. BLOCKED. No steal and no rob was offered, so no delta was on the screen. `rob-awards.txt`.
 
@@ -103,7 +103,7 @@ Searched before these rows were added: `docs/playtests/ports/ECONOMY_SCALE.md` (
 
 | item | current value | live test | what to record | constant |
 |---|---|---|---|---|
-| Shield unit price | no saved unit price. The flat 10 stays. The fighter wave is 160 to 239 | At StarDock, buy one shield on two different days | The credit price each day, next to that day's fighter price | a shield price, only if the screen prints one |
+| Shield unit price | 131 a point behind `SHIELD_POINT_MODE`. The stored price stays the wave, or flat 10 when `SHIELD_PRICE_MODE` is flat. Day-to-day drift is UNVERIFIED. Fighters that day were 218 and stay on the wave | Buy one shield on a second day and read it next to that day's fighter price | The credit price, and whether it is still 131 a point | `SHIELD_POINT_LIVE`, only if a second day prints a different point price |
 | Ship-odds loss split | already queued under NOTE 96. No new switch | See the NOTE 96 row | Fighters and shields left on both ships | `docs/plans/ship-odds-exchange-v1.md` |
 | Attack turn cost | an attack spends 5 turns | Attack a ship and read the turn counter before and after | Turns spent, and whether that number changes with the hull | `TURN_COST["attack"]` |
 | Attacker destroyed by its own attack | the attack does not destroy the attacker | Send every fighter into a stronger ship | Whether the attacker is podded | no constant until a screen shows it |
@@ -116,9 +116,9 @@ GAP 14.5. Rob, steal, bust, the flee penalty, and the Underground password ladde
 | item | current value | live test | what to record | constant |
 |---|---|---|---|---|
 | Steal-dump-flee, solo | not built. The glossary says SDF needs another corpie and does not give the steps. The flee penalty is already one turn on the next land or port | With a corpie, run one steal-dump-flee cycle. Also try it with one ship | The turns spent, whether the penalty landed, and the solo steps if the game allows them | none until the screen shows a solo procedure |
-| Underground name change | `UG_NAME_CHANGE` is false. The price formula is unknown | In the Underground, change the trader's name | Credits taken and whether the price moves with experience | a name-change price, only if the screen prints one |
+| Underground name change | `UG_NAME_CHANGE` stays false. A total unknown at 1 experience is 100 credits behind `UG_NAME_MODE`. A higher experience was not priced | In the Underground, change the name of a trader with more than 1 experience | Credits taken and whether the price moves with experience | a higher-experience price, only if the screen prints one |
 | Tri-Cron | `TAVERN_TRICRON` is off. The tip is free and the game is not built | Buy one Tri-Cron round | The cost and what one round does | a Tri-Cron cost, only if the screen prints one |
-| Illegal goods | Singles Bar, Library, Cineplex, and illegal goods are named and not built | Buy one illegal good, if the Underground sells any | The item name and the price | a price, only if the screen prints one |
+| Illegal goods | Cineplex show 1 is 100 credits behind `CINEPLEX_PRICE_MODE`. The Underground menu sells no good. The singles bar and the library are not built. The 47 credit bar drop has no item name | Buy one illegal good, if a later visit sells one, and open the library if a stub is added | The item name and the price | a price, only if the screen prints one |
 | Rob and steal success awards | steal `max(1, qty // 6)` alignment and `max(1, qty // 15)` experience; rob divides credits by 10,000. Marked UNVERIFIED | Steal a known number of holds, then rob a known number of credits. Read alignment and experience before and after | The two deltas next to the holds and the credits | `STEAL_SUCCESS_ALIGN_DIVISOR`, `STEAL_SUCCESS_EXP_DIVISOR`, `ROB_SUCCESS_ALIGN_DIVISOR`, `ROB_SUCCESS_EXP_DIVISOR` |
 
 ## Live TWGS test queue (NOTE 117)

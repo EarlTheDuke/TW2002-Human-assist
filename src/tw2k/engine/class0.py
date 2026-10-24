@@ -34,9 +34,16 @@ def class0_tw2002() -> bool:
 def shield_unit_price(day: int) -> int:
     """Credits for one shield today.
 
+    Measured (NOTE 129, 19 Oct 2026, docs/playtests/twgs-live/stardock-menus.txt):
+    131 a point when SHIELD_POINT_MODE is v311. The menu said "per point".
+    Day-to-day drift is UNVERIFIED (one day). The purse went 228 to 96, which
+    is 132; that extra credit is not a second price. Fighters that day were
+    218 and stay on the wave: the reading may be stock-dependent.
     mirror (tw2002 default): fighter wave in opposite phase, 160..239.
     flat / legacy: 10.
     """
+    if K.shield_point_live() and class0_tw2002():
+        return int(K.SHIELD_POINT_LIVE)
     if K.SHIELD_PRICE_MODE != "mirror" or not class0_tw2002():
         return 10
     raw = 200 - math.sin(int(day) / 87 * 2 * math.pi) * 40

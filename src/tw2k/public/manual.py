@@ -1441,6 +1441,9 @@ _SWITCH_PLAIN: dict[str, str] = {
     "FEDERATION_HALL_MODE": "Federation Hall lists each corporation. The hardware counter can show a shop screen.",
     "CORP_CARGO_TREASURY_MODE": "Corp mates in the same sector can move cargo. Members can put credits in the treasury, and only the C.E.O. can take them out.",
     "UG_NAME_MODE": "A total unknown can buy a new name from the Underground.",
+    "SHIELD_POINT_MODE": "Class 0 and StarDock shields cost 131 credits a point.",
+    "TAVERN_BAR_PRICE_MODE": "A tavern drink is 80 credits and a plate of food is 24.",
+    "CINEPLEX_PRICE_MODE": "The Cineplex charges 100 credits for Vulcan Thunder. The other titles were not priced.",
     "FED_HUNT_MODE": "An evil ship that meets a Federal is destroyed, unless it is an Imperial StarShip.",
     "CIM_MODE": "CIM lists sectors and ports you have explored, and a path. A port line stays hidden when hostile fighters hold that sector.",
     "BOUNTY_GOOD_MODE": "A bounty on a good trader costs alignment and no experience.",
@@ -1626,7 +1629,8 @@ def _stardock_services(f: dict) -> str:
         f"{_n(K.STARDOCK_SECTOR)}, holds the shipyard, the tavern, the underground, the bank and Police HQ.</p>"
         + rename
         + f"<p>The tavern is {_on(K.tavern_on())}. An announcement costs {_n(K.TAVERN_ANNOUNCE_COST)} credits. "
-        f"A drink or a meal costs {_n(K.TAVERN_DRINK_COST)} credits. Talk and graffiti are free. "
+        f"A drink costs {_n(K.tavern_drink_cost())} credits and a plate of food costs {_n(K.tavern_food_cost())} credits. "
+        "Talk and graffiti are free. "
         f"Grimy charges {_n(K.GRIMY_TRACE_COST)} credits to trace a trader and "
         f"{_n(K.GRIMY_PASSWORD_COST)} credits for a password.</p>"
         + f"<p>The underground opens when your alignment is {_n(K.UG_MAX_ALIGNMENT)} or lower. "
@@ -1639,8 +1643,21 @@ def _stardock_services(f: dict) -> str:
             K.ug_name_live(),
             f"a total unknown, experience {_n(K.UG_NAME_UNKNOWN_MAX_EXPERIENCE)} or less, "
             f"can buy a new name for {_n(K.UG_NAME_UNKNOWN_COST)} credits. "
+            "The screen called that trader a total unknown and said it would be cheap. "
             "A trader the Underground already knows is not given a price.",
             "the Underground does not sell a new name.",
+        )
+        + _gated(
+            K.shield_point_live(),
+            f"Class 0 and StarDock shields cost {_n(K.SHIELD_POINT_LIVE)} credits a point. "
+            "That figure is one day's reading. Another day was not measured.",
+            "Class 0 shields follow the daily price wave.",
+        )
+        + _gated(
+            K.cineplex_price_live(),
+            f'the Cineplex charges {_n(K.CINEPLEX_SHOW1_COST)} credits for show 1, "{K.CINEPLEX_SHOW1_TITLE}". '
+            "The other titles were not priced.",
+            "the Cineplex plays a short picture and posts no price.",
         )
         + "<p>Federation Hall is the corporation list at StarDock. "
         "You read each registration, the day that corporation was formed, and its members, with the C.E.O. marked. "
@@ -2031,6 +2048,7 @@ _COVERS: dict[str, tuple[str, ...]] = {
         "underground_rename", "federation_hall",
         "tricron", "cineplex",
         "SHIP_RENAME_MODE", "BUST_CLEAR_MODE", "UG_NAME_MODE", "FEDERATION_HALL_MODE", "BOUNTY_GOOD_MODE",
+        "SHIELD_POINT_MODE", "TAVERN_BAR_PRICE_MODE", "CINEPLEX_PRICE_MODE",
     ),
     "communications": (
         "hail", "broadcast", "radio", "MAIL_MODE", "RADIO_CHANNEL_MODE", "FEDCOMM_MODE", "COMMS_V311_MODE",

@@ -54,6 +54,10 @@ Sources under `C:\Users\sugar\tw2002_reference\`. Target TWGS 3.11; MBBS is the 
 | `UG_MAX_ALIGNMENT` | 199 (TWFAQ) | 100 (MBBS, MISC) |
 | wrong-password ladder | mug 4 / halve 5 / murder 6 | TWFAQ names only the 6th kill |
 
+## NOTE 129 (19 Oct 2026)
+
+`docs/playtests/twgs-live/stardock-menus.txt` and `name-change.txt`. Drink 80 and food 24 a plate are `TAVERN_BAR_PRICE_MODE`. The stored `TAVERN_DRINK_COST` and `TAVERN_FOOD_COST` stay 20. Announcement 100 already matched. A total unknown at 1 experience pays 100 credits for a new name behind `UG_NAME_MODE`. `UG_NAME_CHANGE` stays false. A higher experience was not priced. The Underground menu sold no goods.
+
 ## UNVERIFIED constants
 
 `TAVERN_TURN_COST` 0, `TAVERN_TEXT_MAX` 160, `TAVERN_ANNOUNCE_SIGNED` True, `TAVERN_TALK_COST` 0, `TAVERN_GRAFFITI_COST` 0, `TAVERN_DRINK_COST` 20, `TAVERN_FOOD_COST` 20, `TAVERN_PRICE_SCALING` flat, `GRIMY_TRACE_COST` 3000, `GRIMY_TRACE_PICK` hashed, `GRIMY_CHARGE_ON_MISS` False, `GRIMY_TRACE_LIES` False, `GRIMY_DOCK_LOG_MAX` 10, `GRIMY_DOCK_ACTIONS` trade/rob/steal/planet_trade/port_upgrade, `GRIMY_PASSWORD_COST` 2000, `GRIMY_CURSE_TURNS` 1, `GRIMY_RUDE_MARKUP_PCT` 0, `UG_PASSWORD_MATCH` loose, `UG_MURDER_POD` False, `UG_MURDER_COUNTS_DEATH` True, `UG_CONTRACT_MIN` 1000, `UG_CONTRACT_PAYOUT_ON` ship_destroyed, `UG_CONTRACT_ON_ELIMINATION` sink, `UG_SHOW_CONTRACTS` totals.
