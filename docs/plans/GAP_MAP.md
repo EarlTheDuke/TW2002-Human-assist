@@ -146,7 +146,7 @@ Row 1.6 Class L colonist evidence: Sat Grok L3 (`82578bfe`) hit false class-cap 
 | 2.2 Port classes | Eight trading classes: 1 BBS, 2 BSB, 3 SBB, 4 SSB, 5 SBS, 6 BSS, 7 SSS, 8 BBB; 0 and 9 are special. [cabal twgs.html port-creation table, Bible] CONFIRMED | K.PORT_CLASS_TRADES numbers them differently (1 BSS, 6 BBS, 7 BBB, 8 StarDock) and has no SSS-type port. | Different | S / Low (bots that know public TW lore will misread) |
 | 2.3 Price depends on stock and experience | Price = base curve by the port's "% of max" stock, scaled by the port's hidden max-change-in-cost (MCIC) and by your experience (improves to roughly 1000 exp). [cabal formulas.html, economy1/2.html, haggling.html] CONFIRMED | economy.py port_sell_price = base x (1.25 - 0.65 x stock) and port_buy_price = base x (1.45 - 0.70 x stock); port.experience[player] is stored (+0.05/trade) but never used. | Different | M / High |
 | 2.4 Per-port MCIC and productivity | Each port/commodity has hidden productivity (units/day = 10 x value, max 32,760 MBBS or 65,530) and MCIC (-100..100). [cabal economy1.html, economy2.html] CONFIRMED | Missing; all ports share one curve; max stock is 3000 +/-, K.PORT_DEFAULT_MAX_STOCK. | Missing | M / Med |
-| 2.5 Price scale vs ship cost | Sample trades show about 130 cr per Equipment at a good buy port and about 47 at a sell port, so profit per hold is large. [cabal economy2.html samples only] UNVERIFIED as a default | K base prices 18 / 25 / 36 (fuel/org/equip). Ours is roughly 3x smaller while some ships cost up to 10x more (see 3.x). | Different | S / High (needs one human economy decision, see conflicts) |
+| 2.5 Price scale vs ship cost | Sample trades show about 130 cr per Equipment at a good buy port and about 47 at a sell port. [cabal economy2.html 100% chart] The 250-hold totals are fuel 3,675/8,791, organics 6,964/17,712, equipment 12,190/31,910 (full sell at MCIC 50, empty buy at MCIC -50, experience 0). | `PRICE_SCALE_MODE` quotes the nearest credit of those totals (sell 15/28/49, buy 35/71/128). Ships stay on the Bible chart. NOTE 129 day-1 screen (`docs/playtests/twgs-live/price-scale.txt`) is fuel sell 11 / buy 27, organics sell 31 / buy 66 at 94%, equipment sell 56. MCIC was not printed. Those quotes were not written into the anchors. | Chart Match-behind-flag. Day-1 screen DIFFERENT, not applied | S / High |
 | 2.6 Haggling | Each MCIC has a fixed maximum counter-offer over the port's first offer (about 110-149%); beyond it the port "loses patience" and the turn is wasted. The printed tables are per product and not one line. [cabal haggling.html] CONFIRMED | The straight 110-149 line is the stored path. `HAGGLE_TABLE_MODE` (NOTE 150) uses the cabal table: equipment at MCIC -20 is 110.2 percent, fuel at MCIC -90 is 149.4 percent. The measured +8 percent window stays `HAGGLE_WINDOW_MODE`. | Table Match-behind-flag | S / Med |
 | 2.7 Turn cost of trading | Docking costs 1 turn; trades at that port then cost no extra turns. [Bible, DOCS "Evil or Red Cashing" screen text] CONFIRMED | K.TURN_COST trade = 3 per trade action (runner.py _handle_trade:394). | Different | S / High |
 | 2.8 Port regeneration | TEDIT regen 1-200% per day (standard 5%, v3.05); a sample game used 1%/day. [TW2002 v3 revision history, cabal twgs.html] SOURCE-CONFLICT (5% vs 1% sample) | K.PORT_REGEN_PER_DAY = 0.05 but economy.regenerate_ports applies it x2 and drifts buy ports toward 30% of max, sell ports toward max. | Partial | S / Med |
@@ -445,6 +445,21 @@ Read `docs/plans/gap-map-refresh-v4.md`. The October counts stay the historical 
 ## 22. Full grade at f969cee (2026-10-12)
 
 Read `docs/plans/gap-map-refresh-v5.md`. All 171 October rows are graded: 50 Match, 17 Match-behind-flag, 53 Partial, 38 Different, 11 Missing, 2 Ben-decision. The eight holes with no switch at all, play feel first, are the planet scanner, planet-fighter fog, good and evil perks, citadel parking, the good-trader tax, radio, the daily stats screen, and FedComm. The 3D map stays out.
+
+## 23. NOTE 129 price scale (19 Oct 2026)
+
+Capture: `docs/playtests/twgs-live/price-scale.txt`. TWGS v2.20b, Trade Wars 2002 3.34b, game TW Test Game 2, character N129Cur. Experience 0 or 1. The screen did not print MCIC. The column is percent of max.
+
+| Side | Capture | Chart unit |
+|---|---|---|
+| Fuel selling, 100% | 11 | 15 |
+| Fuel buying, 100% | 27 | 35 |
+| Organics selling, 100% | 31 | 28 |
+| Organics buying, 94% | 66 | 71 |
+| Equipment selling, 100% | 56 | 49 |
+| Equipment buying | not quoted | 128 |
+
+The chart units are the nearest credit of `PRICE_SCALE_SELL_250` and `PRICE_SCALE_BUY_250` (economy2 100% totals: a full selling port at MCIC 50, an empty buying port at MCIC -50, experience 0). `PRICE_SCALE_MODE` already applies that chart and stays legacy until the flag or the v3.11 profile turns it on. The day-1 quotes stay off the anchors. Organics buying was 94 percent, equipment buying was not on the screen, and MCIC was not printed, so the five numbers are not a replacement chart and not a new formula. Test: `tests/test_note129_price_scale_v1.py`.
 
 
 
