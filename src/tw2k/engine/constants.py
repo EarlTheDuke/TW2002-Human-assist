@@ -2281,6 +2281,22 @@ def photon_limpet_live() -> bool:
     return PHOTON_LIMPET_MODE == "v311" or v311_profile()
 
 
+def photon_interdict_damp_live() -> bool:
+    """True when an active photon wave keeps a planetary interdictor from holding."""
+    return PHOTON_INTERDICT_DAMP_MODE == "live" or v311_profile()
+
+
+def photon_interdict_damped(sector) -> bool:
+    """True when this sector's wave makes the level 6 hold fail open.
+
+    Same wave test as hardware.sector_photon_active. Off, this returns before
+    it reads the sector, so a profile-off departure is unchanged.
+    """
+    if not photon_interdict_damp_live():
+        return False
+    return int(getattr(sector, "photon_wave_remaining", 0) or 0) > 0
+
+
 # Armid (h1/h2). Legacy keeps ARMID_DAMAGE=100 and MINE_MAX_HITS_PER_MOVE random.
 ARMID_DAMAGE_TW2002 = 20
 # Photon wave duration in day-ticks (h7). Cabal twgs.html and the modern manual
@@ -2294,6 +2310,19 @@ PHOTON_WAVE_DURATION = 1
 # sector fighters. Item 2, a limpet, is not on that skip list. "legacy" keeps
 # today's skip. "v311" lets the limpet attach while the wave is up.
 PHOTON_LIMPET_MODE = "legacy"  # "legacy" | "v311"
+# GAP 4.10 row 234. EIS HardwareMenu.html (Photon Missiles) disables the
+# level 6 Interdictor Generator for the wave, with the mines, fighters,
+# quasar, and combat-control computer. S1_planet_handbook_v1.01.html
+# "The Photon Advantage" does not list the interdictor, so "legacy" still
+# holds and still burns INTERDICTOR_FUEL. "live" fails that hold open while
+# photon_wave_remaining is up, including a citadel the 200-shield quasar
+# exception still lets fire. The ship Interdictor Cruiser is a different
+# well (hull_interdict_reason) and is not this switch. Row 234.
+# Rows 225-227 are NOTE 129. Rows 228-233 are the other open cards.
+# Stored default stays legacy.
+# "1" does not turn this on. TW2002_LIVE_PROFILE does not turn this on.
+# V311_PROFILE "v311" does, the same way PHOTON_LIMPET_MODE joins the profile.
+PHOTON_INTERDICT_DAMP_MODE = "legacy"  # "legacy" | "live"
 # Cloak (h12-h16)
 CLOAK_COST = 25_000
 CLOAK_MAX = 5
@@ -5104,6 +5133,10 @@ V311_PROFILE_HELPERS: dict[str, tuple[str, str]] = {
     "photon_limpet_live": (
         "PHOTON_LIMPET_MODE",
         "NOTE 148 GAP 4.10: a limpet still attaches during a photon wave",
+    ),
+    "photon_interdict_damp_live": (
+        "PHOTON_INTERDICT_DAMP_MODE",
+        "GAP 4.10 row 234: a photon wave keeps the level 6 interdictor from holding",
     ),
     "comms_v311_live": (
         "COMMS_V311_MODE",

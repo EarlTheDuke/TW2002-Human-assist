@@ -90,8 +90,8 @@ These ten were already what the game does, or they were already behind a switch.
 
 - **3.20 Federal commission and the ISS.** Match.
 - **4.9 Limpet removal.** Match.
-- **4.10 Photon missile.** Match-behind-flag. `PHOTON_LIMPET_MODE`.
-- **5.18 Photon interaction.** Match-behind-flag. `PHOTON_FOLLOW_DAMP_MODE` and `PHOTON_LIMPET_MODE`.
+- **4.10 Photon missile.** Partial. Limpet attach is Match-behind-flag (`PHOTON_LIMPET_MODE`). The level 6 interdictor damp is Match-behind-flag (`PHOTON_INTERDICT_DAMP_MODE` row 234). Duration and the FedSpace photon card stay open.
+- **5.18 Photon interaction.** Match-behind-flag. `PHOTON_FOLLOW_DAMP_MODE`, `PHOTON_LIMPET_MODE`, and `PHOTON_INTERDICT_DAMP_MODE`.
 - **6.12 Planet destroy experience.** Match. +50 experience and −1 alignment.
 - **8.8 NPCs and player fighters.** Match.
 - **10.2 Joining.** Match-behind-flag. `CORP_ALIGNMENT_RULE`.
