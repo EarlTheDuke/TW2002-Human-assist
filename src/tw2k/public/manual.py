@@ -992,6 +992,11 @@ def _photon_wave() -> str:
             "FedSpace refuses a photon. Players in the target sector have their fighters offline for that wave, and that ship cannot fire a second photon until the wave ends. The measured 20-second duration is not a clock in this game.",
             "FedSpace can still be the target. Players there are not scrambled, and another photon can be fired the same day.",
         )
+        + _gated(
+            K.photon_interdict_damp_live(),
+            "a level 6 interdictor does not hold a ship while that wave is up.",
+            "a level 6 interdictor still holds a ship while that wave is up.",
+        )
     )
 
 
@@ -1463,6 +1468,7 @@ _SWITCH_PLAIN: dict[str, str] = {
     "HAGGLE_TABLE_MODE": "A port's counter-offer uses the product table.",
     "FERRENGI_ATTACK_MODE": "A Ferrengi attack fires one chart volley.",
     "PHOTON_LIMPET_MODE": "A limpet can still attach during a photon wave.",
+    "PHOTON_INTERDICT_DAMP_MODE": "A level 6 interdictor does not hold a ship while a photon wave is up in that sector.",
     "COMMS_V311_MODE": "The Comms panel sends sub-space radio, Fed Comm, a hail to someone in your sector, and a corporation memo.",
     "INACTIVE_USER_MODE": "A trader with no successful action for a long stretch of real days can be removed.",
     "INACTIVITY_TIMEOUT_MODE": "A quiet game can sleep after a long stretch with nobody playing.",
@@ -2061,7 +2067,7 @@ _COVERS: dict[str, tuple[str, ...]] = {
         "OFFENSIVE_CLASH_MODE", "KILL_CASH_MODE", "SHIP_FLEE_MODE", "ATTACK_TURN_MODE", "PLANET_LANDING_COMBAT_MODE",
         "RIVAL_STRENGTH_MODE", "SPECIAL_HULL_RULES_MODE", "PHOTON_FOLLOW_DAMP_MODE",
         "CAPTURE_CREDIT_LINE_MODE", "ATOMIC_DETONATOR_MODE", "ALIEN_COMBAT_FIX_MODE", "SHIP_EXIT_MODE",
-        "PHOTON_LIMPET_MODE", "PHOTON_CLOAK_SETTINGS_MODE",
+        "PHOTON_LIMPET_MODE", "PHOTON_CLOAK_SETTINGS_MODE", "PHOTON_INTERDICT_DAMP_MODE",
     ),
     "ferrengi": (
         "FERRENGI_ENGAGE_MODE", "FERRENGI_GRUDGE_MODE", "FERRENGI_PACE_MODE", "FERRENGI_REWARD_MODE",

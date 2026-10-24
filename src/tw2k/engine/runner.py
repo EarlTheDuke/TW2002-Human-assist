@@ -4320,8 +4320,15 @@ def _apply_quasar_to_ship(universe: Universe, pid: str, damage: int, planet, mod
 
 
 def _try_interdict(universe: Universe, pid: str, sector) -> ActionResult | None:
-    """Hold one hostile warp. Photon damp does not affect the interdictor."""
+    """Hold one hostile warp.
+
+    A quasar damp does not skip this hold. An active photon wave does, and
+    only while PHOTON_INTERDICT_DAMP_MODE is live (HardwareMenu). S1 leaves
+    the interdictor off the skip list, so the stored path still burns fuel.
+    """
     if K.planet_interdict_quiet(sector.id):
+        return None
+    if K.photon_interdict_damped(sector):
         return None
     player = universe.players[pid]
     planets = [universe.planets[item] for item in sector.planet_ids if item in universe.planets]
