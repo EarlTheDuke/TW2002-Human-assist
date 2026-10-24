@@ -1,10 +1,12 @@
-"""Live shop prices for armid, limpet, genesis, and the ether probe.
+"""Live shop prices for armid, limpet, genesis, the ether probe, the photon, and the detonator.
 
 A TWGS v3.34b card priced an armid at 1,000 with up to 30 points of damage,
 a limpet at 10,000, a genesis at 20,000, and an ether probe at 3,000.
 This copy charges 100, 250, 25,000, and 5,000. The armid hit is 20 under
 the hardware switch and 100 on the older path. Combat was not played, so
-30 is the shop ceiling, not a measured hit.
+30 is the shop ceiling, not a measured hit. Ven 2026-10-24 GameA TWSTATS
+puts a photon at 40,000 and an atomic detonator at 15,000 on the same card.
+Stored defaults stay 12,000 and 60,000.
 
 HARDWARE_PRICE_MODE defaults to legacy, so today's digests stay put.
 
@@ -37,6 +39,10 @@ def test_default_keeps_todays_prices_and_hit():
         assert K.SHIP_TW_TYPE1_COST == 12_500
         assert K.SHIP_TW_TYPE2_COST == 20_000
         assert K.SHIP_TW_UPGRADE_COST == 9_000
+        assert K.photon_missile_cost() == 12_000
+        assert K.atomic_detonator_cost() == 60_000
+        assert K.PHOTON_MISSILE_COST == 12_000
+        assert K.ATOMIC_DETONATOR_COST == 60_000
         assert K.armid_hit_damage() == K.ARMID_DAMAGE_TW2002
         old = K.HARDWARE_MODE
         try:
@@ -64,6 +70,10 @@ def test_live_shop_charges_the_card_and_the_hit_is_30():
             assert K.SHIP_TW_TYPE2_COST == 20_000
             assert K.SHIP_TW_UPGRADE_COST == 9_000
             assert K.SHIP_TW_MODE == "tw2002"
+            assert K.photon_missile_cost() == 40_000
+            assert K.atomic_detonator_cost() == 15_000
+            assert K.PHOTON_MISSILE_COST == 12_000
+            assert K.ATOMIC_DETONATOR_COST == 60_000
             assert K.armid_hit_damage() == 30
             hits, damage = armid_detonation_hits(4, None)
             assert hits == 2

@@ -1399,7 +1399,7 @@ def hardware_v2_prices() -> dict[str, int]:
         "corbomite": int(CORBOMITE_COST),
         "marker_beacon": int(BEACON_COST),
         "psychic_probe": int(psychic_probe_cost()),
-        "atomic_detonator": int(ATOMIC_DETONATOR_COST),
+        "atomic_detonator": int(atomic_detonator_cost()),
     }
 
 
@@ -1492,12 +1492,16 @@ ETHER_PROBE_COST = 5_000
 GENESIS_TORPEDO_COST = 25000
 ARMID_DAMAGE = 100
 
-# "legacy": the four shop prices and the armid hit stay as written above
+# "legacy": the shop prices and the armid hit stay as written above
 # (and the hardware-mode hit of 20). "live": the v3.34b shop card.
 # Armid 1,000 and "up to 30" points. Limpet 10,000. Genesis 20,000.
-# Ether probe 3,000. Combat was not played, so 30 is the shop's ceiling,
-# not a measured hit. Atomic detonators stay out of this switch: the live
-# item is a planet killer, and this copy's atomic mine is a different thing.
+# Ether probe 3,000. Photon missile 40,000. Atomic detonator 15,000.
+# Combat was not played, so 30 is the shop's ceiling, not a measured hit.
+# Photon and the detonator are on this card. Ven 2026-10-24 GameA
+# TWSTATS prints both (docs/playtests/twgs-live/twstats-costs-ven.txt).
+# Stored defaults stay 12,000 and 60,000. SOURCE-CONFLICT with the cabal
+# TEDIT sample (photon 160,000, detonator 60,000). The atomic mine stays
+# 4,000. That mine is a different item from the detonator.
 # Ship TransWarp quotes are on this same card. Ven 2026-10-24 GameA TWSTATS
 # (docs/playtests/twgs-live/twstats-costs-ven.txt): Type I 50,000, Type II
 # 80,000, upgrade 10,000. Stored cabal TEDIT samples stay 12,500 / 20,000 /
@@ -1513,11 +1517,13 @@ GENESIS_TORPEDO_COST_LIVE = 20_000
 SHIP_TW_TYPE1_COST_LIVE = 50_000
 SHIP_TW_TYPE2_COST_LIVE = 80_000
 SHIP_TW_UPGRADE_COST_LIVE = 10_000
+PHOTON_MISSILE_COST_LIVE = 40_000
+ATOMIC_DETONATOR_COST_LIVE = 15_000
 ARMID_DAMAGE_LIVE = 30
 
 
 def hardware_price_live() -> bool:
-    """True when the shop uses the live armid, limpet, genesis, ether, and ship TransWarp prices."""
+    """True when the shop uses the live armid, limpet, genesis, ether, ship TransWarp, photon, and detonator prices."""
     return HARDWARE_PRICE_MODE == "live" or tw2002_live_profile() or v311_profile()
 
 
@@ -1591,6 +1597,27 @@ def ship_tw_drive_value(drive: str | None) -> int:
     if kind == "type2":
         return ship_tw_type2_cost()
     return 0
+
+
+def photon_missile_cost() -> int:
+    """Shop price. Stored 12,000. The live/v311 card is 40,000.
+
+    hardware_price_live() is that BigBang card. TW2002_LIVE_PROFILE and
+    V311_PROFILE turn the card on without moving HARDWARE_PRICE_MODE.
+    """
+    if hardware_price_live():
+        return PHOTON_MISSILE_COST_LIVE
+    return PHOTON_MISSILE_COST
+
+
+def atomic_detonator_cost() -> int:
+    """Shop price. Stored cabal sample 60,000. The live/v311 card is 15,000.
+
+    Same switch as photon_missile_cost(). DETECT_GEAR_MODE does not move it.
+    """
+    if hardware_price_live():
+        return ATOMIC_DETONATOR_COST_LIVE
+    return ATOMIC_DETONATOR_COST
 
 
 def armid_hit_damage() -> int:
@@ -2322,7 +2349,8 @@ def psychic_probe_cost() -> int:
         return 10_000
     return PSYCHIC_PROBE_COST
 PSYCHIC_PROBE_MAX = 1
-# Atomic detonator (v13-v19). TWGS price 60,000; Bible cap 5.
+# Atomic detonator (v13-v19). Stored cabal sample 60,000. Live GameA is
+# atomic_detonator_cost() at 15,000. SOURCE-CONFLICT. Bible cap 5.
 ATOMIC_DETONATOR_COST = 60_000
 ATOMIC_DETONATOR_MAX = 5
 # v19: the old `atomic_mines` port nuke is kept on purpose (only port-kill path in this
@@ -4008,8 +4036,9 @@ def regen_now() -> float:
 # On, a disruptor is 6,000, a psychic probe is 10,000, and an ether probe
 # is 3,000. Density, holo, cloak, beacon, and corbomite already match.
 # A planet scanner's effect was not measured, so it is not sold.
-# The 15,000 atomic is a planet killer. This copy's detonator is not that
-# weapon, so its price stays 60,000.
+# The live atomic detonator price is atomic_detonator_cost() on the
+# hardware price card. This switch leaves that price alone. The stored
+# detonator constant stays 60,000.
 DETECT_GEAR_MODE = "legacy"  # "legacy" | "live"
 
 

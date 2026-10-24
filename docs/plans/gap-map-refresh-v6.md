@@ -86,7 +86,7 @@ Only rows whose grade changed. Evidence is `file:function`.
 | 10.3 | Match | Match-behind-flag | `CORP_ALIGNMENT_RULE` row 71. Stored value stays mixed. `corp._join_block` |
 | 10.10 | Partial | Match | a C.E.O. who leaves already dissolves the corp. `corp.handle_corp_leave`, `corp.disband`. Profile row 98, no helper |
 | 10.11 | Missing | Match-behind-flag | `CORP_RANK_MODE` row 49. `observation.build_observation` |
-| 11.1 | Partial | Match-behind-flag | `HARDWARE_PRICE_MODE` row 14. Ship TransWarp 50,000 / 80,000 / 10,000. Stored 12,500 / 20,000 / 9,000 stay. SOURCE-CONFLICT. `constants.hardware_price_live` |
+| 11.1 | Partial | Match-behind-flag | `HARDWARE_PRICE_MODE` row 14. Ship TransWarp 50,000 / 80,000 / 10,000 (stored 12,500 / 20,000 / 9,000 stay). Photon 40,000 and atomic detonator 15,000 (stored 12,000 and 60,000 stay). SOURCE-CONFLICT. `constants.hardware_price_live` |
 | 11.2 | Partial | Match-behind-flag | `SHIP_ROSTER_MODE` row 4 and `TRADE_IN_MODE` row 13. `constants.ship_specs` |
 | 11.6 | Missing | Match-behind-flag | `TAX_RULE_MODE` row 8. `bank.collect_daily_tax` |
 | 11.10 | Partial | Match-behind-flag | `SPECIAL_PORT_DEFENCE_MODE` row 146, NOTE 102. `runner._attack_special_port`, `runner._rebuild_special_ports`. Fighter budgets UNVERIFIED |
@@ -211,7 +211,7 @@ Most of those are stored defaults that are already tw2002, or switches the profi
 3.19 Match. Empty ships can be captured. `CAPTURE_MODE` is tw2002. `constants.capture_on`.
 3.20 Match. Alignment of 1,000 is commissioned. Police HQ raises 500 through 999 to 1,000. An evil ISS is repossessed on the move. `victory.is_commissioned`, `fed.handle_apply_commission`, `fed.check_iss_repo_on_move`.
 4.1 Partial. Genesis works. The empty start is `GENESIS_START_MODE` row 24. A typed name is `GENESIS_NAME_MODE` row 120. Price sources still disagree. `runner` genesis deploy.
-4.2 Match-behind-flag `ATOMIC_DETONATOR_MODE` row 89, NOTE 78. The detonator is the planet killer. The port-nuke atomic mine is not sold when the switch is on. `runner._handle_deploy_atomic`.
+4.2 Match-behind-flag `ATOMIC_DETONATOR_MODE` row 89, NOTE 78. The detonator is the planet killer. The port-nuke atomic mine is not sold when the switch is on. Price SOURCE-CONFLICT: stored `ATOMIC_DETONATOR_COST` 60,000 (cabal sample). Live GameA TWSTATS `Atomic Detonator=15,000 cr` is `atomic_detonator_cost` on `hardware_price_live` (Ven 2026-10-24). DIFFERENT on the stored card. `runner._handle_deploy_atomic`.
 4.3 Match. Marker beacons are on. `runner._handle_buy_equip`.
 4.4 Match. Corbomite is on. `combat` corbomite fire.
 4.5 Match. Cloaks are on. `constants.hardware_tw2002`.
@@ -219,7 +219,7 @@ Most of those are stored defaults that are already tw2002, or switches the profi
 4.7 Match. Mine disruptors are on. `hardware` disruptor path.
 4.8 Partial. Armid detonation is the stored half-count at 20 damage (`hardware.armid_detonation_hits`, profile row 92). The shop price moves only under `HARDWARE_PRICE_MODE` row 14. `constants.armid_hit_damage`.
 4.9 Match. Limpets attach and can be queried. Removal at StarDock costs 1,250 while hardware is tw2002. `hardware.handle_remove_limpet`, `constants.LIMPET_REMOVAL_COST`.
-4.10 Match-behind-flag `PHOTON_LIMPET_MODE` row 174, NOTE 148. The wave decloaks, damps a quasar, and holds mines and fighters. A limpet during that wave stays off until the switch is on. The interdictor still holds, matching S1. Duration stays 1 second. `runner` photon handler.
+4.10 Match-behind-flag `PHOTON_LIMPET_MODE` row 174, NOTE 148. The wave decloaks, damps a quasar, and holds mines and fighters. A limpet during that wave stays off until the switch is on. The interdictor still holds, matching S1. Duration stays 1 second. Price SOURCE-CONFLICT: stored `PHOTON_MISSILE_COST` 12,000. Live GameA TWSTATS `Photon Missile=40,000 cr` is `photon_missile_cost` on `hardware_price_live` (Ven 2026-10-24). Cabal sample is 160,000. DIFFERENT on the stored card. `runner` photon handler.
 4.11 Match. Density info needs a bought scanner. `scanners.scan_reason`, `runner._buy_scanner`.
 4.12 Match. Holo info needs a bought scanner. `scanners.scan_reason`, `runner._handle_scan`.
 4.13 Match-behind-flag `PLANET_SCANNER_MODE` row 43. Shielded planets stay visible until the scanner is on. `observation._planet_brief`, `runner._buy_planet_scanner`.
@@ -293,7 +293,7 @@ Most of those are stored defaults that are already tw2002, or switches the profi
 10.10 Match. A C.E.O. leaving dissolves the corp and rogues fighters outside his sector. `corp.handle_corp_leave`, `corp.disband`. Profile row 98.
 10.11 Match-behind-flag `CORP_RANK_MODE` row 49. The corporation ranking screen is coded and off. The trader list is `TRADER_RANK_LIST_MODE`, ordered by experience. NOTE 158 added no second screen. `observation.build_observation`.
 10.12 Match-behind-flag `ALLIANCE_MODE` row left out of the profile (not in the original). Alliances are coded and off. `constants.alliance_live`.
-11.1 Match-behind-flag `HARDWARE_PRICE_MODE` row 14. The live shop card is coded and off. Ship TransWarp Type I 50,000, Type II 80,000, and the upgrade 10,000 are on that card. Stored 12,500, 20,000, and 9,000 stay. SOURCE-CONFLICT. `constants.hardware_price_live`.
+11.1 Match-behind-flag `HARDWARE_PRICE_MODE` row 14. The live shop card is coded and off. Ship TransWarp Type I 50,000, Type II 80,000, and the upgrade 10,000 are on that card (stored 12,500, 20,000, and 9,000 stay). Photon missile 40,000 and atomic detonator 15,000 are on that card (stored 12,000 and 60,000 stay). SOURCE-CONFLICT. `constants.hardware_price_live`.
 11.2 Match-behind-flag `SHIP_ROSTER_MODE` row 4 and `TRADE_IN_MODE` row 13. The yard and the 90 percent trade-in stay off. `constants.ship_specs`.
 11.3 Match. Police HQ can grant a commission. `victory.is_commissioned`.
 11.4 Match. A killed player can carry a bounty. `constants.REWARD_TARGET_RULE`.

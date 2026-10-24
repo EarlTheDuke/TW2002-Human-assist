@@ -504,6 +504,25 @@ Keys: at StarDock, with a Type I drive already fitted, buy the upgrade while the
 Read: the credit price.
 
 Settles: stored `SHIP_TW_UPGRADE_COST` stays 9,000. Live GameA is 10,000 behind `ship_tw_upgrade_cost` (SOURCE-CONFLICT, Ven 2026-10-24). OldFAQ v2 was 40,000.
+### Photon missile price
+
+item_id: n117-photon
+
+Keys: at StarDock, on a Missile Frigate, buy one photon while the live hardware card is on.
+
+Read: the credit price.
+
+Settles: stored `PHOTON_MISSILE_COST` stays 12,000. Live GameA is 40,000 behind `photon_missile_cost` (SOURCE-CONFLICT, Ven 2026-10-24). Cabal sample is 160,000. DIFFERENT on the stored card.
+
+### Atomic detonator price
+
+item_id: n117-atomic
+
+Keys: at StarDock, buy one atomic detonator while the live hardware card is on.
+
+Read: the credit price.
+
+Settles: stored `ATOMIC_DETONATOR_COST` stays 60,000. Live GameA is 15,000 behind `atomic_detonator_cost` (SOURCE-CONFLICT, Ven 2026-10-24). DIFFERENT on the stored card.
 
 ## Group I. Class 0 and StarDock kills
 

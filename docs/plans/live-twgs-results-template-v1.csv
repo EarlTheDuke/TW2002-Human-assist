@@ -46,3 +46,5 @@ n117-limpet,LIMPET_REMOVAL_COST,"1250, marked UNVERIFIED",,,,,"Limpet removal fe
 n117-tw-type1,SHIP_TW_TYPE1_COST,"stored 12500; live card 50000 SOURCE-CONFLICT",,,,,"Type I TWarp price"
 n117-tw-type2,SHIP_TW_TYPE2_COST,"stored 20000; live card 80000 SOURCE-CONFLICT",,,,,"Type II TWarp price"
 n117-tw-upgrade,SHIP_TW_UPGRADE_COST,"stored 9000; live card 10000 SOURCE-CONFLICT",,,,,"TWarp upgrade price"
+n117-photon,PHOTON_MISSILE_COST,"stored 12000; live card 40000 SOURCE-CONFLICT",,,,,"Photon missile price"
+n117-atomic,ATOMIC_DETONATOR_COST,"stored 60000; live card 15000 SOURCE-CONFLICT",,,,,"Atomic detonator price"

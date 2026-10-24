@@ -10,3 +10,5 @@ Type II TWarp=80,000 cr
 TWarp Upgrade=10,000 cr
 Citadel Transport Unit=50,000 cr
 Citadel Transport Upgrade=25,000 cr
+Photon Missile=40,000 cr
+Atomic Detonator=15,000 cr
