@@ -25,7 +25,7 @@ Five switches, each defaulting to legacy. `V311_PROFILE=v311` turns the helper o
 - **10.6 Transfers between members.** Match-behind-flag. `CORP_CARGO_TREASURY_MODE` row 183. Cargo holds move between members, and the corporation treasury takes deposits.
 - **11.7 Underground.** Match-behind-flag. `UG_NAME_MODE` row 184. A total unknown (experience 1 on 19 Oct 2026) buys a new name for 100 credits. A higher experience has no printed price, so it is refused. The Underground menu sold no goods. `UG_NAME_CHANGE` stays false.
 - **11.9 Fed attack on evil players.** Match-behind-flag. `FED_HUNT_MODE` row 185. An evil ship that meets a Federal is destroyed. A sector with no Federal is left alone.
-- **14.1 Computer menu helpers.** Match-behind-flag. `CIM_MODE` row 186. CIM lists explored sectors and ports, hides a port behind hostile fighters, and plots a path. NavPoints are `NAVPOINT_MODE` row 181.
+- **14.1 Computer menu helpers.** Match-behind-flag. `CIM_MODE` row 186. CIM lists explored sectors and ports, hides a port behind hostile fighters, and plots a path. NavPoints are `NAVPOINT_MODE` row 181. Computer B is Begin Self Destruct when ship exit is on (NOTE 110 / NOTE 129, `computer-b.txt`). Y reuses `handle_self_destruct`. `<` stays the previous-sector key. No new row.
 
 ## Already the stored game
 
