@@ -159,7 +159,7 @@ Most of those are stored defaults that are already tw2002, or switches the profi
 1.5 Ben-decision. StarDock stays in sector 1. `constants.STARDOCK_SECTOR`.
 1.6 Partial. Terra exists while class 0 is on. Colonist packing stays behind `TERRA_COLONIST_MODE` row 25 and `COLONIST_UNITS_MODE` row 116. `class0.handle_terra_colonists`.
 1.7 Match. Class 0 ports are on. `CLASS0_MODE` is tw2002. `class0.place_class0_ports`.
-1.8 Match-behind-flag `FEDERATION_HALL_MODE` row 182, NOTE 162. Bank, tavern, shipyard, and hardware stay on. Federation Hall and the hardware shop screen stay off until the switch is on. `constants.federation_hall_live`.
+1.8 Match-behind-flag `FEDERATION_HALL_MODE` row 182, NOTE 162. Bank, tavern, shipyard, and hardware stay on. Federation Hall and the hardware shop screen stay off until the switch is on. NOTE 129: Class 0 shields at 131 a point are `SHIELD_POINT_MODE` row 225. A drink at 80 and food at 24 are `TAVERN_BAR_PRICE_MODE` row 226. Cineplex show 1 at 100 is `CINEPLEX_PRICE_MODE` row 227. Fighters at 218 that day stay on the 160-239 wave (UNVERIFIED, may be stock-dependent). The Libram Universitatus and the singles bar are not built. `constants.federation_hall_live`, `constants.shield_point_live`.
 1.9 Match-behind-flag `FERRENGAL_QUASAR_MODE` row 102, NOTE 85. Mines and fighters are already placed. The quasar shot stays off. `ferrengi.place_ferrengal`, `runner._apply_ferrengal_quasar`.
 1.10 Match-behind-flag `BIG_BANG_DENSITY_MODE` row 87, NOTE 78. Ports in about 40 percent of deep sectors. Legacy stays about 65 percent. `universe.generate_universe`.
 1.11 Match-behind-flag `BIG_BANG_DENSITY_MODE` row 87, NOTE 78. Planets up to 20 percent. Legacy `planet_spawn_probability` stays 0.03. `universe._seed_planets`.
@@ -299,8 +299,8 @@ Most of those are stored defaults that are already tw2002, or switches the profi
 11.4 Match. A killed player can carry a bounty. `constants.REWARD_TARGET_RULE`.
 11.5 Match. The galactic bank is on. `BANK_MODE` is tw2002. `bank.collect_daily_tax`.
 11.6 Match-behind-flag `TAX_RULE_MODE` row 8. Ten percent of cash on hand at 50,000 or more, alignment above 0, once per day. `bank.collect_daily_tax`.
-11.7 Match-behind-flag `UG_NAME_MODE` row 184, NOTE 162. The door, the password, and hit contracts are in. A total unknown can buy a new name when the switch is on. A higher experience has no printed price. `tavern.handle_rename`.
-11.8 Match. The tavern is on. `TAVERN_MODE` is tw2002. `constants.tavern_on`.
+11.7 Match-behind-flag `UG_NAME_MODE` row 184, NOTE 162. The door, the password, and hit contracts are in. NOTE 129 (`name-change.txt`): a total unknown at 1 experience can buy a new name for 100 credits when the switch is on. A higher experience has no printed price. The Underground menu sold no goods. `UG_NAME_CHANGE` stays false. `tavern.handle_rename`.
+11.8 Match. The tavern is on. `TAVERN_MODE` is tw2002. Announcement 100 already matches. Drink 80 and food 24 are `TAVERN_BAR_PRICE_MODE` and stay off, so the stored prices stay 20. `constants.tavern_on`.
 11.9 Match-behind-flag `FED_HUNT_MODE` row 185, NOTE 162. Feds tow, and they answer some crimes. An evil ship that meets a Federal is destroyed when the switch is on. A sector with no Federal is left alone. `fed.hunt_evil_meeting_federal`.
 11.10 Match-behind-flag `SPECIAL_PORT_DEFENCE_MODE` row 146, NOTE 102. StarDock and Class 0 take 248,000 fighters, then 890,000, and the Feds rebuild in 14 days. Numbers UNVERIFIED. `runner._rebuild_special_ports`.
 11.11 Match-behind-flag. Density, the one-way share, the 30 percent two-way lanes and the 95 percent initial starports are `BIG_BANG_DENSITY_MODE`, `ONE_WAY_SHARE_MODE`, `TWO_WAY_WARP_MODE` and `BIG_BANG_BUILT_MODE` (Big_Bang.html C 40%, D 95%). The B course length 45 is checked by test. Bubbles are Gold-only (S1), so v3.11 needs none (R11 A). `universe.generate_universe`.

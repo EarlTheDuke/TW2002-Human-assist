@@ -1420,6 +1420,8 @@ def fighter_unit_price(day: int) -> int:
 
     Legacy is the flat 50. The tw2002 wave is the Hekate note:
     (160 + 40) + sin(day / 87 * 2 * pi) * 40, clamped to 160..239.
+    NOTE 129 (19 Oct 2026) printed 218 at Class 0. That reading sits in this
+    wave and may be stock-dependent, so it is not a new price. UNVERIFIED.
     """
     if ECONOMY_SCALE_MODE != "tw2002":
         return FIGHTER_COST
@@ -3238,7 +3240,7 @@ TRICRON_ANTE = 100
 TRICRON_ROUNDS = 10
 TRICRON_OPENING_JACKPOT = 5_000
 TRICRON_OPENING_CHAMPION = 5_000
-CINEPLEX_COST = 0                        # UNVERIFIED: live player did not enter; Bible says a nominal sum and an ANSI, no number
+CINEPLEX_COST = 0                        # stored. Show 1 is CINEPLEX_SHOW1_COST behind CINEPLEX_PRICE_MODE.
 
 
 def stardock_extra_on() -> bool:
@@ -3600,6 +3602,8 @@ def port_regen_live() -> bool:
 # "live": 550 + 20 per hold past 20, including below 20. The same slope.
 # Fighters and shields stay on the 160-239 wave. Day 1 was 188 and 161,
 # day 2 was 190 and 159. Two days are not a new curve.
+# NOTE 129 measured shields at 131 a point on a later day. That reading is
+# SHIELD_POINT_MODE, not a new wave. Fighters that day were 218 and stay here.
 SHOP_PRICE_MODE = "legacy"  # "legacy" | "live"
 
 
@@ -4904,6 +4908,19 @@ V311_PROFILE_HELPERS: dict[str, tuple[str, str]] = {
         "PORT_DRAIN_CURVE_MODE",
         "Follow-up to row 223: quotes follow the economy3 Merf table and a port restocks 10 percent of its maximum a day (economy2)",
     ),
+    # NOTE 129 rows 225-227. Captures: docs/playtests/twgs-live/.
+    "shield_point_live": (
+        "SHIELD_POINT_MODE",
+        "NOTE 129 GAP 1.8: Class 0 and StarDock shields are 131 credits a point",
+    ),
+    "tavern_bar_price_live": (
+        "TAVERN_BAR_PRICE_MODE",
+        "NOTE 129 GAP 1.8: a tavern drink is 80 credits and a plate of food is 24",
+    ),
+    "cineplex_price_live": (
+        "CINEPLEX_PRICE_MODE",
+        "NOTE 129 GAP 1.8: Cineplex show 1, Vulcan Thunder, is 100 credits",
+    ),
 }
 
 
@@ -5907,9 +5924,12 @@ def corp_cargo_treasury_live() -> bool:
 
 # NOTE 162 GAP 11.7, row 184. Iago: alignment 200 or lower can change a name
 # and post bounties. The door, the password, and the bounties are already in.
-# A live capture priced a total unknown (experience 1) at 100 credits. A higher
-# experience was not given a formula, so this refuses that trader. UG_NAME_CHANGE
-# stays false. Stored default stays legacy. "1" does not turn this on.
+# NOTE 129, docs/playtests/twgs-live/name-change.txt: at 1 experience the screen
+# said "Seems you're a total unknown, this'll be cheap" and "We can give you a
+# new identity for 100 credits." The deal was declined. A second experience
+# point was not measured, so a higher trader is refused. Experience 0 was not
+# on that screen; the cap stays "at most 1" and that case is UNVERIFIED.
+# UG_NAME_CHANGE stays false. Stored default stays legacy. "1" does not turn this on.
 UG_NAME_MODE = "legacy"  # "legacy" | "v311"
 UG_NAME_UNKNOWN_COST = 100
 UG_NAME_UNKNOWN_MAX_EXPERIENCE = 1
@@ -6500,3 +6520,65 @@ def port_drain_curve_live() -> bool:
 def port_regen_per_day() -> float:
     """Share of a product's maximum a port restocks each day."""
     return V311_PORT_REGEN_PER_DAY if port_drain_curve_live() else PORT_REGEN_PER_DAY
+
+
+# NOTE 129 GAP 1.8. TWGS v2.20b / TW2002 3.34b, TW Test Game 2, 19 Oct 2026.
+# Captures: docs/playtests/twgs-live/stardock-menus.txt, illegal-goods.txt,
+# name-change.txt. Stored defaults stay. "1" does not turn a switch on.
+# V311_PROFILE "v311" does. TW2002_LIVE_PROFILE does not.
+# Shields: the menu said "131 credits per point". One day only, so day-to-day
+# drift is UNVERIFIED. The purse went from 228 to 96 (132). That extra credit
+# is not a formula. Fighters that day were 218 and stay on the 160-239 wave
+# (UNVERIFIED; the reading may be stock-dependent).
+SHIELD_POINT_MODE = "legacy"  # "legacy" | "v311"
+SHIELD_POINT_LIVE = 131
+
+
+def shield_point_live() -> bool:
+    """True when Class 0 and StarDock charge 131 credits a shield point."""
+    return SHIELD_POINT_MODE == "v311" or v311_profile()
+
+
+# Drink 80, food 24 a plate. Announcement 100 already matches TAVERN_ANNOUNCE_COST.
+# The stored drink and food prices stay 20. No date-scaling formula was on the screen.
+TAVERN_BAR_PRICE_MODE = "legacy"  # "legacy" | "v311"
+TAVERN_DRINK_COST_LIVE = 80
+TAVERN_FOOD_COST_LIVE = 24
+
+
+def tavern_bar_price_live() -> bool:
+    """True when the tavern charges the 19 Oct drink and food prices."""
+    return TAVERN_BAR_PRICE_MODE == "v311" or v311_profile()
+
+
+def tavern_drink_cost() -> int:
+    """Credits for one drink. 80 when the measured bar prices are on, else 20."""
+    if tavern_bar_price_live():
+        return int(TAVERN_DRINK_COST_LIVE)
+    return int(TAVERN_DRINK_COST)
+
+
+def tavern_food_cost() -> int:
+    """Credits for one plate. 24 when the measured bar prices are on, else 20."""
+    if tavern_bar_price_live():
+        return int(TAVERN_FOOD_COST_LIVE)
+    return int(TAVERN_FOOD_COST)
+
+
+# Cineplex show 1, "Vulcan Thunder", asked "100 Credits Please". Declined.
+# The other titles on the board were not opened. Their prices stay unpriced.
+CINEPLEX_PRICE_MODE = "legacy"  # "legacy" | "v311"
+CINEPLEX_SHOW1_COST = 100
+CINEPLEX_SHOW1_TITLE = "Vulcan Thunder"
+
+
+def cineplex_price_live() -> bool:
+    """True when Cineplex show 1 costs the measured 100 credits."""
+    return CINEPLEX_PRICE_MODE == "v311" or v311_profile()
+
+
+def cineplex_cost() -> int:
+    """Credits for Cineplex show 1. 0 until the measured ticket is on."""
+    if cineplex_price_live():
+        return int(CINEPLEX_SHOW1_COST)
+    return int(CINEPLEX_COST)

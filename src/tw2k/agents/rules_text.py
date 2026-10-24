@@ -95,7 +95,8 @@ def tavern_block() -> str:
         "StarDock has the Lost Trader's Tavern. "
         f"Post an announcement on the board ({int(K.TAVERN_ANNOUNCE_COST)} cr; "
         "it stays until someone posts the next one), talk at the conversation table or write "
-        f"anonymous graffiti (free), or order a drink or food (flavour only). "
+        f"anonymous graffiti (free), or order a drink ({int(K.tavern_drink_cost())} cr) "
+        f"or food ({int(K.tavern_food_cost())} cr). "
         "The Grimy Trader in back sells information: a trace on a trader names one port that "
         f"trader's current ship has docked at ({int(K.GRIMY_TRACE_COST):,} cr, nothing to pay if he "
         f"knows nothing), and the Underground password ({int(K.GRIMY_PASSWORD_COST):,} cr). "
@@ -171,9 +172,16 @@ def apply(text: str) -> str:
     if K.tavern_on():
         extra.append(tavern_block())
     if K.stardock_extra_on():
-        extra.append(
-            "The Cineplex at StarDock plays a short picture. It has no secrets and no posted price.\n"
-        )
+        if K.cineplex_price_live():
+            extra.append(
+                "The Cineplex at StarDock charges "
+                f'{int(K.cineplex_cost())} credits for show 1, "{K.CINEPLEX_SHOW1_TITLE}". '
+                "The other titles were not priced. The picture has no secrets.\n"
+            )
+        else:
+            extra.append(
+                "The Cineplex at StarDock plays a short picture. It has no secrets and no posted price.\n"
+            )
     if extra:
         text = text.rstrip() + "\n" + "".join(extra)
     return text

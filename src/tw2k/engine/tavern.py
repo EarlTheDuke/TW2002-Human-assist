@@ -248,7 +248,7 @@ def handle_order(universe: Universe, pid: str, action: Action) -> ActionResult:
     item = str((action.args or {}).get("item") or "")
     if item not in ("drink", "food"):
         return ActionResult(ok=False, error="order a drink or food")
-    cost = int(K.TAVERN_DRINK_COST if item == "drink" else K.TAVERN_FOOD_COST)
+    cost = int(K.tavern_drink_cost() if item == "drink" else K.tavern_food_cost())
     short = _pay(player, cost)
     if short:
         return ActionResult(ok=False, error=short)
@@ -450,8 +450,10 @@ def handle_rename(universe: Universe, pid: str, action: Action) -> ActionResult:
     player.credits -= cost
     player.name = name
     _actor(
-        universe, player, EventKind.UG_RENAME, f"{old} is now {name}",
-        {"old_name": old, "name": name, "cost": cost},
+        universe, player, EventKind.UG_RENAME,
+        "Seems you're a total unknown, this'll be cheap. "
+        f"We can give you a new identity for {cost} credits.",
+        {"old_name": old, "name": name, "cost": cost, "experience": int(player.experience)},
     )
     return ActionResult(ok=True, turns_spent=0)
 
@@ -533,8 +535,8 @@ def observation(universe: Universe, player: Player) -> dict[str, Any] | None:
         "graffiti": wall,
         "prices": {
             "announce": int(K.TAVERN_ANNOUNCE_COST),
-            "drink": int(K.TAVERN_DRINK_COST),
-            "food": int(K.TAVERN_FOOD_COST),
+            "drink": int(K.tavern_drink_cost()),
+            "food": int(K.tavern_food_cost()),
             "trace": int(K.GRIMY_TRACE_COST),
             "password": int(K.GRIMY_PASSWORD_COST),
         },
@@ -587,13 +589,15 @@ def legal_specs(universe: Universe, player_id: str) -> list[tuple[str, bool, str
     )
     add("tavern_talk", True, "", text_params)
     add("tavern_graffiti", True, "", text_params)
-    order_cost = max(int(K.TAVERN_DRINK_COST), int(K.TAVERN_FOOD_COST))
+    drink_cost = int(K.tavern_drink_cost())
+    food_cost = int(K.tavern_food_cost())
+    order_cost = min(drink_cost, food_cost)
     add(
         "tavern_order",
         int(player.credits) >= order_cost,
         "" if int(player.credits) >= order_cost else "not enough credits",
         {"item": {"type": "str", "required": True, "choices": ["drink", "food"]},
-         "cost_by": {"drink": int(K.TAVERN_DRINK_COST), "food": int(K.TAVERN_FOOD_COST)}},
+         "cost_by": {"drink": drink_cost, "food": food_cost}},
     )
     topics = list(K.GRIMY_TOPICS) + list(_LORE)
     add(

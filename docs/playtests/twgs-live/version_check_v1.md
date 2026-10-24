@@ -23,3 +23,7 @@ Cineplex. S3's "nominal amount" is not 100. `CINEPLEX_COST` stays 0.
 Opening quotes. 11/27, 31/66, and 56 are one 3.34b port that was not at the chart's 100% and did not show its MCIC. GAP_MAP's equipment sample (about 47 sell, about 130 buy) is the same chart our anchors already use (49 and 128). Do not replace those anchors with the 3.34b screen.
 
 Computer B. The copy's Computer list labels B "Backtrack", and the computer key handler calls `backtrack()`. v3.11 puts self-destruct on Computer B and puts the return to the previous sector on `<`, which this cockpit already does from the main prompt. A later change belongs under `V311_PROFILE`. This note does not make it.
+
+## Applied later, without retuning the stored defaults
+
+The 19 Oct readings this note left as unknown, or left in place because no v3.11 doc printed them, are now the v3.11 profile prices. The stored constants stay. `SHIELD_POINT_MODE` is 131 credits a point (day-to-day drift UNVERIFIED; fighters at 218 stay on the wave). `TAVERN_BAR_PRICE_MODE` is drink 80 and food 24. `CINEPLEX_PRICE_MODE` is show 1 at 100. `UG_NAME_MODE` charges 100 for a total unknown. `UG_NAME_CHANGE` stays false. The Libram Universitatus and the singles bar are still not built. The 47 credit bar drop has no item name.
