@@ -26,4 +26,5 @@ def test_on_uses_the_measured_three(monkeypatch) -> None:
     assert K.psychic_probe_cost() == 10_000
     assert K.ether_probe_cost() == 3_000
     assert K.ATOMIC_DETONATOR_COST == 60_000
+    assert K.atomic_detonator_cost() == 60_000
     assert K.DISRUPTOR_CLEAR_MAX == 12

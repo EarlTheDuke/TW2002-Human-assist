@@ -1402,7 +1402,7 @@ def hardware_v2_prices() -> dict[str, int]:
         "corbomite": int(CORBOMITE_COST),
         "marker_beacon": int(BEACON_COST),
         "psychic_probe": int(psychic_probe_cost()),
-        "atomic_detonator": int(ATOMIC_DETONATOR_COST),
+        "atomic_detonator": int(atomic_detonator_cost()),
     }
 
 
@@ -1505,6 +1505,8 @@ ARMID_DAMAGE = 100
 # Ven 2026-10-24 GameA TWSTATS prints Photon Missile=40,000 cr
 # (docs/playtests/twgs-live/twstats-costs-ven.txt). Stored photon default
 # stays 12,000. SOURCE-CONFLICT with the cabal sample (160,000).
+# The live detonator shop price is atomic_detonator_cost(), gated by
+# atomic_detonator_live(), not this switch.
 # Ship TransWarp quotes are on this same card. Ven 2026-10-24 GameA TWSTATS
 # (docs/playtests/twgs-live/twstats-costs-ven.txt): Type I 50,000, Type II
 # 80,000, upgrade 10,000. Stored cabal TEDIT samples stay 12,500 / 20,000 /
@@ -2342,8 +2344,22 @@ def psychic_probe_cost() -> int:
         return 10_000
     return PSYCHIC_PROBE_COST
 PSYCHIC_PROBE_MAX = 1
-# Atomic detonator (v13-v19). TWGS price 60,000; Bible cap 5.
+# Atomic detonator (v13-v19). Stored shop price 60,000; Bible cap 5.
+# Ven GameA TWSTATS v3.34b lists Atomic Detonator at 15,000
+# (docs/playtests/twgs-live/twstats-costs-ven.txt). That price follows
+# atomic_detonator_live(), not HARDWARE_PRICE_MODE. The atomic mine stays
+# a different item.
 ATOMIC_DETONATOR_COST = 60_000
+ATOMIC_DETONATOR_COST_LIVE = 15_000
+
+
+def atomic_detonator_cost() -> int:
+    """Shop price. Live Ven TWSTATS is 15,000. Off-profile games stay at 60,000."""
+    if atomic_detonator_live():
+        return ATOMIC_DETONATOR_COST_LIVE
+    return ATOMIC_DETONATOR_COST
+
+
 ATOMIC_DETONATOR_MAX = 5
 # v19: the old `atomic_mines` port nuke is kept on purpose (only port-kill path in this
 # game). False retires it under HARDWARE_MODE tw2002 (not sold, deploy refused).
@@ -4171,8 +4187,8 @@ def regen_now() -> float:
 # On, a disruptor is 6,000, a psychic probe is 10,000, and an ether probe
 # is 3,000. Density, holo, cloak, beacon, and corbomite already match.
 # A planet scanner's effect was not measured, so it is not sold.
-# The 15,000 atomic is a planet killer. This copy's detonator is not that
-# weapon, so its price stays 60,000.
+# DETECT_GEAR_MODE does not price the atomic detonator. The 15,000 Ven
+# figure is atomic_detonator_cost() under atomic_detonator_live().
 DETECT_GEAR_MODE = "legacy"  # "legacy" | "live"
 
 
