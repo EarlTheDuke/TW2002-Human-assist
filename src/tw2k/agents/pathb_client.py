@@ -40,6 +40,14 @@ from typing import Any
 
 import httpx
 
+from .cockpit_directive import (
+    DirectiveHarness,
+    RetryableHTTPError,
+    directive_step,
+    observation_fingerprint,
+    retryable_error,
+)
+
 
 @dataclass
 class TurnContext:
@@ -51,6 +59,8 @@ class TurnContext:
     status: dict[str, Any]
     deadline_at: float | None
     server_skew: float  # server_time - local time
+    directives: str = ""
+    directive_list: list[dict[str, Any]] = field(default_factory=list)
 
     @property
     def seconds_left(self) -> float | None:
@@ -90,6 +100,9 @@ class SeatClient:
         wait_s: float = 30.0,
         safety_margin_s: float = 3.0,
         log: Callable[[str], None] | None = None,
+        directives: str = "",
+        stuck_after: int = 6,
+        secrets: list[str] | None = None,
     ) -> None:
         self.http = http
         self.seat = seat
@@ -101,6 +114,10 @@ class SeatClient:
         self.rules: dict[str, Any] = {}
         self.stats = SeatStats()
         self._skew = 0.0
+        self.harness: DirectiveHarness | None = None
+        if directives:
+            hidden = list(secrets) if secrets is not None else [token]
+            self.harness = DirectiveHarness(seat, directives, stuck_after=stuck_after, secrets=hidden)
 
     # ---- protocol ---------------------------------------------------------
     def _h(self) -> dict[str, str]:
@@ -118,14 +135,38 @@ class SeatClient:
         return r.json()
 
     async def wait_for_turn(self) -> dict[str, Any] | None:
-        """Long-poll until it is our turn. Returns the body, or None if the seat closed."""
+        """Long-poll until it is our turn. Returns the body, or None if the seat closed.
+
+        With a directive inbox, a dropped connection or 502/503/504 is retried
+        and a status heartbeat is written between tries. The turn is not consumed.
+        """
+        if self.harness is None:
+            return await self._wait_once(retry_503=False)
+        delay = 0.5
+        for attempt in range(6):
+            try:
+                return await self._wait_once(retry_503=True)
+            except Exception as exc:
+                if not retryable_error(exc) or attempt == 5:
+                    if retryable_error(exc):
+                        self.log(f"[{self.seat}] reconnect gave up")
+                        return None
+                    raise
+                await self._beat()
+                await asyncio.sleep(delay)
+                delay = min(delay * 2, 8.0)
+        return None
+
+    async def _wait_once(self, *, retry_503: bool) -> dict[str, Any] | None:
         r = await self.http.get(
             f"/harness/v1/{self.seat}/observation",
             params={"wait_s": self.wait_s, "format": "both"},
             headers=self._h(),
         )
-        if r.status_code == 503:
-            return None
+        if r.status_code in (502, 503, 504):
+            if r.status_code == 503 and not retry_503:
+                return None
+            raise RetryableHTTPError(r.status_code, r.text)
         r.raise_for_status()
         body = r.json()
         st = body.get("server_time")
@@ -133,45 +174,81 @@ class SeatClient:
             self._skew = float(st) - time.time()
         return body
 
+    async def _beat(self) -> None:
+        if self.harness is None:
+            return
+        try:
+            body = await self.status()
+        except Exception:
+            body = {"error": "status unread"}
+        self.harness.write_heartbeat(body if isinstance(body, dict) else {})
+
     async def submit(self, turn_seq: int, action: dict[str, Any]) -> tuple[bool, str | None]:
-        r = await self.http.post(
-            f"/harness/v1/{self.seat}/action",
-            json={"turn_seq": turn_seq, "action": action},
-            headers=self._h(),
-        )
-        if r.status_code == 409:
-            self.stats.stale += 1
-            return False, (r.json().get("detail") if r.headers.get("content-type", "").startswith("application/json") else r.text)
-        r.raise_for_status()
-        return True, None
+        delay = 0.5
+        attempts = 4 if self.harness is not None else 1
+        for index in range(attempts):
+            try:
+                r = await self.http.post(
+                    f"/harness/v1/{self.seat}/action",
+                    json={"turn_seq": turn_seq, "action": action},
+                    headers=self._h(),
+                )
+            except Exception as exc:
+                if self.harness is None or not retryable_error(exc) or index == attempts - 1:
+                    raise
+                await self._beat()
+                await asyncio.sleep(delay)
+                delay = min(delay * 2, 8.0)
+                continue
+            if r.status_code in (502, 503, 504) and self.harness is not None and index < attempts - 1:
+                await self._beat()
+                await asyncio.sleep(delay)
+                delay = min(delay * 2, 8.0)
+                continue
+            if r.status_code == 429 and self.harness is not None:
+                return True, "already posted"
+            if r.status_code == 409:
+                self.stats.stale += 1
+                detail = r.json().get("detail") if r.headers.get("content-type", "").startswith("application/json") else r.text
+                return False, detail
+            r.raise_for_status()
+            return True, None
+        return False, "reconnect failed"
 
     # ---- one turn -----------------------------------------------------------
     async def play_turn(self, body: dict[str, Any]) -> dict[str, Any] | None:
         obs = body.get("observation") or {}
         ct = body.get("current_turn") or {}
         deadline = ct.get("deadline_at") if ct.get("player_id") == self.seat else body.get("deadline_at")
+        active = self._active(obs)
         ctx = TurnContext(
             seat=self.seat, turn_seq=int(body["turn_seq"]), observation=obs,
             llm_user_message=body.get("llm_user_message"), rules=self.rules, status=body,
             deadline_at=float(deadline) if isinstance(deadline, (int, float)) else None, server_skew=self._skew,
+            directives=self.harness.directive_block(active) if self.harness is not None else "",
+            directive_list=[row.as_dict() for row in active],
         )
         budget = None
         if ctx.seconds_left is not None:
             budget = max(0.5, ctx.seconds_left - self.safety_margin_s)
-        action: dict[str, Any]
-        try:
-            out = self.policy(ctx)
-            if asyncio.iscoroutine(out) or isinstance(out, Awaitable):
-                out = await (asyncio.wait_for(out, timeout=budget) if budget else out)  # type: ignore[arg-type]
-            action = dict(out) if out else {"kind": "wait"}
-        except TimeoutError:
-            self.stats.fallback_waits += 1
-            action = {"kind": "wait", "thought": f"[{self.seat}] brain out of time - safe wait"}
-        except Exception as exc:  # brain bug: never stall the match
-            self.stats.fallback_waits += 1
-            self.stats.last_error = f"policy error: {exc!r}"
-            action = {"kind": "wait", "thought": f"[{self.seat}] brain error - safe wait"}
+        action = await self._decide(ctx, obs, active, budget)
         action.setdefault("args", {})
+        if self.harness is not None:
+            prompt = self._prompt(ctx, active)
+            gated = self.harness.gate(str(action.get("kind") or ""), action.get("args") or {}, obs, ctx.turn_seq)
+            if gated is None:
+                self.harness.record(prompt, action, {
+                    "ok": False, "submitted": False, "error": self.harness.rejection, "turn_seq": ctx.turn_seq,
+                })
+                self.log(f"[{self.seat}] turn {ctx.turn_seq} not submitted: {self.harness.rejection}")
+                await asyncio.sleep(0.05)
+                return None
+            kind, args, held = gated
+            if held:
+                action = {"kind": kind, "args": args, "thought": held}
+            else:
+                action["kind"] = kind
+                action["args"] = args
         ok, err = await self.submit(ctx.turn_seq, action)
         self.stats.turns += 1
         self.stats.kinds[action["kind"]] = self.stats.kinds.get(action["kind"], 0) + 1
@@ -189,13 +266,66 @@ class SeatClient:
             self.stats.last_error = res.get("error")
         self.log(f"[{self.seat}] D{st.get('day')} t{ctx.turn_seq}: {action['kind']} {action.get('args')} -> "
                  f"{'ok' if res.get('ok') else 'FAIL ' + str(res.get('error'))}")
+        if self.harness is not None:
+            self.harness.last_action = str(action.get("kind") or "")
+            self.harness.record(self._prompt(ctx, active), action, {
+                "ok": bool(res.get("ok")), "submitted": True, "error": res.get("error"), "turn_seq": ctx.turn_seq,
+            })
+            later = dict(obs)
+            if st.get("sector_id") is not None:
+                sector = dict(later.get("sector") or {})
+                sector["id"] = st.get("sector_id")
+                later["sector"] = sector
+            if st.get("day") is not None:
+                later["day"] = st.get("day")
+            signal = self.harness.note_fingerprint(observation_fingerprint(later))
+            if signal:
+                self.log(f"[{self.seat}] directive {signal}")
         return res
+
+    def _active(self, obs: dict[str, Any]) -> list:
+        if self.harness is None:
+            return []
+        day = obs.get("day")
+        try:
+            game_day = int(day) if day is not None else None
+        except (TypeError, ValueError):
+            game_day = None
+        return self.harness.active(game_day=game_day)
+
+    def _prompt(self, ctx: TurnContext, active: list) -> str:
+        base = ctx.llm_user_message or ""
+        block = ctx.directives or ""
+        if base and block:
+            return block + "\n\n" + base
+        return block or base
+
+    async def _decide(self, ctx: TurnContext, obs: dict[str, Any], active: list, budget: float | None) -> dict[str, Any]:
+        """Mailbox brains see the directive text. A scripted brain takes one legal step."""
+        if self.harness is not None and active and not isinstance(self.policy, MailboxPolicy):
+            step = directive_step(obs, active, avoid_kind=self.harness.last_action)
+            if step is not None:
+                return step
+        try:
+            out = self.policy(ctx)
+            if asyncio.iscoroutine(out) or isinstance(out, Awaitable):
+                out = await (asyncio.wait_for(out, timeout=budget) if budget else out)  # type: ignore[arg-type]
+            return dict(out) if out else {"kind": "wait"}
+        except TimeoutError:
+            self.stats.fallback_waits += 1
+            return {"kind": "wait", "thought": f"[{self.seat}] brain out of time - safe wait"}
+        except Exception as exc:  # brain bug: never stall the match
+            self.stats.fallback_waits += 1
+            self.stats.last_error = f"policy error: {exc!r}"
+            return {"kind": "wait", "thought": f"[{self.seat}] brain error - safe wait"}
 
     async def run(self, *, max_turns: int = 0, stop: asyncio.Event | None = None) -> SeatStats:
         if not self.rules:
             with contextlib.suppress(Exception):
                 await self.fetch_rules()
         while not (stop and stop.is_set()):
+            if self.harness is not None and self.harness.beat_due():
+                await self._beat()
             body = await self.wait_for_turn()
             if body is None:
                 self.log(f"[{self.seat}] seat closed")
@@ -308,6 +438,10 @@ class MailboxPolicy:
             "seconds_left": ctx.seconds_left, "observation": ctx.observation,
             "llm_user_message": ctx.llm_user_message,
         }
+        if ctx.directives:
+            payload["directives"] = ctx.directives
+        if ctx.directive_list:
+            payload["directive_list"] = ctx.directive_list
         if ctx.seat not in self._rules_sent and ctx.rules:
             payload["rules"] = ctx.rules
             self._rules_sent.add(ctx.seat)

@@ -21,7 +21,8 @@ import time
 from pathlib import Path
 
 from ai_cockpit.actions import Action, ActionError, reject_reason
-from ai_cockpit.providers import ProviderError, TurnView, resolve_provider
+from ai_cockpit.directives import DirectiveHarness, screen_fingerprint, seat_from_url, token_from_url
+from ai_cockpit.providers import ProviderError, TurnView, _prompt, resolve_provider
 from ai_cockpit.redact import redact
 from ai_cockpit.trader import guard_outgoing
 
@@ -617,6 +618,8 @@ def play(
     mock_script: str = "",
     level: str = "hard",
     base_url: str = "",
+    directives: str = "",
+    stuck_after: int = 6,
 ) -> int:
     """Play until the seat is done. Returns 0 on a clean stop.
 
@@ -631,6 +634,7 @@ def play(
             url=url, provider_name=provider_name, run_dir=run_dir, max_turns=max_turns,
             min_interval=min_interval, stop_file=stop_file, headless=headless, model=model,
             mock_script=mock_script, level=level, base_url=base_url,
+            directives=directives, stuck_after=stuck_after,
         )
     finally:
         _write_modules(run_dir)
@@ -649,6 +653,8 @@ def _play(
     mock_script: str,
     level: str,
     base_url: str = "",
+    directives: str = "",
+    stuck_after: int = 6,
 ) -> int:
     install_process_cleanup()
     log_path = run_dir / "player.log"
@@ -693,6 +699,8 @@ def _play(
                     stop_file=stop_file,
                     log_path=log_path,
                     actions_path=actions_path,
+                    directives=directives,
+                    stuck_after=stuck_after,
                 )
             finally:
                 browser.close()
@@ -711,12 +719,15 @@ def run_turns(
     stop_file: Path | None = None,
     log_path: Path | None = None,
     actions_path: Path | None = None,
+    directives: str = "",
+    stuck_after: int = 6,
 ) -> int:
     """One seated loop against an already open cockpit page.
 
     The page is the eyes and hands. ``provider`` sees the screenshot, the
     visible text, and the labels on that page. It does not receive a harness
     observation. Tests pass a stand-in page; the browser runner passes Playwright.
+    ``directives`` is an optional per-seat inbox. Empty leaves this loop as it was.
     """
     log_path = log_path or (run_dir / "player.log")
     actions_path = actions_path or (run_dir / "actions.jsonl")
@@ -726,6 +737,14 @@ def run_turns(
     history: list[str] = []
     code = 0
     idle = 0
+    harness = None
+    if directives:
+        seat = seat_from_url(url) or "SEAT"
+        token = token_from_url(url)
+        harness = DirectiveHarness(
+            seat, directives, stuck_after=stuck_after, secrets=[token] if token else None,
+        )
+        _write_log(log_path, f"directives inbox for {harness.seat}")
     step = 1
     limit = max(0, int(max_turns))
     while step <= limit:
@@ -733,7 +752,8 @@ def run_turns(
             _write_log(log_path, f"stop file at step {step}")
             break
         gate.wait()
-        if not _ready(page, url, log_path):
+        _beat_page(harness, chip=_chip(page))
+        if not _reconnect(page, url, log_path, 4 if harness is not None else 0, harness):
             code = 1
             break
         _wait_chip(page)
@@ -771,6 +791,11 @@ def run_turns(
         screen = _screen(page)
         _write_screen(log_path, step, screen)
         view = _view(page, run_dir, step, manual_read, manual_excerpt, screen, history)
+        if harness is not None:
+            view.directive_text = harness.directive_block(
+                harness.active(game_day=_game_day(screen.get("day"))),
+            )
+            _beat_page(harness, chip=chip, sector=screen.get("sector"), day=screen.get("day"))
         try:
             action = provider.decide(view)
         except (ProviderError, ActionError) as exc:
@@ -803,6 +828,14 @@ def run_turns(
             _write_log(log_path, f"step {step} did not land: {note}")
             _settle(page, url, log_path)
         _record(actions_path, step, action, note=note)
+        if harness is not None:
+            harness.record(
+                _prompt(view), action.as_dict(),
+                {"note": note, "op": action.op, "step": step, "submitted": True},
+            )
+            signal = harness.note_fingerprint(screen_fingerprint(_screen(page)))
+            if signal:
+                _write_log(log_path, f"directive {signal}")
         shown = action.label or action.key or action.selector or action.text
         _write_log(log_path, f"step {step} {action.op} {redact(shown)}")
         history.append(_memory_line(step, screen, action))
@@ -881,6 +914,39 @@ def _open(page, url: str, log_path: Path) -> bool:
     except Exception as exc:
         _write_log(log_path, f"the seat page did not open: {exc.__class__.__name__}")
         return False
+
+
+def _reconnect(page, url: str, log_path: Path, extra: int, harness: DirectiveHarness | None) -> bool:
+    """Reload a dropped seat page. Extra tries keep the same step, so a blip does not spend the turn."""
+    if _ready(page, url, log_path):
+        return True
+    delay = 0.5
+    for _ in range(max(0, extra)):
+        if _stop_requested():
+            return False
+        _write_log(log_path, "reconnecting the seat page")
+        if harness is not None:
+            harness.write_heartbeat({"source": "reconnect", "chip": ""})
+        time.sleep(delay)
+        delay = min(delay * 2, 4)
+        if _ready(page, url, log_path):
+            return True
+    return False
+
+
+def _beat_page(harness: DirectiveHarness | None, **fields: object) -> None:
+    if harness is None or not harness.beat_due():
+        return
+    payload = {"source": "cockpit-page"}
+    payload.update(fields)
+    harness.write_heartbeat(payload)
+
+
+def _game_day(text: object) -> int | None:
+    match = re.search(r"\d+", str(text or ""))
+    if match is None:
+        return None
+    return int(match.group(0))
 
 
 def _ready(page, url: str, log_path: Path) -> bool:

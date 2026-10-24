@@ -15,6 +15,10 @@ Env (all optional; flags win):
   TW2K_TOKEN_<SEAT>        bearer token per seat; else read from --tokens-file (default .tw2k/external_tokens.json)
   TW2K_MAX_TURNS           stop after N turns per seat (0 = until the match ends)
 
+Directive inbox (--directives runs/directives): Ben drops runs/directives/P3.json.
+Each seat reads only its own file. The pending mailbox payload gains
+`directives` and `directive_list`. See docs/plans/cockpit-directive-harness-v1.md.
+
 Mailbox protocol (--policy mailbox): for each turn the runner writes
   <dir>/<SEAT>.pending.json   {turn_seq, deadline_at, seconds_left, observation, llm_user_message, rules (first time)}
 and waits for the brain to write
@@ -75,8 +79,12 @@ async def _main(args: argparse.Namespace) -> int:
                 policy = MailboxPolicy(args.mailbox_dir, margin_s=args.margin_s)  # one brain (mailbox) per seat
             else:
                 policy = legal_heuristic_policy
-            clients.append(SeatClient(http, seat, _token_for(seat, tokens_file), policy, wait_s=args.wait_s,
-                                      safety_margin_s=args.margin_s, log=log))
+            token = _token_for(seat, tokens_file)
+            clients.append(SeatClient(
+                http, seat, token, policy, wait_s=args.wait_s,
+                safety_margin_s=args.margin_s, log=log,
+                directives=args.directives, stuck_after=args.stuck_after, secrets=[token],
+            ))
         log(f"connecting {len(clients)} seat(s) to {base} policy={args.policy}")
         stats = await run_seats(clients, max_turns=args.max_turns)
     for seat, s in stats.items():
@@ -97,6 +105,10 @@ def main() -> int:
     ap.add_argument("--max-turns", type=int, default=int(os.environ.get("TW2K_MAX_TURNS") or "0"))
     ap.add_argument("--wait-s", type=float, default=30.0, help="long-poll wait per request (max 60)")
     ap.add_argument("--margin-s", type=float, default=5.0, help="submit a safe wait this many seconds before the deadline")
+    ap.add_argument("--directives", default=os.environ.get("TW2K_DIRECTIVES") or "",
+                    help="per-seat directive inbox, for example runs/directives with P3.json inside")
+    ap.add_argument("--stuck-after", type=int, default=6,
+                    help="acted turns with no progress before a recovery directive")
     ap.add_argument("--quiet", action="store_true")
     args = ap.parse_args()
     try:
