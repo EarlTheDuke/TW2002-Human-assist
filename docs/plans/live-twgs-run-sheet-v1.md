@@ -381,7 +381,7 @@ Keys: buy one illegal good, if the Underground sells any.
 
 Read: the item name and the price.
 
-Settles: a price, only if the screen prints one. Singles Bar, Library, Cineplex, and illegal goods are named and not built.
+Settles: a price, only if the screen prints one. The library and the singles-bar door are `STARDOCK_DOORS_MODE` row 233 and take no credits. Cineplex show 1 is `CINEPLEX_PRICE_MODE`. Illegal goods are named and not built. The 47 credit bar drop has no item name.
 
 ### Rob and steal success awards
 

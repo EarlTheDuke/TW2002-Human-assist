@@ -5182,6 +5182,86 @@
       { n: "amount", label: "amount", type: "number", min: 1 },
     ], saved, (values) => act("bank_transfer", { to_player: values.to_player, amount: Number(values.amount) }, "transfer"));
   }
+  function whereTo(a) {
+    const params = (a && a.params) || {};
+    const rows = params.where_to || [];
+    const m = $("menu");
+    m.hidden = false;
+    inComputer = false;
+    m.dataset.screen = "stardock-where";
+    const listed = rows.map((row) => (
+      '<div class="row" data-where="' + esc(row.key) + '"><kbd>&lt;' + esc(row.key) + '&gt;</kbd> '
+      + '<button type="button" data-where-key="' + esc(row.key) + '">' + esc(row.label) + "</button></div>"
+    )).join("");
+    m.innerHTML = '<div class="y">' + esc(params.prompt || "Where to?") + "</div>" + listed
+      + '<br><span class="dk">Esc to leave</span>';
+    m.querySelectorAll("[data-where-key]").forEach((btn) => {
+      btn.addEventListener("click", () => whereKey(btn.getAttribute("data-where-key")));
+    });
+    reveal(m);
+  }
+  function whereKey(k) {
+    const key = String(k || "").toUpperCase();
+    const m = $("menu");
+    const close = () => { m.hidden = true; m.dataset.screen = ""; };
+    if (key === "Q" || key === "ESCAPE") { close(); return; }
+    if (key === "L") return libram();
+    if (key === "B") return singlesDoor();
+    if (key === "U") { close(); return ugEnter(); }
+    if (key === "C") {
+      close();
+      const a = LA("cineplex");
+      if (!a || !a.legal) return setResult("Cineplex: " + plainReason((a || {}).reason), true);
+      const cost = Number((a.params || {}).cost || 0);
+      const line = cost ? "The picture costs " + fmt(cost) + " cr. It has no secrets." : "The picture is free. It has no secrets.";
+      return confirmWords("Cineplex", line, () => act("cineplex", {}, "cineplex"));
+    }
+    if (key === "G") { close(); return bankForm(); }
+    if (key === "H") { close(); return openForm("buy_equip"); }
+    if (key === "S") { close(); return openForm("buy_ship"); }
+    if (key === "T") { close(); return; }
+    if (key === "P") { close(); return; }
+  }
+  function libram() {
+    const a = LA("library") || { legal: false, params: {} };
+    const rows = (a.params || {}).archives || [];
+    const m = $("menu");
+    m.hidden = false;
+    inComputer = false;
+    m.dataset.screen = "libram";
+    if (!a.legal) {
+      m.innerHTML = '<div class="y">The Libram Universitatus</div><div class="row">'
+        + esc(plainReason(a.reason)) + '</div><br><span class="dk">Esc to leave</span>';
+      reveal(m);
+      return;
+    }
+    m.innerHTML = '<div class="y">The Libram Universitatus</div><div class="c">No charge.</div>'
+      + rows.map((row) => (
+        '<div class="row"><button type="button" data-archive="' + esc(row.key) + '">'
+        + esc(row.line || ("<" + row.key + "> " + row.label)) + "</button></div>"
+      )).join("")
+      + '<br><span class="dk">Q to leave</span>';
+    m.querySelectorAll("[data-archive]").forEach((btn) => {
+      btn.addEventListener("click", () => archiveKey(btn.getAttribute("data-archive")));
+    });
+    reveal(m);
+  }
+  function archiveKey(k) {
+    const key = String(k || "").toUpperCase();
+    const m = $("menu");
+    if (!"ABCQ".includes(key) || key.length !== 1) return;
+    m.hidden = true;
+    m.dataset.screen = "";
+    act("library", { archive: key }, key === "Q" ? "leave the library" : "library " + key);
+  }
+  function singlesDoor() {
+    const a = LA("singles_bar") || { legal: false, params: {} };
+    const m = $("menu");
+    m.hidden = true;
+    m.dataset.screen = "";
+    if (!a.legal) return setResult("Singles bar: " + plainReason(a.reason), true);
+    confirmWords("Singles bar", esc((a.params || {}).prompt || ""), () => act("singles_bar", { confirm: true }, "singles bar"));
+  }
   function dockBox() {
     const box = document.createElement("div");
     box.className = "encounter";
@@ -5191,6 +5271,7 @@
     title.textContent = "StarDock";
     box.appendChild(title);
     const add = (kind, label, onLegal) => box.appendChild(reasonButton(kind, label, onLegal));
+    if (LA("library")) add("library", "Where to", (a) => whereTo(a));
     add("tavern_order", "Order", () => tavernOrder());
     add("tavern_talk", "Talk", () => tavernText("tavern_talk"));
     add("tavern_announce", "Announce", () => tavernText("tavern_announce"));
@@ -5999,6 +6080,11 @@
   }
   function key(k) {
     const m = $("menu");
+    if (m && (m.dataset.screen === "stardock-where" || m.dataset.screen === "libram")) {
+      if (k === "Escape") { m.hidden = true; m.dataset.screen = ""; return; }
+      if (m.dataset.screen === "libram") return archiveKey(k);
+      return whereKey(k);
+    }
     if (m && m.dataset.screen === "begin-self-destruct") {
       if (k === "Y") {
         m.hidden = true;

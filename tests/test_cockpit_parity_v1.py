@@ -35,6 +35,8 @@ def test_every_verb_has_a_button() -> None:
         ("underground_rename", K.ug_name_live()),
         ("cim", K.cim_live()),
         ("tricron", K.tricron_live()),
+        ("library", K.stardock_doors_live()),
+        ("singles_bar", K.stardock_doors_live()),
     ):
         if live:
             continue
