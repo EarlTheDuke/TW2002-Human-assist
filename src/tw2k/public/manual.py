@@ -1917,10 +1917,12 @@ def _towing_and_transwarp(f: dict) -> str:
         "A pod cannot be towed. Releasing the tow is its own order.</p>"
     )
     tw = (
-        f"<p>Ship TransWarp is {_on(K.ship_tw_on())}. The drive costs {_n(K.SHIP_TW_TYPE1_COST)} credits "
+        f"<p>Ship TransWarp is {_on(K.ship_tw_on())}. The Type 1 drive costs {_n(K.ship_tw_type1_cost())} credits "
         f"and burns {_n(K.SHIP_TW_ORE_PER_HOP)} fuel ore per hop. "
         "The Imperial StarShip, the Corporate Flagship and the Havoc Gunstar can carry it. "
-        f"A tow upgrade costs {_n(K.SHIP_TW_TYPE2_COST)} credits and burns {_n(K.SHIP_TW_TOW_ORE_PER_HOP)} ore per hop.</p>"
+        f"A Type 2 drive costs {_n(K.ship_tw_type2_cost())} credits. "
+        f"The upgrade from Type 1 costs {_n(K.ship_tw_upgrade_cost())} credits "
+        f"and burns {_n(K.SHIP_TW_TOW_ORE_PER_HOP)} ore per hop.</p>"
     )
     pad = (
         f"<p>X is the transporter. The starting hull, the {escape(f['ship'])}, beams {_n(reach)} hops. "

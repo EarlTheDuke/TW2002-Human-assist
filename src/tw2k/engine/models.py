@@ -931,6 +931,8 @@ class Player(BaseModel):
             (legacy 50 / 10; tw2002 half the 160..239 wave midpoint = 100)
           + mines, photon missiles, ether probes, genesis torpedoes and the
             other gear at their StarDock prices
+          + a fitted ship TransWarp drive at the live quote, only while
+            hardware_price_live() is on (off, the drive still adds nothing)
         """
         if K.nw_estimate_live():
             # Cargo at the average this seat paid. The base price is only used
@@ -988,6 +990,10 @@ class Player(BaseModel):
             + self.ship.genesis * K.genesis_torpedo_cost()
             + K.scanner_value(getattr(self.ship, "scanner", None))
         )
+        if K.hardware_price_live():
+            # Off, a fitted drive still adds nothing, so the pin stays put.
+            # On, it counts at the live Type 1 or Type 2 quote.
+            equip_value += K.ship_tw_drive_value(getattr(self.ship, "transwarp_drive", None))
         total = self.credits + cargo_value + ship_value + equip_value
         if K.nw_estimate_live():
             total += K.extra_hold_trade_value(self.ship.ship_class.value, int(self.ship.holds))

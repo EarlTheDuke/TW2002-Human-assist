@@ -1,0 +1,12 @@
+# Confirmed Ven GameA TWSTATS [Costs] lines for ship TransWarp.
+# Source: GameA TWSTATS.TXT, v3.34b, Ven 2026-10-24.
+# The full capture lands in this path via PR #157. This stub is those
+# lines when the tip does not have the full file yet.
+# Comment lines are not labels. Tests read [Costs].
+
+[Costs]
+Type I TWarp=50,000 cr
+Type II TWarp=80,000 cr
+TWarp Upgrade=10,000 cr
+Citadel Transport Unit=50,000 cr
+Citadel Transport Upgrade=25,000 cr

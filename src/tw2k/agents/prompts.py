@@ -555,14 +555,16 @@ SYSTEM_PROMPT = _MATCH_PROMPT_FULL
 
 
 
-_SHIP_TW_NOTE = (
-    "\nSHIP TRANSWARP (docs/playtests/ships/SHIP_TRANSWARP.md): only an Imperial StarShip, Corporate FlagShip, "
-    "or Havoc Gunstar can buy_equip item=transwarp_drive at StarDock (12,500). "
-    "ship_transwarp {sector_id} burns 3 fuel ore per hop along the shortest warp path and one ship-TPW of turns. "
-    "The legal list is locked targets only: your fighter, a corp or ally fighter, or FedSpace sectors 1-10 if you "
-    "are commissioned (alignment >= 1000). A blind jump with no lock fuses the ship when density is above 0. "
-    "Never blind-jump. This is not planet_transwarp.\n"
-)
+def _ship_tw_note() -> str:
+    price = f"{K.ship_tw_type1_cost():,}"
+    return (
+        "\nSHIP TRANSWARP (docs/playtests/ships/SHIP_TRANSWARP.md): only an Imperial StarShip, Corporate FlagShip, "
+        f"or Havoc Gunstar can buy_equip item=transwarp_drive at StarDock ({price}). "
+        "ship_transwarp {sector_id} burns 3 fuel ore per hop along the shortest warp path and one ship-TPW of turns. "
+        "The legal list is locked targets only: your fighter, a corp or ally fighter, or FedSpace sectors 1-10 if you "
+        "are commissioned (alignment >= 1000). A blind jump with no lock fuses the ship when density is above 0. "
+        "Never blind-jump. This is not planet_transwarp.\n"
+    )
 
 
 _FLEET_NOTE = (
@@ -577,16 +579,19 @@ _FLEET_NOTE = (
 )
 
 
-_TOW_NOTE = (
-    "\nTOWING (docs/playtests/ships/SHIP_TOW.md): tow_engage {target} locks your tractor beam on one of your own "
-    "unmanned ships in your sector (ship:<id>) or on a fighter-less trader outside FedSpace (player:<id>); 0 turns. "
-    "Each sector you warp then costs your turns per warp + 2 x the towed ship's (ISS towing a Colonial Transport = "
-    "16); the towed ship arrives only if you survive the entry and takes no mines, fighters, quasar or NavHaz. "
-    "Landing, docking, trading, robbing, stealing or attacking drops the tow (tow_release ends it any time, 0 turns). "
-    "A Type 1 TransWarp drops it; a Type 2 drive (buy_equip transwarp_type2 20,000 or transwarp_upgrade 9,000 at "
-    "StarDock) jumps WITH the towed ship for 6 ore per hop. To keep an unmanned ship in FedSpace overnight, sit "
-    "beside it (few enough ship fighters that the Feds will not tow you) with it locked in tow when the day ends, and release it next morning.\n"
-)
+def _tow_note() -> str:
+    type2 = f"{K.ship_tw_type2_cost():,}"
+    upgrade = f"{K.ship_tw_upgrade_cost():,}"
+    return (
+        "\nTOWING (docs/playtests/ships/SHIP_TOW.md): tow_engage {target} locks your tractor beam on one of your own "
+        "unmanned ships in your sector (ship:<id>) or on a fighter-less trader outside FedSpace (player:<id>); 0 turns. "
+        "Each sector you warp then costs your turns per warp + 2 x the towed ship's (ISS towing a Colonial Transport = "
+        "16); the towed ship arrives only if you survive the entry and takes no mines, fighters, quasar or NavHaz. "
+        "Landing, docking, trading, robbing, stealing or attacking drops the tow (tow_release ends it any time, 0 turns). "
+        f"A Type 1 TransWarp drops it; a Type 2 drive (buy_equip transwarp_type2 {type2} or transwarp_upgrade {upgrade} at "
+        "StarDock) jumps WITH the towed ship for 6 ore per hop. To keep an unmanned ship in FedSpace overnight, sit "
+        "beside it (few enough ship fighters that the Feds will not tow you) with it locked in tow when the day ends, and release it next morning.\n"
+    )
 
 
 _CAPTURE_NOTE = (
@@ -741,11 +746,11 @@ def get_system_prompt() -> str:
     if K.fed_tw2002():
         text = text + _FED_NOTE_TW2002
     if K.ship_tw_on():
-        text = text + _SHIP_TW_NOTE
+        text = text + _ship_tw_note()
     if K.fleet_on():
         text = text + _FLEET_NOTE
     if K.tow_on():
-        text = text + _TOW_NOTE
+        text = text + _tow_note()
     if K.capture_on():
         text = text + _CAPTURE_NOTE
     if K.planet_trade_on():

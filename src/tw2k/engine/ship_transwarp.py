@@ -164,7 +164,7 @@ def buy_drive(universe: Universe, pid: str, qty: int) -> ActionResult:
         return ActionResult(ok=False, error="only an Imperial StarShip, Corporate FlagShip, or Havoc Gunstar can fit a TransWarp drive")
     if drive_fitted(player.ship):
         return ActionResult(ok=False, error="already fitted")
-    cost = int(K.SHIP_TW_TYPE1_COST)
+    cost = int(K.ship_tw_type1_cost())
     if player.credits < cost:
         return ActionResult(ok=False, error=f"insufficient credits ({player.credits} < {cost})")
     player.credits -= cost

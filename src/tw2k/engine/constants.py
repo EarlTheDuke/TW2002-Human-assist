@@ -1496,17 +1496,26 @@ ARMID_DAMAGE = 100
 # Ether probe 3,000. Combat was not played, so 30 is the shop's ceiling,
 # not a measured hit. Atomic detonators stay out of this switch: the live
 # item is a planet killer, and this copy's atomic mine is a different thing.
+# Ship TransWarp quotes are on this same card. Ven 2026-10-24 GameA TWSTATS
+# (docs/playtests/twgs-live/twstats-costs-ven.txt): Type I 50,000, Type II
+# 80,000, upgrade 10,000. Stored cabal TEDIT samples stay 12,500 / 20,000 /
+# 9,000. SOURCE-CONFLICT. SHIP_TW_MODE is not this switch.
+# Citadel Transport Unit 50,000 and Upgrade 25,000 already match
+# PLANET_TRANSPORTER_COST_FIRST / PLANET_TRANSPORTER_COST_EXTRA. No shop switch.
 # Default stays legacy so the pin and the digests do not move.
 HARDWARE_PRICE_MODE = "legacy"  # "legacy" | "live"
 ARMID_MINE_COST_LIVE = 1_000
 LIMPET_MINE_COST_LIVE = 10_000
 ETHER_PROBE_COST_LIVE = 3_000
 GENESIS_TORPEDO_COST_LIVE = 20_000
+SHIP_TW_TYPE1_COST_LIVE = 50_000
+SHIP_TW_TYPE2_COST_LIVE = 80_000
+SHIP_TW_UPGRADE_COST_LIVE = 10_000
 ARMID_DAMAGE_LIVE = 30
 
 
 def hardware_price_live() -> bool:
-    """True when the shop uses the live armid, limpet, genesis, and ether prices."""
+    """True when the shop uses the live armid, limpet, genesis, ether, and ship TransWarp prices."""
     return HARDWARE_PRICE_MODE == "live" or tw2002_live_profile() or v311_profile()
 
 
@@ -1532,6 +1541,54 @@ def genesis_torpedo_cost() -> int:
     if hardware_price_live() or planet_class_live():
         return GENESIS_TORPEDO_COST_LIVE
     return GENESIS_TORPEDO_COST
+
+
+def ship_tw_type1_cost() -> int:
+    """Shop price for a Type 1 ship TransWarp drive.
+
+    Stored cabal sample is SHIP_TW_TYPE1_COST (12,500). The live/v311 card
+    is 50,000. hardware_price_live() is that card. TW2002_LIVE_PROFILE and
+    V311_PROFILE turn it on without moving HARDWARE_PRICE_MODE or SHIP_TW_MODE.
+    """
+    if hardware_price_live():
+        return SHIP_TW_TYPE1_COST_LIVE
+    return SHIP_TW_TYPE1_COST
+
+
+def ship_tw_type2_cost() -> int:
+    """Shop price for a Type 2 drive bought with no drive fitted.
+
+    Stored cabal sample is SHIP_TW_TYPE2_COST (20,000). The live/v311 card
+    is 80,000. Same switch as ship_tw_type1_cost().
+    """
+    if hardware_price_live():
+        return SHIP_TW_TYPE2_COST_LIVE
+    return SHIP_TW_TYPE2_COST
+
+
+def ship_tw_upgrade_cost() -> int:
+    """Shop price to upgrade a fitted Type 1 drive to Type 2.
+
+    Stored cabal sample is SHIP_TW_UPGRADE_COST (9,000). The live/v311 card
+    is 10,000. Same switch as ship_tw_type1_cost().
+    """
+    if hardware_price_live():
+        return SHIP_TW_UPGRADE_COST_LIVE
+    return SHIP_TW_UPGRADE_COST
+
+
+def ship_tw_drive_value(drive: str | None) -> int:
+    """Net-worth credit for a fitted ship TransWarp drive. Unfitted is 0.
+
+    Type 1 is the Type 1 quote. Type 2 is the Type 2 quote. The upgrade is
+    the buy path into Type 2, not a second item on the ship.
+    """
+    kind = str(drive or "")
+    if kind == "type1":
+        return ship_tw_type1_cost()
+    if kind == "type2":
+        return ship_tw_type2_cost()
+    return 0
 
 
 def armid_hit_damage() -> int:
@@ -2795,7 +2852,7 @@ SHIP_TW_TURN_COST = "tpw"        # "tpw" | "hops"
 SHIP_TW_FRIENDLY = "own_corp_ally"  # "own_corp_ally" | "own_only"
 SHIP_TW_CLOAK_POLICY = "allow_decloak"  # UNVERIFIED
 SHIP_TW_FUSE_REFUNDS = False
-SHIP_TW_TYPE1_COST = 12_500
+SHIP_TW_TYPE1_COST = 12_500      # cabal twgs.html TEDIT sample. Live GameA is ship_tw_type1_cost() 50,000. SOURCE-CONFLICT.
 SHIP_TW_ORE_PER_HOP = 3
 SHIP_TW_LIST_CAP = 40
 SHIP_TW_HULLS = frozenset({"imperial_starship", "corporate_flagship", "havoc_gunstar"})
@@ -2929,8 +2986,8 @@ TOW_EXTERN_HOLDER = "owner_or_corp"  # cl2 CABT #4 | "owner"
 TOW_EXTERN_ALLY_HOLDS = False        # cl2 UNVERIFIED: an ally who is not a corp mate does not hold
 TOW_DOCK_VERBS = frozenset({"buy_ship", "buy_equip", "sell_ship", "remove_limpet", "apply_commission",
                             "post_reward", "claim_reward"})  # tt11c (Police HQ verbs as dock: UNVERIFIED)
-SHIP_TW_TYPE2_COST = 20_000         # tt16 cabal twgs.html TEDIT sample (OldFAQ v2 80,000: SOURCE-CONFLICT, unused)
-SHIP_TW_UPGRADE_COST = 9_000        # tt16 TEDIT (OldFAQ v2 40,000: unused)
+SHIP_TW_TYPE2_COST = 20_000         # tt16 cabal twgs.html TEDIT sample. Live GameA / OldFAQ v2 80,000 is ship_tw_type2_cost(). SOURCE-CONFLICT.
+SHIP_TW_UPGRADE_COST = 9_000        # tt16 TEDIT sample. Live GameA 10,000 is ship_tw_upgrade_cost(). OldFAQ v2 40,000. SOURCE-CONFLICT.
 SHIP_TW_TOW_ORE_PER_HOP = 6         # tt19 docs wiki / OldFAQ #1
 BOT_TOW_POLICY = "extern_hold_only"  # "extern_hold_only" | "off"
 

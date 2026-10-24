@@ -467,6 +467,36 @@ Read: the credit price on each screen.
 
 Settles: `LIMPET_REMOVAL_COST` (1250, marked UNVERIFIED).
 
+### Type I TWarp price
+
+item_id: n117-tw-type1
+
+Keys: at StarDock, on an Imperial StarShip, Corporate FlagShip, or Havoc Gunstar, buy one Type I drive while the live hardware card is on.
+
+Read: the credit price.
+
+Settles: stored `SHIP_TW_TYPE1_COST` stays 12,500. Live GameA is 50,000 behind `ship_tw_type1_cost` (SOURCE-CONFLICT, Ven 2026-10-24). `SHIP_TW_MODE` stays.
+
+### Type II TWarp price
+
+item_id: n117-tw-type2
+
+Keys: at StarDock, on a TransWarp hull with no drive fitted, buy one Type II drive while the live hardware card is on.
+
+Read: the credit price.
+
+Settles: stored `SHIP_TW_TYPE2_COST` stays 20,000. Live GameA is 80,000 behind `ship_tw_type2_cost` (SOURCE-CONFLICT, Ven 2026-10-24). OldFAQ v2 was 80,000.
+
+### TWarp upgrade price
+
+item_id: n117-tw-upgrade
+
+Keys: at StarDock, with a Type I drive already fitted, buy the upgrade while the live hardware card is on.
+
+Read: the credit price.
+
+Settles: stored `SHIP_TW_UPGRADE_COST` stays 9,000. Live GameA is 10,000 behind `ship_tw_upgrade_cost` (SOURCE-CONFLICT, Ven 2026-10-24). OldFAQ v2 was 40,000.
+
 ## Group I. Class 0 and StarDock kills
 
 Only if the game can spare the ports. Do this last. One first kill serves the blow row, the first-kill row, the return-fire row, and the capture row. Do not repeat that kill for each row.
