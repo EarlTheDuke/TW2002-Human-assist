@@ -213,3 +213,38 @@ def test_two_day_seat_plays_through_fake_tinybox(tmp_path, monkeypatch, fake) ->
     assert len(fake.seen) >= 1 and all(s["body"]["model"] == "qwen3.8:latest" for s in fake.seen)
     assert report["died"] is False and [r["day"] for r in report["days"]] == [1, 2]
     assert key not in _walk_text(tmp_path)
+
+
+def test_call_timeout_fits_inside_the_worker_turn(monkeypatch) -> None:
+    from tw2k.public import tinybox as tb
+
+    monkeypatch.setenv("TW2K_CUSTOM_THINK_CAP_S", "600")
+    assert tb.config().call_timeout_s == 100.0
+    monkeypatch.setenv("TW2K_TINYBOX_TURN_S", "45")
+    assert tb.config().call_timeout_s == 45.0
+    monkeypatch.setenv("TW2K_CUSTOM_THINK_CAP_S", "30")
+    assert tb.config().call_timeout_s == 30.0
+
+
+def test_slow_reply_plays_heuristic_this_turn_without_lasting_fallback(monkeypatch, caplog) -> None:
+    import logging
+    import socket
+
+    from tw2k.public import tinybox as tb
+
+    monkeypatch.setenv("TW2K_CUSTOM_BASE_URL", "http://127.0.0.1:9/v1")
+    monkeypatch.setenv("TW2K_CUSTOM_API_KEY", _key())
+
+    def slow(*_a, **_k):
+        raise socket.timeout("timed out")
+
+    monkeypatch.setattr(tb, "ask", slow)
+    budget = tb.TinyboxSeatBudget(tb.config(), "kimi-k2.6", gid="g", seat="P4")
+    obs = {"day": 1, "legal_actions": [{"kind": "wait", "legal": True}]}
+    with caplog.at_level(logging.INFO, logger=tb.log.name):
+        for _ in range(5):
+            assert budget(_key(), obs, None) is None
+    assert budget.timeouts == 5
+    assert not budget.lasting_fallback
+    assert "heuristic this turn: no reply within" in caplog.text
+    assert " call " in caplog.text and _key() not in caplog.text
