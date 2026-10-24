@@ -8,7 +8,7 @@ The slice blurb called Tri-Cron a galactic news board and the Cineplex a rumor v
 
 Tri-Cron is a Lost Trader's Tavern game. The live instruction screen: 10 rounds, three crons each (0-9), the player picks position 1 (hundreds), 2 (tens), or 3 (ones) before each cron, the greater ten-round total wins, payback 2 to 1, the ante is 100 credits and goes into the jackpot, the jackpot starts at 5,000, and the champion score on that screen was 5,000. The Bible names 2-3-1 as the best placement. The live player declined to play, so a turn charge for the game was not on the screen. This build uses the tavern turn cost, which is 0.
 
-The Cineplex is a StarDock menu theatre. TWINSTR describes a picture and popcorn. The Bible says the show is a useless ANSI for a nominal credit amount and holds no secrets. The live player did not enter it (`REPORT.md`: exist, not read). No price number is in those sources, so `CINEPLEX_COST` is 0 and stays UNVERIFIED. The picture text has no secrets.
+The Cineplex is a StarDock menu theatre. TWINSTR describes a picture and popcorn. The Bible says the show is a useless ANSI for a nominal credit amount and holds no secrets. The live player did not enter it (`REPORT.md`: exist, not read). No price number is in those sources, so `CINEPLEX_COST` is 0 and stays the stored default. NOTE 129 (`docs/playtests/twgs-live/illegal-goods.txt`) later asked 100 credits for show 1, Vulcan Thunder. The theatre is on the where-to list in `stardock-menus.txt`. Titles that were not opened are not sold here. The picture text has no secrets. The 100-credit ticket is the live card with the other 19 Oct StarDock prices, not a change to this stored 0.
 
 ## Prices re-checked from slice 62
 

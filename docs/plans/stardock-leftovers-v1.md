@@ -12,4 +12,4 @@ Live prices from `live_twgs/REPORT.md` that disagree with the clone were left un
 | Grimy UNDERGROUND info | 600 | charged as `GRIMY_PASSWORD_COST` 2000 |
 | Grimy password | 0 | `GRIMY_PASSWORD_COST` 2000 |
 
-Announcement 100 matches. `CINEPLEX_COST` is 0 because no price number was on the screen. Underground name change stays unbuilt (`UG_NAME_CHANGE` false); the live price was 247.
+Announcement 100 matches. The screen behind this table had no Cineplex price, so `CINEPLEX_COST` stays 0. NOTE 129 later asked 100 credits for show 1, Vulcan Thunder (`docs/playtests/twgs-live/illegal-goods.txt`). The theatre is on the where-to list (`docs/playtests/twgs-live/stardock-menus.txt`). That ticket is the live card with the other 19 Oct StarDock prices. This stored 0 does not move, and the other titles on that board were not opened. Underground name change stays unbuilt (`UG_NAME_CHANGE` false); the live price was 247.
