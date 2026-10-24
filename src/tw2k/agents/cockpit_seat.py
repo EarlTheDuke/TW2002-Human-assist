@@ -35,6 +35,7 @@ from collections.abc import Awaitable, Callable
 from typing import Any
 
 from ..engine import constants as K
+from .cockpit_directive import DirectiveHarness, directive_step, observation_fingerprint
 
 # Kinds the redesign page can post. Computer, planet, port, and ship forms
 # included. The day loop uses warp, plot_course, trade, buy_equip, the
@@ -188,7 +189,9 @@ class CockpitSeat:
 
     async def run(self, days: int, *, idle_s: float = 600.0, max_posts: int = 6000,
                   llm_ask: Callable[..., Any] | None = None, lobby: bool = False,
-                  llm_key: str | None = None, fallback_line: str | None = None) -> dict[str, Any]:
+                  llm_key: str | None = None, fallback_line: str | None = None,
+                  directives: str | None = None, stuck_after: int = 6,
+                  redact_secrets: list[str] | None = None) -> dict[str, Any]:
         """Play ``days`` game days from the day the seat starts on. Returns the day table, refusals, and gaps.
 
         NOTE 56 item 7a: ``days`` counts from now. A seat that joins on day 4 with
@@ -198,7 +201,18 @@ class CockpitSeat:
         LOBBY_AI_SEAT_MODE is on and does not turn AI_COCKPIT_SEAT_MODE on.
         ``llm_key`` is used only for that call. None on the lobby path means
         an empty key, so the process environment is not read.
+
+        ``directives`` is a per-seat inbox directory. When it is set, active
+        goals are added to the turn prompt, a proposal is checked against the
+        cockpit's legal actions before it is posted, and a dropped read or
+        post is retried. The inbox is files, not a new server route.
         """
+        harness: DirectiveHarness | None = None
+        if directives:
+            harness = DirectiveHarness(
+                self.seat_id, directives, stuck_after=stuck_after, secrets=redact_secrets,
+            )
+            self._get, self._post = harness.wrap(self._get, self._post, self.path("status"))
         if lobby:
             if not K.lobby_ai_seat_on():
                 raise CockpitSeatOff("LOBBY_AI_SEAT_MODE is off")
@@ -251,6 +265,13 @@ class CockpitSeat:
             if obs and obs.get("alive") is False:
                 report["died"] = True
                 break
+            if harness is not None and harness.beat_due():
+                try:
+                    status = await self.read("status")
+                    if isinstance(status, dict):
+                        harness.write_heartbeat(status)
+                except Exception:
+                    pass
             if not body.get("awaiting_input") or body.get("peek") or not obs:
                 await asyncio.sleep(0.05)
                 continue
@@ -259,17 +280,33 @@ class CockpitSeat:
                 await asyncio.sleep(0.05)
                 continue
             last_progress = time.monotonic()
-            if getattr(llm_ask, "threaded", False):
-                # A long-thinking model (TinyBox) must not block the lobby's event loop.
-                kind, args, why = await asyncio.to_thread(
-                    _pick_turn, obs, cockpit, brain, lobby=lobby, llm_key=llm_key, llm_ask=llm_ask,
-                    fallback_line=fallback_line, announced=announced,
-                )
-            else:
-                kind, args, why = _pick_turn(
-                    obs, cockpit, brain, lobby=lobby, llm_key=llm_key, llm_ask=llm_ask,
-                    fallback_line=fallback_line, announced=announced,
-                )
+            active: list = []
+            directive_text = ""
+            if harness is not None:
+                game_day = int(obs.get("day") or 0) or None
+                active = harness.active(game_day=game_day)
+                directive_text = harness.directive_block(active)
+            kind, args, why, _from_llm = await _choose_turn(
+                obs, cockpit, brain, harness, active,
+                lobby=lobby, llm_key=llm_key, llm_ask=llm_ask,
+                fallback_line=fallback_line, announced=announced, directives=directive_text,
+            )
+            if harness is not None:
+                prompt = harness.turn_prompt(obs, active)
+                gated = harness.gate(kind, args, obs, turn, allowed_kinds=COCKPIT_KINDS)
+                if gated is None:
+                    harness.record(prompt, {"kind": kind, "args": args, "why": why}, {
+                        "ok": False, "submitted": False, "error": harness.rejection, "turn_seq": turn,
+                    })
+                    report["refused"].append({
+                        "day": int(obs.get("day") or 0), "turn_seq": turn, "kind": kind, "args": args,
+                        "why": why, "error": harness.rejection,
+                    })
+                    await asyncio.sleep(0.05)
+                    continue
+                kind, args, held_why = gated
+                if held_why:
+                    why = held_why
             record = getattr(llm_ask, "record", None)
             if callable(record):
                 try:
@@ -332,8 +369,22 @@ class CockpitSeat:
                 if kind == "buy_equip" and args.get("item") == "holds":
                     row["holds_bought"] += int(args.get("qty") or 0)
             since = await self._log_rows(since, report, brain)
+            if harness is not None:
+                later = result.get("observation") if isinstance(result.get("observation"), dict) else None
+                harness.last_action = kind
+                harness.record(prompt, {"kind": kind, "args": args, "why": why}, {
+                    "ok": ok, "submitted": True,
+                    "error": None if ok else error if ok is False else None,
+                    "turn_seq": turn,
+                })
+                signal = harness.note_fingerprint(observation_fingerprint(later or obs))
+                if signal == "escalate":
+                    report["escalated"] = True
             if result.get("game_over"):
                 finished = True
+        if harness is not None:
+            report["escalated"] = harness.escalated
+            report["directive_recoveries"] = harness.recoveries
         final = await self.read("observation", {"peek": 1})
         final_obs = final.get("observation") or {}
         if final_obs and start_day <= int(final_obs.get("day") or 0) <= end_day:
@@ -1284,6 +1335,9 @@ def _detail(reply: Any) -> Any:
 async def run_http(client: Any, seat_id: str, token: str, days: int, **kwargs: Any) -> dict[str, Any]:
     """Play ``days`` days for one seat through an httpx.AsyncClient."""
     get, post = http_calls(client, token)
+    if kwargs.get("directives"):
+        secrets = [token, *(kwargs.get("redact_secrets") or [])]
+        kwargs["redact_secrets"] = secrets
     return await CockpitSeat(seat_id, get, post).run(days, **kwargs)
 
 
@@ -1305,6 +1359,48 @@ def cockpit_llm_key() -> str:
     return os.environ.get(LLM_KEY_ENV, "").strip()
 
 
+async def _choose_turn(
+    obs: dict[str, Any],
+    cockpit: dict[str, Any] | None,
+    brain: SeatBrain,
+    harness: DirectiveHarness | None,
+    active: list,
+    *,
+    lobby: bool,
+    llm_key: str | None,
+    llm_ask: Callable[..., Any] | None,
+    fallback_line: str | None,
+    announced: bool,
+    directives: str,
+) -> tuple[str, dict[str, Any], str, bool]:
+    """Heuristic, a directive step, or the LLM. The fourth value is True for a model choice.
+
+    A directive step runs only when no model key is configured, and only when
+    the cockpit already lists that step as legal. A model keeps its own choice.
+    """
+    step = None
+    if harness is not None and active and not _llm_will_run(lobby, llm_key):
+        step = directive_step(obs, active, avoid_kind=harness.last_action)
+    if step is not None:
+        return str(step["kind"]), dict(step.get("args") or {}), str(step.get("thought") or "directive"), False
+    if getattr(llm_ask, "threaded", False):
+        return await asyncio.to_thread(
+            _pick_turn, obs, cockpit, brain, lobby=lobby, llm_key=llm_key, llm_ask=llm_ask,
+            fallback_line=fallback_line, announced=announced, directives=directives,
+        )
+    return _pick_turn(
+        obs, cockpit, brain, lobby=lobby, llm_key=llm_key, llm_ask=llm_ask,
+        fallback_line=fallback_line, announced=announced, directives=directives,
+    )
+
+
+def _llm_will_run(lobby: bool, llm_key: str | None) -> bool:
+    """True when this turn will call the model. An empty key never does."""
+    if lobby or llm_key is not None:
+        return bool(str(llm_key or "").strip())
+    return bool(cockpit_llm_key())
+
+
 def _pick_turn(
     obs: dict[str, Any],
     cockpit: dict[str, Any] | None,
@@ -1315,25 +1411,29 @@ def _pick_turn(
     llm_ask: Callable[..., Any] | None,
     fallback_line: str | None,
     announced: bool,
-) -> tuple[str, dict[str, Any], str]:
+    directives: str = "",
+) -> tuple[str, dict[str, Any], str, bool]:
     """Heuristic, one LLM choice, or a single public line when the LLM cannot play.
 
     The line is a broadcast the cockpit already shows. It is not a new Observation field.
     """
     if lobby:
         # An omitted lobby key is empty. Do not fall through to TW2K_COCKPIT_LLM_KEY.
-        picked = llm_choose(obs, cockpit, key="" if llm_key is None else llm_key, ask=llm_ask)
+        picked = llm_choose(
+            obs, cockpit, key="" if llm_key is None else llm_key, ask=llm_ask, directives=directives,
+        )
     else:
-        picked = llm_choose(obs, cockpit, ask=llm_ask)
+        picked = llm_choose(obs, cockpit, ask=llm_ask, directives=directives)
     legal = {str(row.get("kind")) for row in (obs.get("legal_actions") or []) if row.get("legal")}
     lasting = bool(getattr(llm_ask, "lasting_fallback", False))
     missing = lobby and llm_ask is not None and not str(llm_key or "").strip()
     if (fallback_line and not announced and picked is None and llm_ask is not None
             and (lasting or missing) and "broadcast" in legal):
-        return "broadcast", {"message": str(fallback_line)[:200]}, "llm-fallback"
+        return "broadcast", {"message": str(fallback_line)[:200]}, "llm-fallback", True
     if picked is None:
-        return brain.decide(obs, cockpit)
-    return picked
+        kind, args, why = brain.decide(obs, cockpit)
+        return kind, args, why, False
+    return picked[0], picked[1], picked[2], True
 
 
 def llm_choose(
@@ -1342,6 +1442,7 @@ def llm_choose(
     *,
     key: str | None = None,
     ask: Callable[..., Any] | None = None,
+    directives: str = "",
 ) -> tuple[str, dict[str, Any], str] | None:
     """One LLM choice, or None so the heuristic decides.
 
@@ -1353,10 +1454,25 @@ def llm_choose(
         return None
     caller = ask or _llm_http_choose
     try:
-        picked = caller(secret, obs, cockpit)
+        picked = _call_llm(caller, secret, obs, cockpit, directives)
     except Exception:
         return None
     return _coerce_llm(picked)
+
+
+def _call_llm(caller: Callable[..., Any], secret: str, obs: dict[str, Any],
+              cockpit: dict[str, Any] | None, directives: str) -> Any:
+    """Pass directives only when the caller accepts them, so older ask hooks stay valid."""
+    import inspect
+
+    if directives:
+        try:
+            params = inspect.signature(caller).parameters
+        except (TypeError, ValueError):
+            params = {}
+        if "directives" in params or any(p.kind is inspect.Parameter.VAR_KEYWORD for p in params.values()):
+            return caller(secret, obs, cockpit, directives=directives)
+    return caller(secret, obs, cockpit)
 
 
 def _coerce_llm(picked: Any) -> tuple[str, dict[str, Any], str] | None:
@@ -1370,8 +1486,25 @@ def _coerce_llm(picked: Any) -> tuple[str, dict[str, Any], str] | None:
     return kind, args, why
 
 
+def llm_prompt_payload(obs: dict[str, Any], cockpit: dict[str, Any] | None, directives: str = "") -> dict[str, Any]:
+    """The user JSON for the cockpit LLM hook. Directives are goals, not a cheat sheet."""
+    legal = [row.get("kind") for row in (obs.get("legal_actions") or []) if row.get("legal")]
+    payload: dict[str, Any] = {
+        "sector": (obs.get("sector") or {}).get("id"),
+        "day": obs.get("day"),
+        "turns_remaining": obs.get("turns_remaining"),
+        "credits": obs.get("credits"),
+        "planet_landed": obs.get("planet_landed"),
+        "legal": legal,
+        "cockpit": bool(cockpit),
+    }
+    if directives:
+        payload["directives"] = directives
+    return payload
+
+
 def _llm_http_choose(key: str, obs: dict[str, Any], cockpit: dict[str, Any] | None,
-                     *, url: str | None = None) -> Any:
+                     *, url: str | None = None, directives: str = "") -> Any:
     """OpenAI-compatible chat completion. The URL comes from the environment or the caller.
 
     UNVERIFIED: no single public endpoint is specified for this hook, so the
@@ -1382,20 +1515,14 @@ def _llm_http_choose(key: str, obs: dict[str, Any], cockpit: dict[str, Any] | No
     endpoint = os.environ.get(LLM_URL_ENV, "").strip() if url is None else str(url).strip()
     if not endpoint or not key:
         return None
-    legal = [row.get("kind") for row in (obs.get("legal_actions") or []) if row.get("legal")]
-    prompt = {
-        "sector": (obs.get("sector") or {}).get("id"),
-        "day": obs.get("day"),
-        "turns_remaining": obs.get("turns_remaining"),
-        "credits": obs.get("credits"),
-        "planet_landed": obs.get("planet_landed"),
-        "legal": legal,
-        "cockpit": bool(cockpit),
-    }
+    prompt = llm_prompt_payload(obs, cockpit, directives)
+    system = "Reply with one JSON object {\"kind\", \"args\", \"why\"}. kind must be one of legal."
+    if directives:
+        system += " directives are operator goals. Follow them only with a legal kind."
     body = json.dumps({
         "model": os.environ.get(LLM_MODEL_ENV, "").strip() or "gpt-4o-mini",
         "messages": [
-            {"role": "system", "content": "Reply with one JSON object {\"kind\", \"args\", \"why\"}. kind must be one of legal."},
+            {"role": "system", "content": system},
             {"role": "user", "content": json.dumps(prompt)},
         ],
     }).encode()

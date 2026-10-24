@@ -61,6 +61,10 @@ def _parse(argv: list[str] | None) -> argparse.Namespace:
         "--level", default="hard",
         help="scripted difficulty: easy, normal, or hard (live providers ignore it)",
     )
+    parser.add_argument("--directives", default="",
+                        help="per-seat directive inbox; the seat id comes from the cockpit URL")
+    parser.add_argument("--stuck-after", type=int, default=6,
+                        help="acted turns with no progress before a recovery directive")
     parser.add_argument("--headed", action="store_true", help="show the browser window")
     parser.add_argument("--check-imports", action="store_true", help="exit 3 if tw2k was imported")
     return parser.parse_args(argv)
@@ -94,6 +98,8 @@ def main(argv: list[str] | None = None) -> int:
             model=str(args.model or ""),
             mock_script=str(args.mock_script or ""),
             level=str(args.level or "hard"),
+            directives=str(args.directives or ""),
+            stuck_after=int(args.stuck_after),
         )
     except Exception as exc:
         line = redact(f"{exc.__class__.__name__}: {exc}")

@@ -1,0 +1,8 @@
+{
+  "id": "scenario-attack",
+  "goal": "scenario test: attack Trader X in sector Y",
+  "target": "Trader X",
+  "sector": 42,
+  "priority": 20,
+  "expires_day": 5
+}
