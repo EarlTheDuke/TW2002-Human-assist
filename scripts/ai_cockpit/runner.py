@@ -616,6 +616,7 @@ def play(
     model: str = "",
     mock_script: str = "",
     level: str = "hard",
+    base_url: str = "",
 ) -> int:
     """Play until the seat is done. Returns 0 on a clean stop.
 
@@ -629,7 +630,7 @@ def play(
         return _play(
             url=url, provider_name=provider_name, run_dir=run_dir, max_turns=max_turns,
             min_interval=min_interval, stop_file=stop_file, headless=headless, model=model,
-            mock_script=mock_script, level=level,
+            mock_script=mock_script, level=level, base_url=base_url,
         )
     finally:
         _write_modules(run_dir)
@@ -647,6 +648,7 @@ def _play(
     model: str,
     mock_script: str,
     level: str,
+    base_url: str = "",
 ) -> int:
     install_process_cleanup()
     log_path = run_dir / "player.log"
@@ -662,15 +664,11 @@ def _play(
         return 1
 
     _write_log(log_path, "process started")
-    provider, fallback = resolve_provider(provider_name, model, mock_script, level)
+    provider, fallback = resolve_provider(
+        provider_name, model, mock_script, level, base_url=base_url,
+    )
     if fallback:
         _write_log(log_path, fallback)
-    gate = RateGate(min_interval)
-    manual_read = False
-    manual_excerpt = ""
-    history: list[str] = []
-    code = 0
-    idle = 0
     try:
         with sync_playwright() as playwright:
             browser, page = _open_when_ready(playwright, url, log_path, headless)
@@ -685,94 +683,133 @@ def _play(
                 # that failure while Chromium is still starting, and a check for
                 # "seat page open" then treated the dead seat as ready.
                 _write_log(log_path, "seat page is open " + redact(url))
-                step = 1
-                limit = max(0, int(max_turns))
-                while step <= limit:
-                    if stop_file is not None and stop_file.is_file():
-                        _write_log(log_path, f"stop file at step {step}")
-                        break
-                    gate.wait()
-                    if not _ready(page, url, log_path):
-                        code = 1
-                        break
-                    _wait_chip(page)
-                    chip = _chip(page)
-                    if chip == "GAME OVER":
-                        _capture(page, run_dir, step, "game over")
-                        _write_log(log_path, "game over")
-                        break
-                    if chip == "NO TURNS":
-                        _write_log(log_path, "no turns, waiting for the next day")
-                        _wait_until(page, ("YOUR MOVE", "GAME OVER"), 20_000)
-                        chip = _chip(page)
-                        if chip == "GAME OVER":
-                            _capture(page, run_dir, step, "game over")
-                            _write_log(log_path, "game over")
-                            break
-                        if chip == "NO TURNS":
-                            idle += 1
-                            if idle > 8:
-                                _write_log(log_path, "the day did not roll")
-                                code = 1
-                                break
-                            continue
-                        idle = 0
-                    if not seat_may_act(chip):
-                        # The server is not offering a turn. A click from here never lands.
-                        _write_log(log_path, "waiting for the turn")
-                        idle += 1
-                        if idle > 8:
-                            _write_log(log_path, "the turn did not arrive")
-                            code = 1
-                            break
-                        continue
-                    idle = 0
-                    screen = _screen(page)
-                    _write_screen(log_path, step, screen)
-                    view = _view(page, run_dir, step, manual_read, manual_excerpt, screen, history)
-                    try:
-                        action = provider.decide(view)
-                    except (ProviderError, ActionError) as exc:
-                        _record(actions_path, step, Action("wait", ms=0), note=redact(str(exc)))
-                        _write_log(log_path, redact(str(exc)))
-                        code = 1
-                        break
-                    usage = getattr(provider, "last_usage", None)
-                    if usage is not None:
-                        _write_log(log_path, usage.line())
-                    reason = reject_reason(
-                        action, list(view.labels),
-                        selectors=list(screen.get("selectors") or []),
-                        fields=list((screen.get("fields") or {}).keys()),
-                    )
-                    if reason and action.op == "click":
-                        _write_log(log_path, f"step {step} skipped: {reason}")
-                        action = Action("wait", ms=200)
-                    note = str(getattr(provider, "plan_note", "") or "")
-                    action = guard_outgoing(action)
-                    try:
-                        opened = _act(page, action)
-                        if opened is not None:
-                            manual_excerpt = _read_manual(opened, run_dir)
-                            manual_read = True
-                            note = "read the player manual"
-                            opened.close()
-                    except Exception as exc:
-                        note = redact(exc.__class__.__name__)
-                        _write_log(log_path, f"step {step} did not land: {note}")
-                        _settle(page, url, log_path)
-                    _record(actions_path, step, action, note=note)
-                    shown = action.label or action.key or action.selector or action.text
-                    _write_log(log_path, f"step {step} {action.op} {redact(shown)}")
-                    history.append(_memory_line(step, screen, action))
-                    del history[:-_HISTORY]
-                    step += 1
-                else:
-                    _write_log(log_path, "max turns reached")
+                return run_turns(
+                    page,
+                    url=url,
+                    provider=provider,
+                    run_dir=run_dir,
+                    max_turns=max_turns,
+                    min_interval=min_interval,
+                    stop_file=stop_file,
+                    log_path=log_path,
+                    actions_path=actions_path,
+                )
             finally:
                 browser.close()
     finally:
         kill_own_children()
+
+
+def run_turns(
+    page,
+    *,
+    url: str,
+    provider,
+    run_dir: Path,
+    max_turns: int,
+    min_interval: float,
+    stop_file: Path | None = None,
+    log_path: Path | None = None,
+    actions_path: Path | None = None,
+) -> int:
+    """One seated loop against an already open cockpit page.
+
+    The page is the eyes and hands. ``provider`` sees the screenshot, the
+    visible text, and the labels on that page. It does not receive a harness
+    observation. Tests pass a stand-in page; the browser runner passes Playwright.
+    """
+    log_path = log_path or (run_dir / "player.log")
+    actions_path = actions_path or (run_dir / "actions.jsonl")
+    gate = RateGate(min_interval)
+    manual_read = False
+    manual_excerpt = ""
+    history: list[str] = []
+    code = 0
+    idle = 0
+    step = 1
+    limit = max(0, int(max_turns))
+    while step <= limit:
+        if stop_file is not None and stop_file.is_file():
+            _write_log(log_path, f"stop file at step {step}")
+            break
+        gate.wait()
+        if not _ready(page, url, log_path):
+            code = 1
+            break
+        _wait_chip(page)
+        chip = _chip(page)
+        if chip == "GAME OVER":
+            _capture(page, run_dir, step, "game over")
+            _write_log(log_path, "game over")
+            break
+        if chip == "NO TURNS":
+            _write_log(log_path, "no turns, waiting for the next day")
+            _wait_until(page, ("YOUR MOVE", "GAME OVER"), 20_000)
+            chip = _chip(page)
+            if chip == "GAME OVER":
+                _capture(page, run_dir, step, "game over")
+                _write_log(log_path, "game over")
+                break
+            if chip == "NO TURNS":
+                idle += 1
+                if idle > 8:
+                    _write_log(log_path, "the day did not roll")
+                    code = 1
+                    break
+                continue
+            idle = 0
+        if not seat_may_act(chip):
+            # The server is not offering a turn. A click from here never lands.
+            _write_log(log_path, "waiting for the turn")
+            idle += 1
+            if idle > 8:
+                _write_log(log_path, "the turn did not arrive")
+                code = 1
+                break
+            continue
+        idle = 0
+        screen = _screen(page)
+        _write_screen(log_path, step, screen)
+        view = _view(page, run_dir, step, manual_read, manual_excerpt, screen, history)
+        try:
+            action = provider.decide(view)
+        except (ProviderError, ActionError) as exc:
+            _record(actions_path, step, Action("wait", ms=0), note=redact(str(exc)))
+            _write_log(log_path, redact(str(exc)))
+            code = 1
+            break
+        usage = getattr(provider, "last_usage", None)
+        if usage is not None:
+            _write_log(log_path, usage.line())
+        reason = reject_reason(
+            action, list(view.labels),
+            selectors=list(screen.get("selectors") or []),
+            fields=list((screen.get("fields") or {}).keys()),
+        )
+        if reason and action.op == "click":
+            _write_log(log_path, f"step {step} skipped: {reason}")
+            action = Action("wait", ms=200)
+        note = str(getattr(provider, "plan_note", "") or "")
+        action = guard_outgoing(action)
+        try:
+            opened = _act(page, action)
+            if opened is not None:
+                manual_excerpt = _read_manual(opened, run_dir)
+                manual_read = True
+                note = "read the player manual"
+                opened.close()
+        except Exception as exc:
+            note = redact(exc.__class__.__name__)
+            _write_log(log_path, f"step {step} did not land: {note}")
+            _settle(page, url, log_path)
+        _record(actions_path, step, action, note=note)
+        shown = action.label or action.key or action.selector or action.text
+        _write_log(log_path, f"step {step} {action.op} {redact(shown)}")
+        history.append(_memory_line(step, screen, action))
+        del history[:-_HISTORY]
+        step += 1
+    else:
+        _write_log(log_path, "max turns reached")
     return code
 
 

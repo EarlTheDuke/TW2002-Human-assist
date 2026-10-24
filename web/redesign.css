@@ -233,3 +233,14 @@ body.deck-tuned #layoutMenu{font-size:var(--cockpit-font)}
 .stat.score b#xp{font-size:1.25em}
 .stat.wins{outline:1px solid #cc0;outline-offset:1px}
 #place{margin-left:4px;white-space:nowrap}
+/* mode=cu on the redesign seat: the same page a person opens, with targets a
+   click can hit and a chip that reads as the turn. The word on the chip stays
+   YOUR MOVE so the seated player and a person are looking at one signal. */
+body.cu-seat #waitchip{min-height:48px;display:inline-flex;align-items:center;font-size:18px;font-weight:700;letter-spacing:.06em;padding:8px 14px;border-width:3px}
+body.cu-seat #warps{overflow:auto;max-height:46%}
+body.cu-seat #warps button,
+body.cu-seat #here button,
+body.cu-seat button.verb,
+body.cu-seat a.manual-link,
+body.cu-seat #connectBtn{min-height:48px;min-width:48px;padding:10px 14px;font-size:16px}
+body.cu-seat a.manual-link{display:inline-flex;align-items:center}

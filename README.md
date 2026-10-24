@@ -155,3 +155,19 @@ powershell -File scripts/run_hosted_grokbot.ps1 -Port 8031 -PublicHost "your-hos
 
 Bind address: script `-HostAddr` (default `0.0.0.0`) or env `TW2K_BIND_HOST`.  
 Full checklist: `docs/HOSTING_GROKBOT.md`. Requires `TW2K_HARNESS_ALLOW_REMOTE=1` (set by the script) plus per-seat bearer tokens.
+
+## AI cockpit player (screen only)
+
+This seat plays a normal cockpit link (`mode=cu` and the seat token) and uses the buttons on that page. It does not call `/harness/v1/.../observation` and it does not read the engine. That is separate from TinyBox lobby brains, which decide from a server-side observation, and from `scripts/grokbot_seat_client.py`, which posts harness actions.
+
+No model key is required. `scripted` plays offline. `--provider custom` is the OpenAI-compatible slot for a base URL, key, and model when one is available. Keys stay in the environment and out of the repo.
+
+```bash
+python3 scripts/ai_cockpit_player.py \
+  --url 'http://127.0.0.1:8050/bot?seat=P2&mode=cu&token=...&layout=redesign' \
+  --provider scripted \
+  --max-turns 40 \
+  --run-dir runs/ai-cockpit
+```
+
+Human-parity rules, environment variables, and the custom endpoint: `docs/AI_COCKPIT_CU_PLAYER.md`.
