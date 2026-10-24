@@ -247,6 +247,7 @@ class Lobby:
                     self.ai_memory.hold_tokens(
                         gid, {seat: tokens[seat] for seat in ai_seats},
                         brain=str(g["settings"].get("ai_brain") or "heuristic"),
+                        models=[str(m) for m in (g["settings"].get("ai_models") or [])],
                     )
                 if cock_seats:
                     settings = g["settings"]
@@ -314,6 +315,7 @@ class Lobby:
         self.ai_tasks[gid] = asyncio.create_task(self._run_ai(
             gid, f"http://127.0.0.1:{w.port}", dict(row.tokens),
             brain=row.brain, key=row.key, url=row.url, days=days, idle_s=idle_s,
+            models=list(row.models),
         ))
 
     def launch_browser_seat(self, gid: str, seat: str, token: str, *, run_dir: Path,
@@ -513,10 +515,14 @@ class Lobby:
         return RedirectResponse("/", status_code=303)
 
     async def _run_ai(self, gid: str, base: str, tokens: dict[str, str], *, brain: str, key: str,
-                      url: str, days: int, idle_s: float) -> None:
+                      url: str, days: int, idle_s: float, models: list[str] | None = None) -> None:
         try:
             async with httpx.AsyncClient(base_url=base, timeout=60.0) as client:
-                await drive_seats(client, tokens, brain=brain, key=key, url=url, days=days, idle_s=idle_s)
+                if brain == "tinybox":
+                    await drive_seats(client, tokens, brain=brain, key=key, url=url, days=days, idle_s=idle_s,
+                                      models=models, gid=gid)
+                else:
+                    await drive_seats(client, tokens, brain=brain, key=key, url=url, days=days, idle_s=idle_s)
         except asyncio.CancelledError:
             raise
         except Exception:
@@ -890,6 +896,10 @@ class Lobby:
         if ai_n and settings.get("ai_brain") == "llm":
             self.ai_memory.remember(gid, key=secret, url=endpoint, brain="llm")
             log.info("ai seat game=%s brain=llm seats=%s %s", gid, ai_n, mask_key(secret))
+        elif ai_n and settings.get("ai_brain") == "tinybox":
+            models = [str(m) for m in (settings.get("ai_models") or [])]
+            self.ai_memory.remember(gid, key="", url="", brain="tinybox", models=models)
+            log.info("ai seat game=%s brain=tinybox seats=%s models=%s", gid, ai_n, ",".join(models))
         elif ai_n:
             self.ai_memory.remember(gid, key="", url="", brain="heuristic")
             log.info("ai seat game=%s brain=heuristic seats=%s", gid, ai_n)
