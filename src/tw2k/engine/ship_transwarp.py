@@ -211,6 +211,9 @@ def locked_choices(universe: Universe, pid: str) -> list[dict[str, int]]:
         hops = hop_count(universe, here, sid)
         if hops is None or hops <= 0:
             continue
+        cap = K.chart_transwarp_hops(player.ship.ship_class.value)
+        if cap is not None and hops > cap:
+            continue
         need = ore_cost(hops) if towee is None else tow_ore_cost(hops)
         if ore < need:
             continue
@@ -350,6 +353,9 @@ def handle_ship_transwarp(universe: Universe, pid: str, action: Action) -> Actio
     hops = hop_count(universe, here, dest_id)
     if hops is None or hops <= 0:
         return ActionResult(ok=False, error="no warp path to that sector")
+    cap = K.chart_transwarp_hops(player.ship.ship_class.value)
+    if cap is not None and hops > int(cap):
+        return ActionResult(ok=False, error=f"beyond this hull's TransWarp range ({hops} hops > {cap})")
     towee = _tow_towee(universe, pid)
     need = ore_cost(hops) if towee is None else tow_ore_cost(hops)
     if fuel_ore(player.ship) < need:

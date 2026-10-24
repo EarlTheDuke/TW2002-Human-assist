@@ -1414,6 +1414,7 @@ _SWITCH_PLAIN: dict[str, str] = {
     "PORT_BUY_PRICE_ANCHOR_MODE": "A hungry port's buy quote uses the live price anchors.",
     "BUST_CLEAR_MODE": "Police can clear bust records every day, or every 7 days, when the game sets that interval.",
     "SHIP_CHART_CAP_MODE": "Ether probes, and the other chart items, stop at the printed cap.",
+    "SHIP_CAPACITY_MODE": "A hull stops at its chart of mines, genesis torpedoes, and photons, and a TransWarp jump stops at that hull's printed hop range.",
     "CORP_PLANET_DISBAND_MODE": "When a corporation ends, planets in the C.E.O.'s sector stay with the C.E.O. The rest go unclaimed.",
     "PHOTON_FOLLOW_DAMP_MODE": "A ship that enters a sector while a photon wave is up also has the planet quasar damped.",
     "DEATH_DELAY_MODE": "Death Delay is yes or no. Past the day's death allowance, you wait until the next day.",
@@ -2074,7 +2075,7 @@ _COVERS: dict[str, tuple[str, ...]] = {
     "hardware": (
         "buy_equip", "scan", "probe", "query_limpets", "remove_limpet", "launch_beacon",
         "HARDWARE_PRICE_MODE", "DETECT_GEAR_MODE", "PLANET_SCANNER_MODE", "SCANNER_FOG_MODE",
-        "SHIP_CHART_CAP_MODE", "PROBE_SHOOTDOWN_MODE",
+        "SHIP_CHART_CAP_MODE", "SHIP_CAPACITY_MODE", "PROBE_SHOOTDOWN_MODE",
     ),
     "stardock-services": (
         "ship_rename", "apply_commission", "post_reward", "claim_reward",

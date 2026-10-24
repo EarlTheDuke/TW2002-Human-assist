@@ -22,6 +22,10 @@ def test_off_keeps_the_old_launch(monkeypatch) -> None:
     assert player.alignment == 0
     assert set(weights) != {"M", "U"}
     assert K.genesis_torpedo_cost() == 25_000
+    # GAP 3.15: the chart is SHIP_CAPACITY_MODE. Off, genesis stays unlimited.
+    assert K.equip_room("merchant_freighter", "genesis", 0) is None
+    assert K.equip_room("scout_marauder", "genesis", 0) is None
+    monkeypatch.setattr(K, "SHIP_CAPACITY_MODE", "live")
     assert K.equip_room("merchant_freighter", "genesis", 0) == 2
     assert K.equip_room("scout_marauder", "genesis", 0) == 0
 
@@ -32,6 +36,10 @@ def test_on_uses_the_measured_launch(monkeypatch) -> None:
     assert player.alignment == -10
     assert set(weights) == {"M", "U"}
     assert K.genesis_torpedo_cost() == 20_000
+    # The freighter's one-torpedo rule is PLANET_CLASS_MODE, and it wins over the chart.
+    assert K.equip_room("merchant_freighter", "genesis", 0) == 1
+    assert K.equip_room("scout_marauder", "genesis", 0) is None
+    monkeypatch.setattr(K, "SHIP_CAPACITY_MODE", "live")
     assert K.equip_room("merchant_freighter", "genesis", 0) == 1
     assert K.equip_room("scout_marauder", "genesis", 0) == 0
 

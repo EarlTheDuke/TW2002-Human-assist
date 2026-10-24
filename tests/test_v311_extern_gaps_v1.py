@@ -192,31 +192,40 @@ def test_profile_caps_probes_at_25(monkeypatch) -> None:
     assert _buy(universe, "ether_probes", 25).ok
 
 
-def test_chart_caps_for_mines_genesis_photons_and_cloaks_stay_on(monkeypatch) -> None:
-    """These caps already ship with the tw2002 roster. The probe switch does not gate them."""
+def test_chart_caps_for_mines_genesis_photons_follow_ship_capacity(monkeypatch) -> None:
+    """SHIP_CHART_CAP_MODE does not gate mines, genesis, or photons. SHIP_CAPACITY_MODE does.
+    Cloaks stay capped either way."""
     for mode in ("legacy", "live"):
         monkeypatch.setattr(K, "SHIP_CHART_CAP_MODE", mode)
+        monkeypatch.setattr(K, "SHIP_CAPACITY_MODE", "legacy")
         universe = _world()
         merchant = _seat(universe)
-        assert _buy(universe, "armid_mines", 50).ok
-        assert _buy(universe, "limpet_mines", 1).error == "exceeds ship mine capacity"
-        assert _buy(universe, "genesis", 5).ok
-        assert _buy(universe, "genesis", 1).error == "exceeds ship genesis capacity"
+        assert _buy(universe, "armid_mines", 51).ok
+        assert _buy(universe, "genesis", 6).ok
         assert _buy(universe, "cloak", 5).ok
         assert _buy(universe, "cloak", 1).error == "exceeds ship cloak capacity"
-        assert merchant.ship.genesis == 5
+        assert merchant.ship.genesis == 6
         assert int(merchant.ship.cloaks) == 5
 
-        frigate = _world()
-        seat = _seat(frigate, ship=Ship(ship_class=ShipClass.MISSILE_FRIGATE))
-        assert _buy(frigate, "photon_missiles", 10).ok
-        assert _buy(frigate, "photon_missiles", 1).error == "exceeds ship photon capacity"
-        assert seat.ship.photon_missiles == 10
+    monkeypatch.setattr(K, "SHIP_CAPACITY_MODE", "live")
+    universe = _world()
+    merchant = _seat(universe)
+    assert _buy(universe, "armid_mines", 50).ok
+    assert _buy(universe, "limpet_mines", 1).error == "exceeds ship mine capacity"
+    assert _buy(universe, "genesis", 5).ok
+    assert _buy(universe, "genesis", 1).error == "exceeds ship genesis capacity"
+    assert merchant.ship.genesis == 5
 
-        scout = _world()
-        _seat(scout, ship=Ship(ship_class=ShipClass.SCOUT_MARAUDER))
-        assert _buy(scout, "genesis", 1).error == "exceeds ship genesis capacity"
-        assert _buy(scout, "armid_mines", 1).error == "exceeds ship mine capacity"
+    frigate = _world()
+    seat = _seat(frigate, ship=Ship(ship_class=ShipClass.MISSILE_FRIGATE))
+    assert _buy(frigate, "photon_missiles", 10).ok
+    assert _buy(frigate, "photon_missiles", 1).error == "exceeds ship photon capacity"
+    assert seat.ship.photon_missiles == 10
+
+    scout = _world()
+    _seat(scout, ship=Ship(ship_class=ShipClass.SCOUT_MARAUDER))
+    assert _buy(scout, "genesis", 1).error == "exceeds ship genesis capacity"
+    assert _buy(scout, "armid_mines", 1).error == "exceeds ship mine capacity"
 
 
 def _leave_with_planets(universe):

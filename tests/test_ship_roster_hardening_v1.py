@@ -149,7 +149,8 @@ def test_every_hull_warp_spends_its_chart_turns() -> None:
         assert _warp_once(universe, player) == row[8], key
 
 
-def test_mine_cap_is_one_shared_total() -> None:
+def test_mine_cap_is_one_shared_total(monkeypatch) -> None:
+    monkeypatch.setattr(K, "SHIP_CAPACITY_MODE", "live")
     universe = _universe()
     ship = Ship(holds=20, fighters=0)
     player = _seat(universe, credits=500_000, ship=ship)

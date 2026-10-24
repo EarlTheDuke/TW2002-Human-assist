@@ -211,6 +211,15 @@ def _cargo_snapshot(player: Player) -> tuple:
 
 
 def _fill_to_cap(universe, player: Player, spec: dict) -> None:
+    previous = K.SHIP_CAPACITY_MODE
+    K.SHIP_CAPACITY_MODE = "live"
+    try:
+        _fill_to_cap_live(universe, player, spec)
+    finally:
+        K.SHIP_CAPACITY_MODE = previous
+
+
+def _fill_to_cap_live(universe, player: Player, spec: dict) -> None:
     player.credits = 40_000_000
     hold_room = int(spec["max_holds"]) - int(player.ship.holds)
     if hold_room > 0:

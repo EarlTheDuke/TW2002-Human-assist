@@ -1601,16 +1601,23 @@ def _ship_dict(ship) -> dict[str, Any]:
     if K.ship_tw_on():
         from .ship_transwarp import drive_fitted, fuel_ore
         ore = fuel_ore(ship)
+        hops_now = ore // max(1, int(K.SHIP_TW_ORE_PER_HOP))
+        chart_hops = K.chart_transwarp_hops(ship.ship_class.value)
+        if chart_hops is not None:
+            hops_now = min(hops_now, int(chart_hops))
         ship_view["transwarp"] = {
             "fitted": (ship.transwarp_drive if K.tow_on() else "type1") if drive_fitted(ship) else None,
             "ore_per_hop": int(K.SHIP_TW_ORE_PER_HOP),
-            "max_hops_now": ore // max(1, int(K.SHIP_TW_ORE_PER_HOP)),
+            "max_hops_now": hops_now,
             "fed_lock": False,
         }
         if K.tow_on() and getattr(ship, "transwarp_drive", None) == "type2":  # SHIP_TOW.md tt21
             per = max(1, int(K.SHIP_TW_TOW_ORE_PER_HOP))
+            tow_hops = ore // per
+            if chart_hops is not None:
+                tow_hops = min(tow_hops, int(chart_hops))
             ship_view["transwarp"].update({"tow_capable": True, "tow_ore_per_hop": per,
-                                           "max_tow_hops_now": ore // per})
+                                           "max_tow_hops_now": tow_hops})
     if not K.hardware_tw2002():  # HARDWARE_MODE legacy keeps the pre-ship-hardware ship view
         for key in ("cloaks", "mine_disruptors", "cloaked",
                     "corbomite", "marker_beacons", "psychic_probe", "atomic_detonators"):
