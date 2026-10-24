@@ -107,15 +107,15 @@ def main() -> int:
     _move(universe, p1, 1)
     before = p2.credits
     _do(universe, "P2", ActionKind.GRIMY_ASK, topic="trader", target="P1")
-    if p2.credits != before - int(K.GRIMY_TRACE_COST):
-        raise SystemExit("FAIL the trace did not cost 3,000")
+    if p2.credits != before - int(K.grimy_trace_cost()):
+        raise SystemExit(f"FAIL the trace did not cost {int(K.grimy_trace_cost())}")
     if p2.tavern_last_trace["port_sector"] != port_y:
         raise SystemExit(f"FAIL trace returned {p2.tavern_last_trace}")
 
     word = password_for(universe.config.seed)
     _do(universe, "P2", ActionKind.GRIMY_ASK, topic="underground")
-    if p2.credits != before - int(K.GRIMY_TRACE_COST) - int(K.GRIMY_PASSWORD_COST):
-        raise SystemExit("FAIL the password did not cost 2,000")
+    if p2.credits != before - int(K.grimy_trace_cost()) - int(K.grimy_password_cost()):
+        raise SystemExit(f"FAIL the password did not cost {int(K.grimy_password_cost())}")
     _do(universe, "P2", ActionKind.UNDERGROUND_ENTER, password=word.lower())
     p4.ug_password_known = True
     _move(universe, p4, 1)

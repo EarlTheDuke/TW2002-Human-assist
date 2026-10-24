@@ -133,6 +133,7 @@ HELPERS = (
     "fed_tow_limit_live",
     "corp_breakin_align_live",
     "photon_cloak_settings_live",
+    "grimy_tips_live",
 )
 
 
@@ -140,7 +141,7 @@ def test_profile_stays_off_and_helpers_stay_false() -> None:
     assert K.TW2002_LIVE_PROFILE == "legacy"
     assert K.tw2002_live_profile() is False
     names = HELPERS
-    assert len(names) == 131
+    assert len(names) == 132
     for name in names:
         assert getattr(K, name)() is False, name
 

@@ -290,7 +290,7 @@ def _trace(universe: Universe, player: Player, target_id: str) -> ActionResult:
         player.tavern_last_trace = {"day": int(universe.day), "target": target.id, "port_sector": None}
         _actor(universe, player, EventKind.GRIMY_TRACE, "Grimy knows nothing", {"target": target.id, "port_sector": None})
         return ActionResult(ok=True, turns_spent=0)
-    short = _pay(player, int(K.GRIMY_TRACE_COST))
+    short = _pay(player, int(K.grimy_trace_cost()))
     if short:
         return ActionResult(ok=False, error=short)
     if K.GRIMY_TRACE_PICK == "latest":
@@ -318,12 +318,23 @@ def handle_grimy_ask(universe: Universe, pid: str, action: Action) -> ActionResu
     if topic in ("underground", "mafia"):
         if player.ug_password_known:
             return ActionResult(ok=False, error="you already know it")
-        short = _pay(player, int(K.GRIMY_PASSWORD_COST))
+        short = _pay(player, int(K.grimy_password_cost()))
         if short:
             return ActionResult(ok=False, error=short)
         player.ug_password_known = True
         word = password_for(int(universe.config.seed))
         _actor(universe, player, EventKind.GRIMY_PASSWORD, "Grimy sold you the password", {"password": word})
+        return ActionResult(ok=True, turns_spent=0)
+    if topic == "stardock" and K.grimy_tips_live():
+        cost = int(K.GRIMY_STARDOCK_TIP_COST)
+        short = _pay(player, cost)
+        if short:
+            return ActionResult(ok=False, error=short)
+        line = str(K.GRIMY_STARDOCK_TIP_LINE)
+        _actor(
+            universe, player, EventKind.GRIMY_ASK, line,
+            {"topic": "stardock", "cost": cost, "answer": line},
+        )
         return ActionResult(ok=True, turns_spent=0)
     if topic == "tricron":
         _actor(universe, player, EventKind.GRIMY_ASK, "Grimy says 2-3-1", {"topic": "tricron", "answer": "2-3-1"})
@@ -606,13 +617,15 @@ def observation(universe: Universe, player: Player) -> dict[str, Any] | None:
             "announce": int(K.TAVERN_ANNOUNCE_COST),
             "drink": int(K.tavern_drink_cost()),
             "food": int(K.tavern_food_cost()),
-            "trace": int(K.GRIMY_TRACE_COST),
-            "password": int(K.GRIMY_PASSWORD_COST),
+            "trace": int(K.grimy_trace_cost()),
+            "password": int(K.grimy_password_cost()),
         },
         "curse_used_today": int(player.grimy_curse_day) == int(universe.day),
         "password_known": bool(player.ug_password_known),
         "last_trace": trace,
     }
+    if K.grimy_tips_live():
+        block["prices"]["stardock"] = int(K.GRIMY_STARDOCK_TIP_COST)
     if player.ug_password_known:
         block["ug_password"] = password_for(int(universe.config.seed))
     if _entered(player, int(universe.day)):
@@ -669,12 +682,20 @@ def legal_specs(universe: Universe, player_id: str) -> list[tuple[str, bool, str
          "cost_by": {"drink": drink_cost, "food": food_cost}},
     )
     topics = list(K.GRIMY_TOPICS) + list(_LORE)
+    cost_by = {
+        "trader": int(K.grimy_trace_cost()),
+        "underground": int(K.grimy_password_cost()),
+        "mafia": int(K.grimy_password_cost()),
+    }
+    if K.grimy_tips_live():
+        topics.append("stardock")
+        cost_by["stardock"] = int(K.GRIMY_STARDOCK_TIP_COST)
     add(
         "grimy_ask", True, "",
         {
             "topic": {"type": "str", "required": True, "choices": topics},
             "target": {"type": "str", "required": False, "choices": _traders(universe, player_id, allow_self=False)},
-            "cost_by": {"trader": int(K.GRIMY_TRACE_COST), "underground": int(K.GRIMY_PASSWORD_COST), "mafia": int(K.GRIMY_PASSWORD_COST)},
+            "cost_by": cost_by,
         },
     )
     cursed = int(player.grimy_curse_day) == day

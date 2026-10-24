@@ -501,9 +501,9 @@ def run_match(seats: list[str], *, seed: int, days: int, universe_size: int = 10
         tavern_uses[actor] = tavern_uses.get(actor, 0) + 1
         payload = getattr(ev, "payload", None) or {}
         if name == "grimy_trace" and payload.get("port_sector") is not None:
-            tavern_spend[actor] = tavern_spend.get(actor, 0) + int(K.GRIMY_TRACE_COST)
+            tavern_spend[actor] = tavern_spend.get(actor, 0) + int(K.grimy_trace_cost())
         elif name == "grimy_password":
-            tavern_spend[actor] = tavern_spend.get(actor, 0) + int(K.GRIMY_PASSWORD_COST)
+            tavern_spend[actor] = tavern_spend.get(actor, 0) + int(K.grimy_password_cost())
         elif name == "tavern_order":
             item = str(payload.get("item") or "drink")
             tavern_spend[actor] = tavern_spend.get(actor, 0) + int(
