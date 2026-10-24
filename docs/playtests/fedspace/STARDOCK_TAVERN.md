@@ -30,7 +30,7 @@ Sources under `C:\Users\sugar\tw2002_reference\`. Target TWGS 3.11; MBBS is the 
 | tv16 | Hit contracts | Post a bounty. −1 alignment per 250 credits (−4 per 1,000). | CONFIRMED BIB 1431-1437, IAGO 552-559, MBBS 1723-1763. Min amount UNVERIFIED. | `underground_contract {target, amount}`. Needs entry today. Any non-eliminated trader, including yourself (`UG_CONTRACT_SELF = True`). Never Ferrengi or alien. `UG_CONTRACT_MIN = 1000` from credits on hand. Alignment drops by `amount // UG_CREDITS_PER_ALIGN` with `UG_CREDITS_PER_ALIGN = 250`. Stored on `universe.tavern.ug_contracts`, separate from Police rewards. 0 turns. | `test_tv16_contract` |
 | tv17 | Earn and claim | Collect contracts when that trader's ship is destroyed. | CONFIRMED IAGO 556-558. Payout trigger UNVERIFIED (same reading as Police f19). | `UG_CONTRACT_PAYOUT_ON = "ship_destroyed"`: another player's kill, not a pod, moves every open contract on the victim to the killer's pending pool. Pod, Ferrengi, alien, mine, Fed, or murder pays nobody. `underground_claim` pays the whole pending pool to credits on hand, and needs entry today. A killer above 199 cannot enter, so cannot claim. Eliminated target: `UG_CONTRACT_ON_ELIMINATION = "sink"`. Conservation: posted = open + pending + claimed + forfeited. | `test_tv17_earn_claim` |
 | tv18 | What Underground shows | — | UNVERIFIED. | `UG_SHOW_CONTRACTS = "totals"`. Inside: each open target's name and total, never the posters, plus own pending. Outside: nothing. | `test_tv18_show` |
-| tv19 | Name change | Exists. Price by experience, formula unknown. | CONFIRMED it exists (REV 664-666). NOT BUILT. | `UG_NAME_CHANGE = False` (D5). | `test_tv19_name_change_unbuilt` |
+| tv19 | Name change | A total unknown is offered a new identity, then asked if it is a deal. Decline pays nothing. | CONFIRMED the offer at experience 1 for 100 credits (`docs/playtests/twgs-live/name-change.txt`, NOTE 129). A higher experience was not measured: UNVERIFIED/DIFFERENT (`STARDOCK_EXTRA.md` records 247 with no experience). | `UG_NAME_MODE` stays legacy until v311 or `V311_PROFILE`. `UG_NAME_UNKNOWN_COST` 100 for experience at most 1. `UG_NAME_CHANGE` stays false. | `test_ug_name_unknown_offer_decline_and_accept` |
 | tv20 | Tri-Cron | Exists. Cost and a round are not documented. | CONFIRMED it exists (EIST). NOT BUILT. | `TAVERN_TRICRON = "off"` (D4). | `test_tv20_tricron_unbuilt` |
 | tv21 | Other buildings | Singles Bar, Library, Cineplex, illegal goods. | CONFIRMED they are named. NOT BUILT. | Listed below. | `test_tv21_other_unbuilt` |
 | tv22 | Observation | — | OURS shape. | `tavern` block only in StarDock under tw2002: announcement, conversation (last `TAVERN_CONVERSATION_SHOW = 10`), graffiti (last `TAVERN_WALL_SHOW = 5`, no author), prices, `curse_used_today`, `password_known`, own `ug_password` once bought, own `last_trace` today, underground sub-block only when entered today. Quoted as other traders' text. | `test_tv22_observation` |
@@ -64,15 +64,15 @@ Sources under `C:\Users\sugar\tw2002_reference\`. Target TWGS 3.11; MBBS is the 
 
 ## OURS constants
 
-`UG_PASSWORD_SOURCE` seeded, `UG_VERB_VISIBILITY` known, `TAVERN_CONVERSATION_KEEP` 20, `TAVERN_CONVERSATION_SHOW` 10, `TAVERN_WALL_KEEP` 10, `TAVERN_WALL_SHOW` 5, `UG_NAME_CHANGE` False, `TAVERN_TRICRON` off, `BOT_TAVERN_POLICY` off.
+`UG_PASSWORD_SOURCE` seeded, `UG_VERB_VISIBILITY` known, `TAVERN_CONVERSATION_KEEP` 20, `TAVERN_CONVERSATION_SHOW` 10, `TAVERN_WALL_KEEP` 10, `TAVERN_WALL_SHOW` 5, `UG_NAME_CHANGE` False (the live offer is `UG_NAME_MODE`), `TAVERN_TRICRON` off, `BOT_TAVERN_POLICY` off.
 
 ## NOT BUILT
 
-Tri-Cron. Underground name change. Singles Bar. Library. Cineplex. Illegal goods. Computer-menu Daily Log announcement. Shipyard re-registration. Live real-time bar chat (merged into the conversation). Prices that grow with the game date. Code-bot use of the Tavern.
+Tri-Cron. Singles Bar. Library. Cineplex. Illegal goods. Computer-menu Daily Log announcement. Shipyard re-registration. Live real-time bar chat (merged into the conversation). Prices that grow with the game date. Code-bot use of the Tavern. A name-change price above experience 1.
 
 ## Decisions used
 
-D1 seeded password. D2 alignment ceiling 199. D3 ladder 4/5/6. D4 Tri-Cron unbuilt. D5 name change unbuilt. D6 trace 3000, password 2000, drink and food 20, curse 1 turn. D7 code bots off. D8 free-text boards on, shown as quoted data.
+D1 seeded password. D2 alignment ceiling 199. D3 ladder 4/5/6. D4 Tri-Cron unbuilt. D5 the measured name-change offer is behind `UG_NAME_MODE`; `UG_NAME_CHANGE` stays false. D6 trace 3000, password 2000, drink and food 20, curse 1 turn. D7 code bots off. D8 free-text boards on, shown as quoted data.
 
 ## Planted bugs
 

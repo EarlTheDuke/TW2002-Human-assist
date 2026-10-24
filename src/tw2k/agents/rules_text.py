@@ -110,6 +110,12 @@ def tavern_block() -> str:
         "(banked credits are safe), the "
         f"{int(K.UG_EXP_HALVE_AT)}th halves your experience, the {int(K.UG_MURDER_AT)}th gets you murdered.\n"
     )
+    if K.ug_name_live():
+        text += (
+            f"A total unknown (experience at most {int(K.UG_NAME_UNKNOWN_MAX_EXPERIENCE)}) "
+            f"can buy a new name for {int(K.UG_NAME_UNKNOWN_COST)} credits. "
+            "Decline and the credits stay. A higher experience is not priced.\n"
+        )
     if K.stardock_extra_on():
         text += (
             f"Tri-Cron is {int(K.TRICRON_ROUNDS)} rounds of three crons placed 2-3-1. "

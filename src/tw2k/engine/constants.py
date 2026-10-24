@@ -4929,7 +4929,7 @@ V311_PROFILE_HELPERS: dict[str, tuple[str, str]] = {
     ),
     "ug_name_live": (
         "UG_NAME_MODE",
-        "NOTE 162 GAP 11.7: the Underground sells a new name to a total unknown for 100 credits",
+        "NOTE 129 name-change.txt: a total unknown is offered a new identity for 100 credits",
     ),
     "fed_hunt_live": (
         "FED_HUNT_MODE",
@@ -6061,16 +6061,36 @@ def corp_cargo_treasury_live() -> bool:
 
 # NOTE 162 GAP 11.7, row 184. Iago: alignment 200 or lower can change a name
 # and post bounties. The door, the password, and the bounties are already in.
-# NOTE 129, docs/playtests/twgs-live/name-change.txt: at 1 experience the screen
-# said "Seems you're a total unknown, this'll be cheap" and "We can give you a
-# new identity for 100 credits." The deal was declined. A second experience
-# point was not measured, so a higher trader is refused. Experience 0 was not
-# on that screen; the cap stays "at most 1" and that case is UNVERIFIED.
+# NOTE 129, docs/playtests/twgs-live/name-change.txt: experience 1, alignment 0.
+# The screen said "Seems you're a total unknown, this'll be cheap" and
+# "We can give you a new identity for 100 credits.", then "Well, is it a deal?"
+# The deal was declined, so nothing was paid. A second experience point was not
+# measured, so a higher trader is refused. Experience 0 was not on that screen;
+# the cap stays "at most 1" and that case is UNVERIFIED. STARDOCK_EXTRA.md records
+# 247 with no experience; that figure is UNVERIFIED / DIFFERENT and is not used.
 # UG_NAME_CHANGE stays false. Stored default stays legacy. "1" does not turn this on.
+# TW2002_LIVE_PROFILE does not turn this on. V311_PROFILE "v311" does.
 UG_NAME_MODE = "legacy"  # "legacy" | "v311"
 UG_NAME_UNKNOWN_COST = 100
 UG_NAME_UNKNOWN_MAX_EXPERIENCE = 1
 UG_NAME_MAX = 30  # UNVERIFIED (the live screen did not print a length)
+UG_NAME_UNKNOWN_INTRO = (
+    "You move over to take a seat next to Kal Durak's desk as\n"
+    "the alien searches his computer for info about you."
+)
+UG_NAME_UNKNOWN_CHEAP = "Seems you're a total unknown, this'll be cheap."
+UG_NAME_UNKNOWN_DEAL = "Well, is it a deal?"
+
+
+def ug_name_unknown_lines(cost: int | None = None) -> tuple[str, str, str, str]:
+    """The NOTE 129 offer. The price slot is the measured 100, not a formula."""
+    price = int(UG_NAME_UNKNOWN_COST if cost is None else cost)
+    return (
+        UG_NAME_UNKNOWN_INTRO,
+        f'"{UG_NAME_UNKNOWN_CHEAP}"',
+        f'"We can give you a new identity for {price} credits."',
+        f'"{UG_NAME_UNKNOWN_DEAL}"',
+    )
 
 
 def ug_name_live() -> bool:
