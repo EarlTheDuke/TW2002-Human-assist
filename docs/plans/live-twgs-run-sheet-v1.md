@@ -371,7 +371,7 @@ Keys: buy one Tri-Cron round.
 
 Read: the cost, and what one round does.
 
-Settles: a Tri-Cron cost, only if the screen prints one. `TAVERN_TRICRON` is off. The tip is free and the game is not built.
+Settled by NOTE 129 (`tricron.txt`). Ante 100, 10 rounds, payback 2 to 1. `TRICRON_MODE` stays legacy. The tip is free.
 
 ### Illegal goods
 

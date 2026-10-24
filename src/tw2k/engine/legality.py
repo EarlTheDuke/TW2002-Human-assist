@@ -255,7 +255,7 @@ def legal_actions(universe: Universe, player_id: str) -> list[LegalAction]:
                     ActionKind.TAVERN_ORDER, ActionKind.GRIMY_ASK, ActionKind.GRIMY_CURSE,
                     ActionKind.UNDERGROUND_ENTER, ActionKind.UNDERGROUND_CONTRACT, ActionKind.UNDERGROUND_CLAIM,
                 ))
-                and ((K.tavern_on() and K.stardock_extra_on()) or k != ActionKind.TRICRON)
+                and ((K.tavern_on() and K.tricron_live()) or k != ActionKind.TRICRON)
                 and (K.stardock_extra_on() or k != ActionKind.CINEPLEX)
                 and (K.ship_rename_live() or k != ActionKind.SHIP_RENAME)]
 
