@@ -7,13 +7,17 @@ in a save, a response, or a log line.
 
 from __future__ import annotations
 
+import logging
 import time
 from collections import deque
 
 from ..engine import constants as K
 
+log = logging.getLogger("tw2k.lobby.ai")
+
 # Public sentence. The cockpit already shows broadcast summaries. No key in it.
 FALLBACK_LINE = "Playing the heuristic brain. No key is on the server."
+TINYBOX_FALLBACK_LINE = "TinyBox model unavailable. Playing the heuristic brain."
 
 
 def mask_key(key: str) -> str:
@@ -31,6 +35,7 @@ class AiRow:
         self.brain = brain
         self.key = ""
         self.url = ""
+        self.models: list[str] = []
         self.tokens: dict[str, str] = {}
 
     def __repr__(self) -> str:
@@ -43,7 +48,7 @@ class AiMemory:
     def __init__(self) -> None:
         self._rows: dict[str, AiRow] = {}
 
-    def remember(self, gid: str, *, key: str, url: str, brain: str) -> None:
+    def remember(self, gid: str, *, key: str, url: str, brain: str, models: list[str] | None = None) -> None:
         row = self._rows.get(gid)
         if row is None:
             row = AiRow(brain)
@@ -51,13 +56,18 @@ class AiMemory:
         row.brain = brain
         row.key = key
         row.url = url
+        if models is not None:
+            row.models = list(models)
 
-    def hold_tokens(self, gid: str, tokens: dict[str, str], *, brain: str) -> None:
+    def hold_tokens(self, gid: str, tokens: dict[str, str], *, brain: str,
+                    models: list[str] | None = None) -> None:
         row = self._rows.get(gid)
         if row is None:
             row = AiRow(brain)
             self._rows[gid] = row
         row.brain = brain
+        if models is not None:
+            row.models = list(models)
         row.tokens = dict(tokens)
 
     def row(self, gid: str) -> AiRow | None:
@@ -92,6 +102,11 @@ class LlmBudget:
         self.stamps: deque[float] = deque()
         self.lasting_fallback = False
 
+    def _fall(self, reason: str) -> None:
+        if not self.lasting_fallback:
+            log.warning("ai seat brain=llm FALLBACK to heuristic: %s", reason)
+        self.lasting_fallback = True
+
     def __call__(self, key: str, obs: dict, cockpit: dict | None):
         if self.lasting_fallback:
             return None
@@ -99,7 +114,7 @@ class LlmBudget:
         while self.stamps and now - self.stamps[0] >= 60:
             self.stamps.popleft()
         if self.calls >= self.cap:
-            self.lasting_fallback = True
+            self._fall(f"call cap {self.cap} reached")
             return None
         if len(self.stamps) >= self.per_minute:
             return None
@@ -107,11 +122,11 @@ class LlmBudget:
             from ..agents import cockpit_seat as seat
 
             picked = seat._llm_http_choose(key, obs, cockpit, url=self.url)
-        except Exception:
-            self.lasting_fallback = True
+        except Exception as exc:
+            self._fall(f"endpoint error {type(exc).__name__}")
             return None
         if picked is None:
-            self.lasting_fallback = True
+            self._fall("endpoint gave no usable reply")
             return None
         self.calls += 1
         self.stamps.append(time.monotonic())
@@ -119,11 +134,37 @@ class LlmBudget:
 
 
 async def drive_seats(client, tokens: dict[str, str], *, brain: str, key: str, url: str,
-                      days: int, idle_s: float) -> None:
+                      days: int, idle_s: float, models: list[str] | None = None, gid: str = "") -> None:
     """Play each AI seat through the cockpit routes. ``client`` is already aimed at the worker."""
     import asyncio
 
     from ..agents.cockpit_seat import run_http
+
+    if brain == "tinybox":
+        from . import tinybox
+
+        cfg = tinybox.config()
+        order = sorted(tokens)
+        picks = list(models or []) or tinybox.parse_models(tinybox.default_models_text(), len(order))
+        budgets = {
+            seat: tinybox.TinyboxSeatBudget(cfg, picks[i % len(picks)], gid=gid, seat=seat)
+            for i, seat in enumerate(order)
+        }
+        for seat in order:
+            log.info("ai seat game=%s seat=%s brain=tinybox model=%s ready=%s",
+                     gid, seat, budgets[seat].model, cfg.ready)
+        # The seat loop needs a non-empty key to ask. The real key stays in cfg.
+        marker = "server" if cfg.ready else ""
+
+        async def tb_one(seat: str, token: str) -> None:
+            await run_http(
+                client, seat, token, days, lobby=True, idle_s=max(idle_s, cfg.think_cap_s * 3),
+                llm_key=marker, llm_ask=budgets[seat], fallback_line=TINYBOX_FALLBACK_LINE,
+                max_posts=max(6000, int(days) * 1000),
+            )
+
+        await asyncio.gather(*(tb_one(seat, token) for seat, token in tokens.items()))
+        return
 
     llm = brain == "llm"
     budget = LlmBudget(url=url) if llm else None
