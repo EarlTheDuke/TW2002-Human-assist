@@ -99,7 +99,7 @@ Settles: a per-hull travel time, only if the screen or the editor prints one. Th
 
 ## Group C. Trading, then the shipyard
 
-Turns: about 20 for the trip. The rename itself is 0 turns. Credits: `SHIP_RENAME_COST` is 5,000, plus whatever the port quotes for the two haggling deals.
+Turns: about 20 for the trip. The rename fee is 5,000 credits. Turns on the rename were not measured, so this game does not charge a turn for it. Credits: `SHIP_RENAME_COST` is 5,000, plus whatever the port quotes for the two haggling deals.
 
 Setup: the same character and the same Merchant Cruiser. Use one normal port. Not StarDock. Not a class 0 port. Do the rename at the StarDock shipyard after the two deals, and before any later group destroys a port.
 
@@ -131,7 +131,7 @@ Keys: at the StarDock shipyard, rename the ship. Try a 30-character name, then o
 
 Read: credits taken, the longest name accepted, and the turn counter.
 
-Settles: `SHIP_RENAME_COST` (5,000) and `SHIP_RENAME_NAME_MAX` (30).
+Settles: `SHIP_RENAME_COST` (5,000) and `SHIP_RENAME_NAME_MAX` (30) are CONFIRMED (Ven 2026-10-24). Still read the turn counter. Turns are not settled.
 
 ### Shield unit price
 
@@ -477,7 +477,7 @@ Keys: remove one limpet at StarDock, and one at a Class 0 port. Do not blow eith
 
 Read: the credit price on each screen.
 
-Settles: `LIMPET_REMOVAL_COST` (1250, marked UNVERIFIED).
+Settles: stored `LIMPET_REMOVAL_COST` stays 1,250. Live GameA is 5,000 behind `limpet_removal_cost` (SOURCE-CONFLICT, Ven 2026-10-24). An on-screen compare of StarDock and Class 0, and any turn debit, are still open.
 
 ### Type I TWarp price
 
