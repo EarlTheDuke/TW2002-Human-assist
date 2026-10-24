@@ -17,7 +17,7 @@ Sources under `C:\Users\sugar\tw2002_reference\`. Target TWGS 3.11; MBBS breaks 
 | `SHIP_TW_FUSE_REFUNDS` | `False` (UNVERIFIED) | `True` (a fuse spends no turns) |
 | `SHIP_TW_LIST_CAP` | 40 | legal-list length cap |
 
-`SHIP_TW_HULLS` = Imperial StarShip, Corporate FlagShip, Havoc Gunstar. `SHIP_TW_TYPE1_COST` = 12,500. `SHIP_TW_ORE_PER_HOP` = 3.
+`SHIP_TW_HULLS` = Imperial StarShip, Corporate FlagShip, Havoc Gunstar. Stored `SHIP_TW_TYPE1_COST` = 12,500 (cabal TEDIT sample). Live GameA is `ship_tw_type1_cost()` 50,000 when `hardware_price_live` (Ven 2026-10-24, `docs/playtests/twgs-live/twstats-costs-ven.txt`). `SHIP_TW_ORE_PER_HOP` = 3. `SHIP_TW_MODE` is unchanged.
 
 ## Legacy
 
@@ -34,7 +34,7 @@ Pins (`tests/test_ship_transwarp_v1.py::test_ship_tw_legacy_is_unchanged`, recor
 | --- | --- | --- | --- | --- |
 | tw1 | Only ISS, Corporate FlagShip and Havoc Gunstar may buy or fit a drive. Interdictor and escape pod cannot. | CONFIRMED: docs wiki TransWarp_Drive.html ("available only to the Imperial StarShip, Corporate FlagShip, and Havoc Gunstar"); Gypsy Hardware Emporium `<W>` ("Only Imperial Starships, Corporate Flagships and Havoc Gunstars"); EIS HardwareMenu; Bible ship charts. | `buy_equip item=transwarp_drive` hidden and refused on every other hull. | `test_tw1_buy_only_on_tw_hulls_at_stardock` |
 | tw2 | Bought at the StarDock Hardware Emporium only (sector 1). Class 0 does not sell it. | CONFIRMED: docs wiki, Gypsy, EIS HardwareMenu. | Hidden and refused at Alpha Centauri / Rylos / anywhere else, and under legacy. | `test_tw2_buy_at_stardock_only_and_never_under_legacy` |
-| tw3 | Type 1 costs 12,500. Type II 20,000 and the 9,000 upgrade are recorded, out of scope. | CONFIRMED as the TEDIT sample: cabal twgs.html ("Type I TWarp : $12,500"). | `SHIP_TW_TYPE1_COST = 12_500`; listed price = charged price. | `test_tw3_type1_price_is_12500` |
+| tw3 | Type 1 stored sample 12,500. Type II 20,000 and the 9,000 upgrade are the cabal TEDIT samples. Live GameA is 50,000 / 80,000 / 10,000. | SOURCE-CONFLICT. Cabal twgs.html TEDIT ("Type I TWarp : $12,500"). Ven 2026-10-24 GameA TWSTATS `Type I TWarp=50,000 cr`, `Type II TWarp=80,000 cr`, `TWarp Upgrade=10,000 cr`. | Stored constants stay. `ship_tw_type1_cost()` / `ship_tw_type2_cost()` / `ship_tw_upgrade_cost()` follow `hardware_price_live`. `SHIP_TW_MODE` stays. | `test_tw3_type1_price_is_12500` |
 | tw4 | One drive per ship; no Type 2 / upgrade item. | CONFIRMED in shape: HardwareMenu sells it once. | `Ship.transwarp_drive` is `None` or `"type1"`; a second buy is refused "already fitted". | `test_tw4_one_drive_per_ship_and_no_type2` |
 | tw5 | Trade-in and death drop the drive with the hull; the escape pod has none. | CONFIRMED in shape: Bible pod; HardwareMenu extras go with the ship. | `_strip_ship` (death) and `buy_ship` (trade-in) clear it. | `test_tw5_drive_lost_on_pod_and_trade_in` |
 | tw6 | Verb `ship_transwarp {sector_id}`, not `planet_transwarp`. Refused without a drive, on a planet, in a fighter challenge, or without the turn cost. Cloak: allowed, decloaks on arrival. | Verb name is this game's. Cloak policy UNVERIFIED. | `SHIP_TW_CLOAK_POLICY = "allow_decloak"`. | `test_tw6_no_drive_refused_and_challenge_refused`, `test_tw6_cloak_drops_on_arrival` |

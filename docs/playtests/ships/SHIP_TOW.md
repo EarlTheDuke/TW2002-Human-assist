@@ -76,7 +76,7 @@ From the spec:
 - Pre-Lock is off (`TOW_ON_ATTACK="release"`, REV 02/28/97); "keep" alternate.
 - Blind fuse leaves the towee at origin (`TOW_FUSE_TOWEE="stays"`); a manned towee of a TransWarp tow cannot retreat.
 - Police HQ verbs at StarDock count as "dock" (`TOW_DOCK_VERBS`).
-- Type 2 / upgrade at TEDIT prices 20,000 / 9,000 (not OldFAQ v2 80,000 / 40,000).
+- Stored Type 2 / upgrade stay the cabal TEDIT samples 20,000 / 9,000. Live GameA is 80,000 / 10,000 behind `ship_tw_type2_cost` and `ship_tw_upgrade_cost` when `hardware_price_live` (Ven 2026-10-24). OldFAQ v2 was 80,000 / 40,000. SOURCE-CONFLICT. `SHIP_TW_MODE` is unchanged.
 - Ferrengi ships cannot be towed (capture deferred); Ferrengi and Feds ignore unmanned towees.
 - Bots `extern_hold_only`; ~0 scripted tow use.
 - StarDock stays sector 1, so the tips #4 hold happens in FedSpace sector 1.

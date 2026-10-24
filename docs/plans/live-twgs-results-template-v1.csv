@@ -43,3 +43,6 @@ n117-tax-align,"an alignment figure, only if the screen prints one",no alignment
 n117-port-upgrade,"an alignment figure, only if the screen prints one",no alignment change on a port upgrade,,,,,Port-upgrade alignment
 n117-colonist-kill,"an alignment figure, only if the screen prints one",destroying a planet is already -1 alignment and +50 experience,,,,,Colonist-kill alignment
 n117-limpet,LIMPET_REMOVAL_COST,"1250, marked UNVERIFIED",,,,,"Limpet removal fee"
+n117-tw-type1,SHIP_TW_TYPE1_COST,"stored 12500; live card 50000 SOURCE-CONFLICT",,,,,"Type I TWarp price"
+n117-tw-type2,SHIP_TW_TYPE2_COST,"stored 20000; live card 80000 SOURCE-CONFLICT",,,,,"Type II TWarp price"
+n117-tw-upgrade,SHIP_TW_UPGRADE_COST,"stored 9000; live card 10000 SOURCE-CONFLICT",,,,,"TWarp upgrade price"

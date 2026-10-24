@@ -85,7 +85,7 @@ Only rows whose grade changed. Evidence is `file:function`.
 | 10.3 | Match | Match-behind-flag | `CORP_ALIGNMENT_RULE` row 71. Stored value stays mixed. `corp._join_block` |
 | 10.10 | Partial | Match | a C.E.O. who leaves already dissolves the corp. `corp.handle_corp_leave`, `corp.disband`. Profile row 98, no helper |
 | 10.11 | Missing | Match-behind-flag | `CORP_RANK_MODE` row 49. `observation.build_observation` |
-| 11.1 | Partial | Match-behind-flag | `HARDWARE_PRICE_MODE` row 14. `constants.hardware_price_live` |
+| 11.1 | Partial | Match-behind-flag | `HARDWARE_PRICE_MODE` row 14. Ship TransWarp 50,000 / 80,000 / 10,000. Stored 12,500 / 20,000 / 9,000 stay. SOURCE-CONFLICT. `constants.hardware_price_live` |
 | 11.2 | Partial | Match-behind-flag | `SHIP_ROSTER_MODE` row 4 and `TRADE_IN_MODE` row 13. `constants.ship_specs` |
 | 11.6 | Missing | Match-behind-flag | `TAX_RULE_MODE` row 8. `bank.collect_daily_tax` |
 | 11.10 | Partial | Match-behind-flag | `SPECIAL_PORT_DEFENCE_MODE` row 146, NOTE 102. `runner._attack_special_port`, `runner._rebuild_special_ports`. Fighter budgets UNVERIFIED |
@@ -224,7 +224,7 @@ Most of those are stored defaults that are already tw2002, or switches the profi
 4.12 Match. Holo info needs a bought scanner. `scanners.scan_reason`, `runner._handle_scan`.
 4.13 Match-behind-flag `PLANET_SCANNER_MODE` row 43. Shielded planets stay visible until the scanner is on. `observation._planet_brief`, `runner._buy_planet_scanner`.
 4.14 Match-behind-flag `DETECT_GEAR_MODE` row 34. Same probe as 2.17. `constants.detect_gear_live`.
-4.15 Match. Ship TransWarp is on. `SHIP_TW_MODE` is tw2002. `constants.ship_tw_on`.
+4.15 Match. Ship TransWarp is on. `SHIP_TW_MODE` is tw2002. Price SOURCE-CONFLICT: stored cabal samples 12,500 / 20,000 / 9,000. Live GameA TWSTATS `Type I TWarp=50,000 cr`, `Type II TWarp=80,000 cr`, `TWarp Upgrade=10,000 cr` is `ship_tw_type1_cost` / `ship_tw_type2_cost` / `ship_tw_upgrade_cost` on `hardware_price_live` (Ven 2026-10-24). Citadel Transport Unit 50,000 and Upgrade 25,000 already match `PLANET_TRANSPORTER_COST_FIRST` / `PLANET_TRANSPORTER_COST_EXTRA`. No shop switch. `constants.ship_tw_on`.
 4.16 Match. `SHIP_TRANSPORT_RANGE` is the Bible chart. The ISS stays 10, not the MBBS prose 15. `fleet.transport_range`, `fleet.handle_ship_transport`.
 4.17 Match-behind-flag `SHIP_CHART_CAP_MODE` row 96, NOTE 82. Mines, genesis, and photons already follow the chart. Live adds the probe cap of 25. `constants.ship_chart_cap_live`.
 5.1 Match. Entry order is NavHaz, limpet, armids, sector quasar, then fighters. `runner._apply_sector_hazards`.
@@ -293,7 +293,7 @@ Most of those are stored defaults that are already tw2002, or switches the profi
 10.10 Match. A C.E.O. leaving dissolves the corp and rogues fighters outside his sector. `corp.handle_corp_leave`, `corp.disband`. Profile row 98.
 10.11 Match-behind-flag `CORP_RANK_MODE` row 49. The corporation ranking screen is coded and off. The trader list is `TRADER_RANK_LIST_MODE`, ordered by experience. NOTE 158 added no second screen. `observation.build_observation`.
 10.12 Match-behind-flag `ALLIANCE_MODE` row left out of the profile (not in the original). Alliances are coded and off. `constants.alliance_live`.
-11.1 Match-behind-flag `HARDWARE_PRICE_MODE` row 14. The live shop card is coded and off. `constants.hardware_price_live`.
+11.1 Match-behind-flag `HARDWARE_PRICE_MODE` row 14. The live shop card is coded and off. Ship TransWarp Type I 50,000, Type II 80,000, and the upgrade 10,000 are on that card. Stored 12,500, 20,000, and 9,000 stay. SOURCE-CONFLICT. `constants.hardware_price_live`.
 11.2 Match-behind-flag `SHIP_ROSTER_MODE` row 4 and `TRADE_IN_MODE` row 13. The yard and the 90 percent trade-in stay off. `constants.ship_specs`.
 11.3 Match. Police HQ can grant a commission. `victory.is_commissioned`.
 11.4 Match. A killed player can carry a bounty. `constants.REWARD_TARGET_RULE`.

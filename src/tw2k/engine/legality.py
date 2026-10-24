@@ -881,7 +881,7 @@ def legal_actions(universe: Universe, player_id: str) -> list[LegalAction]:
         if K.ship_tw_on() and at_stardock:
             from .ship_transwarp import drive_buyable
             if drive_buyable(player):
-                prices["transwarp_drive"] = int(K.SHIP_TW_TYPE1_COST)
+                prices["transwarp_drive"] = int(K.ship_tw_type1_cost())
                 cap_by_tw = 1
             else:
                 cap_by_tw = 0

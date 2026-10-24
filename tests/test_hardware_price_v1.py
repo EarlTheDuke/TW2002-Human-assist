@@ -31,6 +31,12 @@ def test_default_keeps_todays_prices_and_hit():
         assert K.limpet_mine_cost() == 250
         assert K.genesis_torpedo_cost() == 25_000
         assert K.ether_probe_cost() == 5_000
+        assert K.ship_tw_type1_cost() == 12_500
+        assert K.ship_tw_type2_cost() == 20_000
+        assert K.ship_tw_upgrade_cost() == 9_000
+        assert K.SHIP_TW_TYPE1_COST == 12_500
+        assert K.SHIP_TW_TYPE2_COST == 20_000
+        assert K.SHIP_TW_UPGRADE_COST == 9_000
         assert K.armid_hit_damage() == K.ARMID_DAMAGE_TW2002
         old = K.HARDWARE_MODE
         try:
@@ -51,6 +57,13 @@ def test_live_shop_charges_the_card_and_the_hit_is_30():
             assert K.limpet_mine_cost() == 10_000
             assert K.genesis_torpedo_cost() == 20_000
             assert K.ether_probe_cost() == 3_000
+            assert K.ship_tw_type1_cost() == 50_000
+            assert K.ship_tw_type2_cost() == 80_000
+            assert K.ship_tw_upgrade_cost() == 10_000
+            assert K.SHIP_TW_TYPE1_COST == 12_500
+            assert K.SHIP_TW_TYPE2_COST == 20_000
+            assert K.SHIP_TW_UPGRADE_COST == 9_000
+            assert K.SHIP_TW_MODE == "tw2002"
             assert K.armid_hit_damage() == 30
             hits, damage = armid_detonation_hits(4, None)
             assert hits == 2
