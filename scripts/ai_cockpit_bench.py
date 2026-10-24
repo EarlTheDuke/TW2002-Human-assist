@@ -25,7 +25,9 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 SRC = ROOT / "src"
 PLAYER = ROOT / "scripts" / "ai_cockpit_player.py"
-PORTS = range(8020, 8031)
+# AI_BENCH_PORTS=8026-8030 keeps the bench off a lobby on the low ports.
+_lo, _hi = (int(x) for x in os.environ.get("AI_BENCH_PORTS", "8020-8030").split("-"))
+PORTS = range(_lo, _hi + 1)
 TOKEN = "bench-cockpit-commander-token-0001"
 
 if str(SRC) not in sys.path:
