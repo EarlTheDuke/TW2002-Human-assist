@@ -16,7 +16,7 @@ A v3.11 source that does not print the number is `unknown`. A number that alread
 
 StarDock. The 3.34b letters are not the v3.11 menu. L as a library and B as a singles bar are 3.34b. S3 puts the library on `+` and does not list a singles bar. Announcement 100 is already `TAVERN_ANNOUNCE_COST`. Drink 80 and food 24 are not in these docs (`TAVERN_DRINK_COST` and `TAVERN_FOOD_COST` stay 20). Shields 131 is not printed. Class 0 fighters 218 sits inside the copy's 160-239 day wave, and these docs do not print a different fighter price. None of that is a reason to retune the dock.
 
-Name change. S3 and GAP_MAP 11.7 confirm the service and do not print 100 credits. `UG_NAME_CHANGE` stays false until a v3.11 source prints a price.
+Name change. S3 and GAP_MAP 11.7 confirm the service and do not print 100 credits. `UG_NAME_CHANGE` stays false. The measured 3.34b offer (experience 1, 100 credits, declined) is behind `UG_NAME_MODE`, and the stored default stays legacy because this v3.11 verdict is still unknown. Capture: `name-change.txt`.
 
 Cineplex. S3's "nominal amount" is not 100. `CINEPLEX_COST` stays 0.
 

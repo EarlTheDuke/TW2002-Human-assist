@@ -31,7 +31,7 @@ n112-attack-turns,TURN_COST attack,an attack spends 5 turns,,,,,Attack turn cost
 n112-attacker-destroyed,no constant until a screen shows it,the attack does not destroy the attacker,,,,,Attacker destroyed by its own attack
 n112-hop-time,"a per-hull travel time, only if the screen or the editor prints one",no delay. Movement spends turns per warp,,,,,Real-time hop time
 n115-sdf-solo,none until the screen shows a solo procedure,not built. The glossary says SDF needs another corpie,,,,,"Steal-dump-flee, solo"
-n115-ug-name,"a name-change price, only if the screen prints one",UG_NAME_CHANGE is false. The price formula is unknown,,,,,Underground name change
+n115-ug-name,"a higher-experience price, only if the screen prints one",UG_NAME_UNKNOWN_COST is 100 for a total unknown. Higher experience is UNVERIFIED,,,,,Underground name change
 n115-tricron,"a Tri-Cron cost, only if the screen prints one",TAVERN_TRICRON is off. The tip is free and the game is not built,,,,,Tri-Cron
 n115-illegal,"a price, only if the screen prints one","Singles Bar, Library, Cineplex, and illegal goods are named and not built",,,,,"Illegal goods"
 n115-rob-steal,STEAL_SUCCESS_ALIGN_DIVISOR; STEAL_SUCCESS_EXP_DIVISOR; ROB_SUCCESS_ALIGN_DIVISOR; ROB_SUCCESS_EXP_DIVISOR,"steal max(1, qty // 6) alignment and max(1, qty // 15) experience; rob divides credits by 10,000",,,,,"Rob and steal success awards"

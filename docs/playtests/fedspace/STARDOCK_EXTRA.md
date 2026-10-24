@@ -22,7 +22,7 @@ The live tavern screen and the clone constants disagree. The clone numbers were 
 | Grimy STARDOCK info | 50 | `GRIMY_TRACE_COST` 3000 |
 | Grimy UNDERGROUND info | 600 | charged as `GRIMY_PASSWORD_COST` 2000 |
 | Grimy password | 0 | `GRIMY_PASSWORD_COST` 2000 |
-| Underground name change | 247 | `UG_NAME_CHANGE` is still off |
+| Underground name change | 247, no experience on that screen | UNVERIFIED/DIFFERENT. The measured total unknown is 100 (`name-change.txt`), behind `UG_NAME_MODE`. `UG_NAME_CHANGE` stays false |
 
 ## Quasar reminder
 

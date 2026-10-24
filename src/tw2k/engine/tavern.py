@@ -429,6 +429,36 @@ def _clean_name(raw: Any) -> str | None:
     return text
 
 
+def _deal_answer(args: dict) -> str:
+    """yes, no, open (not answered), or bad (the word is not a yes or a no)."""
+    if "deal" not in args:
+        return "open"
+    raw = args.get("deal")
+    if isinstance(raw, bool):
+        return "yes" if raw else "no"
+    if raw == 1:
+        return "yes"
+    if raw == 0:
+        return "no"
+    if isinstance(raw, str):
+        word = raw.strip().casefold()
+        if word in {"y", "yes", "true"}:
+            return "yes"
+        if word in {"n", "no", "false"}:
+            return "no"
+    return "bad"
+
+
+def _offer(universe: Universe, player: Player, cost: int, deal: str) -> ActionResult:
+    """The captured screen. No credits move and the name stays."""
+    lines = list(K.ug_name_unknown_lines(cost))
+    _actor(
+        universe, player, EventKind.UG_RENAME, "\n".join(lines),
+        {"cost": cost, "lines": lines, "deal": deal},
+    )
+    return ActionResult(ok=True, turns_spent=0)
+
+
 def handle_rename(universe: Universe, pid: str, action: Action) -> ActionResult:
     if not K.ug_name_live():
         return ActionResult(ok=False, error="unsupported action")
@@ -440,10 +470,18 @@ def handle_rename(universe: Universe, pid: str, action: Action) -> ActionResult:
         return ActionResult(ok=False, error="enter the Underground first")
     if int(player.experience) > int(K.UG_NAME_UNKNOWN_MAX_EXPERIENCE):
         return ActionResult(ok=False, error="the Underground has not priced this trader")
-    name = _clean_name((action.args or {}).get("name"))
+    args = action.args or {}
+    deal = _deal_answer(args)
+    cost = int(K.UG_NAME_UNKNOWN_COST)
+    if deal == "bad":
+        return ActionResult(ok=False, error=f'"{K.UG_NAME_UNKNOWN_DEAL}"')
+    if deal == "no":
+        return _offer(universe, player, cost, "no")
+    name = _clean_name(args.get("name"))
+    if deal == "open" and name is None:
+        return _offer(universe, player, cost, "open")
     if name is None:
         return ActionResult(ok=False, error=f"name must be 1..{int(K.UG_NAME_MAX)} characters")
-    cost = int(K.UG_NAME_UNKNOWN_COST)
     if int(player.credits) < cost:
         return ActionResult(ok=False, error="not enough credits")
     old = player.name
@@ -451,9 +489,15 @@ def handle_rename(universe: Universe, pid: str, action: Action) -> ActionResult:
     player.name = name
     _actor(
         universe, player, EventKind.UG_RENAME,
-        "Seems you're a total unknown, this'll be cheap. "
+        f"{old} is now {name}. Seems you're a total unknown, this'll be cheap. "
         f"We can give you a new identity for {cost} credits.",
-        {"old_name": old, "name": name, "cost": cost, "experience": int(player.experience)},
+        {
+            "old_name": old,
+            "name": name,
+            "cost": cost,
+            "experience": int(player.experience),
+            "deal": "yes",
+        },
     )
     return ActionResult(ok=True, turns_spent=0)
 
@@ -657,12 +701,18 @@ def legal_specs(universe: Universe, player_id: str) -> list[tuple[str, bool, str
             rename_reason = "not enough credits"
         else:
             rename_reason = ""
+        params: dict[str, Any] = {
+            "name": {"type": "str", "required": False, "max": int(K.UG_NAME_MAX)},
+            "deal": {"type": "bool", "required": False},
+        }
+        if priced:
+            params["cost"] = int(K.UG_NAME_UNKNOWN_COST)
+            params["lines"] = list(K.ug_name_unknown_lines())
         add(
             "underground_rename",
             entered and priced and affordable,
             rename_reason,
-            {"name": {"type": "str", "required": True, "max": int(K.UG_NAME_MAX)},
-             "cost": int(K.UG_NAME_UNKNOWN_COST)},
+            params,
         )
     if K.stardock_extra_on():
         ante = int(K.TRICRON_ANTE)

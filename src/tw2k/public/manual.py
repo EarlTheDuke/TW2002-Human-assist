@@ -1663,7 +1663,10 @@ def _stardock_services(f: dict) -> str:
             f"a total unknown, experience {_n(K.UG_NAME_UNKNOWN_MAX_EXPERIENCE)} or less, "
             f"can buy a new name for {_n(K.UG_NAME_UNKNOWN_COST)} credits. "
             "The screen called that trader a total unknown and said it would be cheap. "
-            "A trader the Underground already knows is not given a price.",
+            f"The offer is {K.ug_name_unknown_lines()[1]} and {K.ug_name_unknown_lines()[3]} "
+            "Declining leaves the name and the credits. "
+            "A trader the Underground already knows is not given a price. "
+            "A higher experience is not given a price.",
             "the Underground does not sell a new name.",
         )
         + _gated(
