@@ -283,10 +283,13 @@ def test_tv16_tv17_tv18_and_pb26():
 
 
 def test_tv19_tv21_name_change_still_unbuilt():
+    """The old flag stays false. The measured offer is underground_rename behind UG_NAME_MODE."""
     assert K.UG_NAME_CHANGE is False
+    assert K.UG_NAME_MODE == "legacy"
     universe = _world()
-    _seat(universe, "A", "Ada")
+    _seat(universe, "A", "Ada", experience=1)
     assert "name_change" not in _kinds(universe, "A")
+    assert "underground_rename" not in _kinds(universe, "A")
 
 
 def test_tv20_tricron_follows_the_extra_mode(monkeypatch):

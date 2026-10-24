@@ -30,7 +30,8 @@ def plot_course_call(target: object = "<sector_id>") -> str:
 
 
 def plot_course_line() -> str:
-    # Legacy reports PLOT_COURSE_MAX_DEPTH (10). Live reports 45 (UNVERIFIED for 3.11).
+    # Legacy reports PLOT_COURSE_MAX_DEPTH (10). With no per-game length, live
+    # reports V311_COURSE_MAX_HOPS (published sample 45, not GameA's 20).
     depth = int(K.plot_course_hop_limit()) if K.course_max_live() else int(K.PLOT_COURSE_MAX_DEPTH)
     return (
         f"- `{plot_course_call()}` — moves along the shortest known path, "
@@ -109,6 +110,12 @@ def tavern_block() -> str:
         "(banked credits are safe), the "
         f"{int(K.UG_EXP_HALVE_AT)}th halves your experience, the {int(K.UG_MURDER_AT)}th gets you murdered.\n"
     )
+    if K.ug_name_live():
+        text += (
+            f"A total unknown (experience at most {int(K.UG_NAME_UNKNOWN_MAX_EXPERIENCE)}) "
+            f"can buy a new name for {int(K.UG_NAME_UNKNOWN_COST)} credits. "
+            "Decline and the credits stay. A higher experience is not priced.\n"
+        )
     if K.stardock_extra_on():
         text += (
             f"Tri-Cron is {int(K.TRICRON_ROUNDS)} rounds of three crons placed 2-3-1. "

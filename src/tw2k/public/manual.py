@@ -329,12 +329,14 @@ def _command_keys(_f: dict) -> str:
                 f"NavPoints. Set, list, and clear {_n(K.NAVPOINT_SLOTS)} named sectors. "
                 "Terra and StarDock are already listed. Plot lays in a course.",
             ))
-            if K.v311_profile():
-                meaning = (
-                    "Begin Self Destruct. The prompt is ARE YOU SURE CAPTAIN? (Y/N) [N]. "
-                    "N or Enter prints Self Destruct Aborted... and changes nothing. Y destroys the ship. "
-                    "< returns to the previous sector."
-                )
+        # NOTE 110 / NOTE 129. computer-b.txt. Ship exit already destroys the
+        # ship. This menu only names that command. "<" stays the previous sector.
+        if key == "B" and K.ship_exit_on():
+            meaning = (
+                "Begin Self Destruct. The prompt is ARE YOU SURE CAPTAIN? (Y/N) [N]. "
+                "N or Enter prints Self Destruct Aborted... and changes nothing. Y destroys the ship. "
+                "< returns to the previous sector."
+            )
         computer.append((key, meaning))
     return (
         "<p>These are the redesign cockpit keys. They are the original Trade Wars letters. "
@@ -1410,7 +1412,7 @@ _SWITCH_PLAIN: dict[str, str] = {
     "PHOTON_FOLLOW_DAMP_MODE": "A ship that enters a sector while a photon wave is up also has the planet quasar damped.",
     "DEATH_DELAY_MODE": "Death Delay is yes or no. Past the day's death allowance, you wait until the next day.",
     "TREASURY_CAP_MODE": "A citadel treasury can hold the printed maximum.",
-    "COURSE_MAX_MODE": "A plotted course that is too long is refused.",
+    "COURSE_MAX_MODE": "A plotted course longer than this game's maximum course length is refused.",
     "BIG_BANG_DENSITY_MODE": "A new universe places ports and planets on the v3.11 spread, with no decorative Fed ports in the early sectors.",
     "BIG_BANG_BUILT_MODE": "A new universe builds 95 percent of the possible starports, as the Big Bang default does.",
     "ONE_WAY_SHARE_MODE": "A small share of lanes are one-way when the game does not set another share.",
@@ -1579,7 +1581,7 @@ def _hardware(f: dict) -> str:
         ("Mine disruptor", _n(K.disruptor_cost()), _cap(ship, "mine_disruptor")),
         ("Marker beacon", _n(prices.get("marker_beacon", K.BEACON_COST)), _cap(ship, "marker_beacon")),
         ("Ether probe", _n(K.ether_probe_cost()), probe_cap),
-        ("Photon missile", _n(K.PHOTON_MISSILE_COST), _n(int((K.hull_spec(ship) or {}).get("max_photons") or 0))),
+        ("Photon missile", _n(K.photon_missile_cost()), _n(int((K.hull_spec(ship) or {}).get("max_photons") or 0))),
         ("Density scanner", _n(K.scanner_cost("density_scanner")), "one scanner"),
         ("Holo scanner", _n(K.scanner_cost("holo_scanner")), "one scanner, replaces density"),
         ("Planet scanner", _n(K.PLANET_SCANNER_COST) if K.planet_scanner_live() else "not sold", _cap(ship, "planet_scanner")),
@@ -1661,7 +1663,10 @@ def _stardock_services(f: dict) -> str:
             f"a total unknown, experience {_n(K.UG_NAME_UNKNOWN_MAX_EXPERIENCE)} or less, "
             f"can buy a new name for {_n(K.UG_NAME_UNKNOWN_COST)} credits. "
             "The screen called that trader a total unknown and said it would be cheap. "
-            "A trader the Underground already knows is not given a price.",
+            f"The offer is {K.ug_name_unknown_lines()[1]} and {K.ug_name_unknown_lines()[3]} "
+            "Declining leaves the name and the credits. "
+            "A trader the Underground already knows is not given a price. "
+            "A higher experience is not given a price.",
             "the Underground does not sell a new name.",
         )
         + _gated(

@@ -41,6 +41,8 @@
     ["D", "Daily Log", null],
     ["M", "Read Mail", null],
     ["N", "NavPoints", null],
+    // Legacy label. A game that already has self_destruct shows Begin Self Destruct
+    // (docs/playtests/twgs-live/computer-b.txt). "<" stays backtrack().
     ["B", "Backtrack", null],
     ["S", "Quick stats", null],
     ["E", "Find route", null],
@@ -2955,6 +2957,7 @@
     else if (restore === "grimyAsk") grimyAsk(saved);
     else if (restore === "ugEnter") ugEnter(saved);
     else if (restore === "ugContract") ugContract(saved);
+    else if (restore === "underground_rename") ugRename(LA("underground_rename"), saved);
     else if (restore === "postReward") postReward(saved);
     else if (restore === "shipPassword") shipPassword(saved);
     else if (restore === "sellShip") sellShip(saved);
@@ -4662,6 +4665,8 @@
   function selfDestructInGame() {
     return !!LA("self_destruct");
   }
+  // NOTE 110 / NOTE 129. The confirm and the abort line are computer-b.txt.
+  // Y posts the existing self_destruct action. "<" does not come through here.
   function beginSelfDestruct() {
     const m = $("menu");
     m.hidden = false;
@@ -5077,6 +5082,56 @@
       { n: "password", label: "password", type: "text" },
     ], saved, (values) => act("underground_enter", { password: values.password }, "enter"));
   }
+  function ugRename(a, saved) {
+    const params = (a && a.params) || {};
+    const lines = Array.isArray(params.lines) ? params.lines.map((line) => String(line)) : [];
+    const note = lines.filter((line) => /credits/i.test(line)).join(" ");
+    if (saved) {
+      dockForm("underground_rename", "NEW NAME", note, [
+        { n: "name", label: "name" },
+      ], saved, (values) => act("underground_rename", { deal: true, name: values.name }, "new name"));
+      return;
+    }
+    const m = $("menu");
+    m.hidden = false;
+    inComputer = false;
+    m.dataset.screen = "Well, is it a deal?";
+    m.innerHTML = "";
+    const title = document.createElement("div");
+    title.className = "y";
+    title.textContent = "Well, is it a deal?";
+    m.appendChild(title);
+    const body = document.createElement("div");
+    body.dataset.ugName = "offer";
+    lines.forEach((line) => {
+      const row = document.createElement("div");
+      row.textContent = line;
+      body.appendChild(row);
+    });
+    m.appendChild(body);
+    const yes = document.createElement("button");
+    yes.type = "button";
+    yes.id = "dangerOk";
+    yes.textContent = "Yes";
+    const no = document.createElement("button");
+    no.type = "button";
+    no.id = "dangerNo";
+    no.textContent = "No";
+    yes.addEventListener("click", () => {
+      m.hidden = true;
+      dockForm("underground_rename", "NEW NAME", note, [
+        { n: "name", label: "name" },
+      ], null, (values) => act("underground_rename", { deal: true, name: values.name }, "new name"));
+    });
+    no.addEventListener("click", () => {
+      m.hidden = true;
+      act("underground_rename", { deal: false }, "no");
+    });
+    m.appendChild(yes);
+    m.appendChild(document.createTextNode(" "));
+    m.appendChild(no);
+    reveal(m);
+  }
   function ugContract(saved) {
     const a = LA("underground_contract") || { legal: false, reason: "", params: {} };
     if (!a.legal && !saved) { setResult("Contract: " + plainReason(a.reason), true); return; }
@@ -5144,11 +5199,7 @@
     add("underground_enter", "Enter underground", () => ugEnter());
     add("underground_contract", "Contract", () => ugContract());
     add("underground_claim", "Claim underground", (a) => confirmWords("Claim underground", "Claim " + fmt((a.params || {}).pending || 0) + " cr?", () => act("underground_claim", {}, "claim")));
-    add("underground_rename", "New name", () => {
-      dockForm("underground_rename", "NEW NAME", "The Underground prices an unknown trader.", [
-        { n: "name", label: "name" },
-      ], null, (values) => act("underground_rename", { name: values.name }, "new name"));
-    });
+    add("underground_rename", "Get your Name Changed", (a) => ugRename(a));
     add("cineplex", "Cineplex", (a) => {
       const cost = Number((a.params || {}).cost || 0);
       const line = cost ? "The picture costs " + fmt(cost) + " cr. It has no secrets." : "The picture is free. It has no secrets.";

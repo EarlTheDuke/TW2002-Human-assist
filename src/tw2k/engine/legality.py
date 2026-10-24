@@ -856,7 +856,7 @@ def legal_actions(universe: Universe, player_id: str) -> list[LegalAction]:
             "armid_mines": int(K.armid_mine_cost()),
             "limpet_mines": int(K.limpet_mine_cost()),
             "atomic_mines": int(K.ATOMIC_MINE_COST),
-            "photon_missiles": int(K.PHOTON_MISSILE_COST),
+            "photon_missiles": int(K.photon_missile_cost()),
             "ether_probes": int(K.ether_probe_cost()),
             "genesis": int(K.genesis_torpedo_cost()),
             "holds": K.hold_next_price(player.ship.ship_class.value, player.ship.holds, day),
@@ -1121,7 +1121,7 @@ def legal_actions(universe: Universe, player_id: str) -> list[LegalAction]:
     # world. Zeroing that qty is not the class cap: the planet may still have room.
     colonist_misaligned = False
     other_capped = False
-    if owned_landed and K.planet_limits_on():
+    if owned_landed and (K.planet_limits_on() or K.planet_handbook_on()):
         total_col = sum(int(n) for n in landed_planet.colonists.values())
         pools = {c.value: int(n) for c, n in landed_planet.colonists.items()}
         col_room = K.colonist_drop_room(landed_planet.class_id.value, pools, total_col)
@@ -1169,7 +1169,7 @@ def legal_actions(universe: Universe, player_id: str) -> list[LegalAction]:
     pools_have = ({c.value: int(n) for c, n in landed_planet.colonists.items() if int(n) > 0} if owned_landed else {})
     ship_room = ship_cols
     colonist_misaligned = False
-    if owned_landed and ship_cols > 0 and K.planet_limits_on():
+    if owned_landed and ship_cols > 0 and (K.planet_limits_on() or K.planet_handbook_on()):
         total_col = sum(int(n) for n in landed_planet.colonists.values())
         pools = {c.value: int(n) for c, n in landed_planet.colonists.items()}
         room = K.colonist_drop_room(landed_planet.class_id.value, pools, total_col)

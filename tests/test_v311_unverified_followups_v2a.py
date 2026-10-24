@@ -108,9 +108,23 @@ def test_queued_constants_keep_their_values_and_the_search_note() -> None:
     assert K.FERRENGAL_QUASAR_FUEL == 10_000
     assert K.FERRENGAL_QUASAR_PCT == 10
     assert K.V311_COURSE_MAX_HOPS == 45
+    assert K.GAMEA_COURSE_MAX_HOPS == 20
     assert K.FERRENGI_BAND_STRONG == "more_fighters_than_this_ship"
     assert "UNVERIFIED" in (K.plot_course_hop_limit.__doc__ or "")
     source = (ROOT / "src/tw2k/engine/constants.py").read_text(encoding="utf-8")
+    start = source.find('COURSE_MAX_MODE = "legacy"')
+    end = source.find("V311_COURSE_MAX_HOPS = 45", start)
+    comment = source[start:end]
+    for needle in (
+        "UNVERIFIED, searched:",
+        "docs/playtests/twgs-live/plotted-course-limit.txt",
+        "uploads/",
+        "Max Course Length=20",
+        "Maximum Course Length",
+        "No route within 45 warps",
+        "n96-course-max",
+    ):
+        assert needle in comment, needle
     assert source.count("UNVERIFIED, searched:") >= 5
     queue = (ROOT / "docs/plans/live-twgs-test-queue-v1.md").read_text(encoding="utf-8")
     for needle in (
