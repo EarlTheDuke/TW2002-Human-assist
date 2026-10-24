@@ -19,12 +19,20 @@ Ben ended Sat Grok L3 game `82578bfe` and asked this wrap folded into GAP_MAP, t
 - Cash at stop: P4 227k, P2 201k, P1 91k, P3 70k, P6 19k, P5 18k.
 - GWC lobby empty. Dual-seat watch paused. Original EIS TWGS :23 left running (untouched).
 
+## 2026-10-24 — GAP 2.15 Ven GameA port-attack ratings
+
+Player of Games measured TW Test Game 2 (Slot A), TW2002 v3.34b under TWGS v2.20b. Capture: `docs/playtests/twgs-live/gap215-port-attack-2026-10-24.md` (JSON: `docs/playtests/twgs-live/gap215_final.json`). EIS :23 was not touched.
+
+CONFIRMED lasers: class 1 H'Catha sector 478, 337 battle points (def 46); class 4 Duriron Minor sector 122, 1419 (def 110); class 6 Khancuhn Primus, 598 (def 98, prior REPORT2); class 7 Balmer sector 688, 1121 (def 98). DEF_ONLY: class 2 New Cesium 160 def 55, class 3 Peleus 436 def 86, class 5 Aesculapius 404 def 59, class 8 Vergil Minor 119 (non-Fed) def 99. BLOCKED: class 0 Sol and class 9 StarDock.
+
+A 0-fighter commit aborts after the def and shield text. Def rating is per port (class 3 Peleus 86 vs Anaxagoras Primus sector 913 def 60). Non-Fed class 8 (def 99, class 4 Sunstorm) differs from the Fed class 8 prior (def 91 / laser 701). `PORT_DEFENSE_RATING` and `PORT_LASER_BARRAGE` still hold class 6 only, so GAP 2.15 stays Partial. No engine change in this fold.
+
 ## Standing queue
 
 1. Tip already has #180 (`1e72eae`, colonist-units Class M→L thousands). Remaining step is a wt_live redeploy before the next Class L ferry. Player of Games will request that redeploy when about to ferry.
 2. Ops note: Computer Use seats 1–3 min/action; double-queue re-fire observed. Plan around that for the next multi-bot.
 3. Hotter L3 retest at 2M–5M start once Ben picks the start bank (after #180 on live).
-4. GAP 2.15 GameA Ven TWGS port-attack ratings (classes 0–5/7–9; Class 6 already def 98 / laser 598). Queued with Player of Games. L3 seat now free. Leave EIS :23 untouched.
+4. DONE 2026-10-24. GAP 2.15 Ven GameA port-attack ratings. Capture: `docs/playtests/twgs-live/gap215-port-attack-2026-10-24.md`. CONFIRMED lasers: class 1 H'Catha 337, class 4 Duriron Minor 1419, class 6 Khancuhn Primus 598 (prior REPORT2), class 7 Balmer 1121. Grade stays Partial; those numbers are not in `PORT_DEFENSE_RATING` / `PORT_LASER_BARRAGE`. EIS :23 was not touched.
 
 ## Blockers
 

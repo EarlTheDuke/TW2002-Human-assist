@@ -279,9 +279,11 @@ Setup: one ship that can survive a return shot. A new sector for each class.
 
 ### Port rating and barrage, classes 0-5 and 7-9
 
+Measured 2026-10-24 on Ven GameA (TW Test Game 2, Slot A, v3.34b). Capture: `docs/playtests/twgs-live/gap215-port-attack-2026-10-24.md`. Do not repeat the confirmed shots. CONFIRMED lasers: class 1 337, class 4 1419, class 6 598 (prior REPORT2), class 7 1121. Still open: lasers for classes 2, 3, 5, and non-Fed class 8. Class 0 and StarDock stay Group I. Def rating is per port, not a class constant. A 0-fighter commit aborts after the def and shield text.
+
 item_id: n98-port-rating
 
-Keys: attack one port of each of those classes. Class 6 is already rating 98 and barrage 598. Skip class 6. Skip class 0 until Group I. Read the defensive rating before the shot.
+Keys: attack one port of each of those classes. Class 6 is already rating 98 and barrage 598. Skip class 6. Skip class 0 until Group I. Read the defensive rating before the shot. The 2026-10-24 capture already holds classes 1, 2, 3, 4, 5, 7, and non-Fed 8.
 
 Read: the rating, the return-shot number, the fighters you sent, whether the port was destroyed (it should not be), and the port's size or productivity on that same screen.
 

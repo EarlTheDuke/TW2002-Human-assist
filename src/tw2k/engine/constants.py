@@ -1969,7 +1969,7 @@ def planet_colonist_room(class_id: str, current: int) -> int | None:
 
 def planet_stock_room(class_id: str, commodity: str, current: int) -> int | None:
     """How many more units of one good fit. None means the legacy path has no cap."""
-    if not planet_limits_on():
+    if not planet_limits_on() and not planet_handbook_on():
         return None
     return max(0, PLANET_MAX_STOCK[class_id][commodity] - int(current))
 
@@ -3756,9 +3756,11 @@ def colonists_per_hold() -> int:
 
 # planet-production-ratios-v1. Appended so later slices can rebase cleanly.
 # "legacy": units per 100 colonists, and a flat 5 percent growth.
-# "live": colonists per unit from the S1 table. Below half the class cap
-# the same 5 percent is growth. Above half it is a die-off. The 1,500 fuel
-# example makes 500, so the ratio is not scaled by a second curve.
+# "live": colonists per unit from the S1 table. At or below half the printed
+# maximum, output is workers/ratio (1,500 class M fuel colonists make 500).
+# Above half, output mirrors down to 0 at the maximum (TWFAQ_20PLANET.txt).
+# Below half a pool grows about 5 percent. Above half it dies off about 5
+# percent. S1 prints no percent; 5 is the rate this engine already used.
 PLANET_PROD_MODE = "legacy"  # "legacy" | "live"
 # Fuel, organics, equipment. 0 means that class does not make that good.
 PLANET_PROD_PER_UNIT = {
@@ -4514,6 +4516,19 @@ def planet_growth_tw2002() -> bool:
     return PLANET_GROWTH_MODE == "tw2002" or tw2002_live_profile() or v311_profile()
 
 
+def planet_handbook_on() -> bool:
+    """True when the day tick uses the S1 printed curve.
+
+    Off on a stored game, so today's production stays. ``V311_PROFILE`` turns
+    it on, and so do ``PLANET_PROD_MODE`` live and ``PLANET_GROWTH_MODE``
+    tw2002. ``PLANET_ECONOMY_MODE`` tw2002 is already the stored default: it
+    caps stock, caps total colonists, and stops a sixth planet. It does not
+    by itself replace the production curve, because that would change games
+    already running that default.
+    """
+    return planet_prod_live() or planet_growth_tw2002()
+
+
 # cockpit-ai-seat-v1. Legacy games do not start this seat. tw2002 lets a
 # test run the client that reads only the cockpit harness. The server never
 # constructs that client. Ben decides any flip.
@@ -5105,6 +5120,13 @@ def colonist_drop_room(class_id: str, pools: dict, total: int) -> int | None:
             have = int(pools.get(name, 0) or 0)
             best = max(best, CLASS_M_CATEGORY_CAP - have)
         return max(0, best)
+    if planet_handbook_on():
+        cap = int(PLANET_MAX_COLONISTS[class_id])
+        best = 0
+        for name in ("fuel_ore", "organics", "equipment", "colonists"):
+            have = int(pools.get(name, 0) or 0)
+            best = max(best, cap - have)
+        return max(0, best)
     return planet_colonist_room(class_id, total)
 
 
@@ -5113,6 +5135,11 @@ def colonist_drop_error(class_id: str, pool_count: int, total: int, qty: int) ->
     if class_id == "M" and class_m_fidelity_live():
         if int(pool_count) + int(qty) > CLASS_M_CATEGORY_CAP:
             return f"planet colonist cap is {CLASS_M_CATEGORY_CAP}"
+        return None
+    if planet_handbook_on():
+        cap = int(PLANET_MAX_COLONISTS[class_id])
+        if int(pool_count) + int(qty) > cap:
+            return f"planet colonist cap is {cap}"
         return None
     room = planet_colonist_room(class_id, total)
     if room is not None and int(qty) > room:
