@@ -6441,6 +6441,10 @@ def port_max_stock(draw: int) -> int:
 # which keeps the printed 64% for equipment (organics 63%, fuel 60%).
 # economy2's T-Edit port: maximum 2610/950/2100 with productivity 261/95/210 a
 # day, so a day restocks 10 percent of the maximum, not 5.
+# GAP 2.8 keeps PORT_REGEN_PER_DAY at the v3.05 standard of 5 percent. A cabal
+# sample printed 1 percent and is not this rate. The 10 percent below is the
+# economy2 pair, applied once, and it wins only while this curve is on. It is
+# not 5 percent applied twice.
 PORT_DRAIN_CURVE_MODE = "legacy"  # "legacy" | "live"
 V311_SELL_DRAIN_RISE = 0.80
 V311_BUY_FILL_FALL = 0.26
@@ -6453,5 +6457,9 @@ def port_drain_curve_live() -> bool:
 
 
 def port_regen_per_day() -> float:
-    """Share of a product's maximum a port restocks each day."""
+    """Daily fraction. 0.05 is the v3.05 standard. 0.10 while this curve is on.
+
+    regenerate_ports applies the fraction once. Of the maximum when a max-stock
+    regen switch is on, otherwise of that commodity's productivity.
+    """
     return V311_PORT_REGEN_PER_DAY if port_drain_curve_live() else PORT_REGEN_PER_DAY

@@ -33,7 +33,7 @@ The heading counts helpers in `V311_PROFILE_HELPERS`. Row 84 is still reserved f
 | 19 | `HOLD_RULES_MODE` | `hold_rules_live` | MASTER_PLAN yes | wording only |
 | 20 | `PLANET_NW_MODE` | `planet_nw_live` | MASTER_PLAN yes | score display only |
 | 21 | `PORT_PRICE_MODE` | `port_price_live` | MASTER_PLAN yes | cabal formulas/economy MCIC + experience (GAP 2.3) |
-| 22 | `PORT_REGEN_MODE` | `port_regen_live` | MASTER_PLAN yes | REV v3.05 standard 5%/day |
+| 22 | `PORT_REGEN_MODE` | `port_regen_live` | MASTER_PLAN yes | REV v3.05 standard 5% of the maximum, once, while row 224 is off. The cabal 1% sample is not this switch. |
 | 23 | `SHOP_PRICE_MODE` | `shop_price_live` | MASTER_PLAN yes | cabal formulas hold cost; fighter/shield wave (GAP 2.11 conflict noted) |
 | 24 | `GENESIS_START_MODE` | `genesis_start_live` | MASTER_PLAN yes | S1: new planet has no colonists and usually no product (GAP 6.5); Terra form exists |
 | 25 | `TERRA_COLONIST_MODE` | `terra_colonist_live` | MASTER_PLAN yes | REPORT2 s6/s11: 30,000 pool, 1 group per hold, 750/day; flip with CLASS_M |
@@ -167,6 +167,8 @@ The heading counts helpers in `V311_PROFILE_HELPERS`. Row 84 is still reserved f
 | 222 | `ALLIANCE_OFF_MODE` | `alliance_off_live` | GAP 14.6: Bible "Secret Alliances and Treaties": "by no means binding and are not enforced". Propose and accept alliance are refused; break stays; corporations are the team. play_to_day_cap stays (R14 A). |
 | 223 | `PORT_MAX_STOCK_MODE` | `port_max_stock_live` | GAP 2.5 / playtest 3: a port product maximum is 950 to 2,720 (Bible Tarsus 2720/2020/1470, economy2 2610/950/2100, economy3 "1,500 ... roughly average"), not 2,500 to 4,500, so a 1-hop pair drains about 4 percent a trip. Prices keep both lists (R3 A). |
 | 224 | `PORT_DRAIN_CURVE_MODE` | `port_drain_curve_live` | Follow-up to row 223: the stock slope follows the cabal economy3 Merf table (printed haggled slopes +0.97 / -0.31 per unit drained/filled; scaled by 0.83 to +0.80 / -0.26 for the clone's narrower unhaggled spread, so trip 10 keeps about 64% of trip 1), and a day restocks 10 percent of the maximum (economy2 T-Edit: 2610/950/2100 with productivity 261/95/210). |
+
+GAP 2.8 adds no switch and no profile row. The printed standard stays 5 percent (`PORT_REGEN_PER_DAY`), applied once by `PORT_REGEN_MODE` (row 22) while this curve is off. While this curve is on, including under the profile, a day restocks 10 percent of the maximum once. That is the economy2 pair, not the 5 percent applied twice. The 1 percent game in cabal `twgs.html` stays off.
 
 Row 181 is NavPoints (NOTE 159). Rows 182-186 are NOTE 162. Row 187 is the good-trader bounty (NOTE 163). NOTE 164 uses rows 200-203. Those four switches do not grade 6.11 or 13.4 a second time. The stored game stays the FERRSPEC Ferrengi column, defunct corporate ships, the death `#N/3` line, and an empty fighter report.
 
