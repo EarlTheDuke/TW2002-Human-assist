@@ -1327,7 +1327,7 @@ def legal_actions(universe: Universe, player_id: str) -> list[LegalAction]:
 
         attached = sum(1 for lt in universe.limpets.values()
                        if lt.target_id == player_id and lt.target_ship_id is None)
-        fee = int(K.LIMPET_REMOVAL_COST)
+        fee = int(K.limpet_removal_cost())
         from .class0 import class0_service_here as _c0_svc
         if not _c0_svc(universe, player_id):
             reason = "must be at StarDock or a Class 0 port" if K.class0_tw2002() else "must be at StarDock"
@@ -1338,7 +1338,13 @@ def legal_actions(universe: Universe, player_id: str) -> list[LegalAction]:
         else:
             reason = None
         out.append(_la(ActionKind.REMOVE_LIMPET, legal=reason is None, reason=reason, cost=0,
-                       params={"fee": fee, "attached": attached}))
+                       params={
+                           "fee": fee,
+                           "attached": attached,
+                           "prompt": K.limpet_removal_offer(fee),
+                           "broke": K.limpet_removal_broke_text(),
+                           "done": K.limpet_removal_done_text(),
+                       }))
 
         # v5-v9: marker beacons
         from .hardware import launch_beacon_reason

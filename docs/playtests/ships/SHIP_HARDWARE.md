@@ -34,7 +34,7 @@ Today kept as `HARDWARE_MODE = "legacy"`: armid hits = min(count, rand 1..10) x 
 | h20 | Price | Bible ~40,000; TEDIT 1,500; MBBS ~6,000. | SOURCE-CONFLICT. | Built: `K.DISRUPTOR_COST = 40_000` (Bible). |
 | h21 | Effect | Deactivates limpets and/or armids in that sector (sweeper). | CONFIRMED: HardwareMenu. | Built: reduces mine deployment counts in the target sector. |
 | **Limpet removal (gap 4.9)** | | | | |
-| h22 | Service | StarDock removes an attached limpet for a fee. | CONFIRMED service exists; fee TEDIT sample 1,250 UNVERIFIED as 3.11 default (only number found). | Built: `remove_limpet` at StarDock; `K.LIMPET_REMOVAL_COST = 1_250`. |
+| h22 | Service | StarDock and Class 0 remove an attached limpet for one fee. | CONFIRMED service. SOURCE-CONFLICT fee: cabal TEDIT 1,250 stays `LIMPET_REMOVAL_COST`. Live GameA TWSTATS 5,000 is `limpet_removal_cost` when `hardware_price_live` (Ven 2026-10-24). | Built: `remove_limpet` at StarDock and Class 0. Same `CostLimpetRemoval`. |
 | h23 | One limpet | Only one limpet attached at a time. | CONFIRMED. | Unchanged (existing attach). |
 | h24 | Query | `query_limpets` stays. | Already built. | Unchanged. |
 | **Mode / caps** | | | | |
@@ -50,7 +50,7 @@ Today kept as `HARDWARE_MODE = "legacy"`: armid hits = min(count, rand 1..10) x 
 - GameA `Cloak Fail Percent=3%` is already `CLOAK_FAIL_RATE` 0.03. FedSpace Photons=False, Photons Disable Players=True, and Multiple Photons=False are that same card (row 230) and stay off until it is on.
 - Carried-photon blast spends the rest of the day's turns (`turns_today = turns_per_day`) rather than a wall-clock day end.
 - Disruptor clears a uniform random 1..12 mines (Bible ceiling), not an MBBS average curve.
-- Limpet removal fee uses the only TEDIT sample found (UNVERIFIED as 3.11 default).
+- Limpet removal: stored fee stays the cabal TEDIT sample (1,250). Live GameA is 5,000 behind `hardware_price_live`. SOURCE-CONFLICT. Turns were not measured.
 - Photon price: stored 12,000 stays. Live GameA is 40,000 behind `hardware_price_live`. SOURCE-CONFLICT. Cabal sample is 160,000. DIFFERENT on the stored card.
 
 ## What the engine does (HARDWARE_MODE tw2002)

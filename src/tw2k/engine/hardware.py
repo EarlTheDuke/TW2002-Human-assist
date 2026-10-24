@@ -338,7 +338,7 @@ def handle_remove_limpet(universe: Universe, pid: str, action: Action) -> Action
     keys = limpets_on_target(universe, pid)
     if not keys:
         return ActionResult(ok=False, error="no limpet attached")
-    fee = int(K.LIMPET_REMOVAL_COST)
+    fee = int(K.limpet_removal_cost())
     if player.credits < fee:
         return ActionResult(ok=False, error=f"insufficient credits ({player.credits} < {fee})")
     player.credits -= fee

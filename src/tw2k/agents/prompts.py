@@ -355,7 +355,7 @@ list every turn once it starts populating.
 - `photon_missile {"target":<adjacent_sector>}` - photon wave into an adjacent sector (neutralizes mines/fighters a day-tick; decloaks). MF/ISS only.
 - `cloak` - consume one cloak; density 0 + anomaly; unattackable until fail or photon.
 - `fire_disruptor {"target":<adjacent_sector>}` - clear up to 12 mines next door.
-- `remove_limpet` - StarDock service (1,250 cr) strips an attached limpet.
+- `remove_limpet` - StarDock or Class 0 service (1,250 cr) strips an attached limpet.
 - `launch_beacon {"message":"<=41 chars"}` - drop a marker beacon here (density 1). A second beacon makes both explode.
 - `deploy_atomic {"planet_id":<landed planet>}` - atomic detonator. Colonists alive = YOUR ship is destroyed; none left = the planet is destroyed (+10% NavHaz).
 - Hostile-sector entry order: NavHaz (each 1% = 10 dmg at %-chance), one limpet, armids, sector quasar, fighters; mines stop autopilot (avoid prompt).
@@ -738,6 +738,9 @@ def get_system_prompt() -> str:
         "target must be in your sector. 5 turns.",
         f"target must be in your sector. {int(K.attack_turn_cost())} turns.",
     )
+    shown = f"{int(K.limpet_removal_cost()):,}"
+    if shown != "1,250":
+        text = text.replace("(1,250 cr)", f"({shown} cr)")
     if not K.class0_tw2002():
         text = _class0_legacy_text(text)
     if K.citadel_perk_live():

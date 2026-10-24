@@ -1610,7 +1610,9 @@ def _hardware(f: dict) -> str:
     ]
     limpet = (
         f"<p>Limpet removal is a service at StarDock or a Class 0 port, not an item you carry. "
-        f"The fee is {_n(K.LIMPET_REMOVAL_COST)} credits and it clears every limpet on your ship.</p>"
+        f"The fee is {_n(K.limpet_removal_cost())} credits and it clears every limpet on your ship. "
+        f"The cabal editor sample is {_n(K.LIMPET_REMOVAL_COST)} credits. "
+        f"Live GameA prints {_n(K.LIMPET_REMOVAL_COST_LIVE)} credits on the same removal field.</p>"
     )
     scanner = _gated(
         K.planet_scanner_live(),
@@ -1649,7 +1651,8 @@ def _stardock_services(f: dict) -> str:
     rename = _gated(
         K.ship_rename_live(),
         f"the shipyard changes this ship's name and registration for {_n(K.SHIP_RENAME_COST)} credits. "
-        f"The name can be {_n(K.SHIP_RENAME_NAME_MAX)} characters.",
+        f"The name can be {_n(K.SHIP_RENAME_NAME_MAX)} characters. "
+        "Turns on a rename were not measured.",
         "the shipyard does not sell a new name or registration.",
     )
     bust_days = f.get("bust_clear_days")

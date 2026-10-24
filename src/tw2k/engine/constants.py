@@ -1519,6 +1519,9 @@ ARMID_DAMAGE = 100
 # 9,000. SOURCE-CONFLICT. SHIP_TW_MODE is not this switch.
 # Citadel Transport Unit 50,000 and Upgrade 25,000 already match
 # PLANET_TRANSPORTER_COST_FIRST / PLANET_TRANSPORTER_COST_EXTRA. No shop switch.
+# Limpet removal is a service, not one of those four shop prices.
+# limpet_removal_cost() still reads this switch: the same BigBang card
+# prints 5,000 (Ven 2026-10-24). The stored cabal sample stays 1,250.
 # Default stays legacy so the pin and the digests do not move.
 HARDWARE_PRICE_MODE = "legacy"  # "legacy" | "live"
 ARMID_MINE_COST_LIVE = 1_000
@@ -2338,8 +2341,62 @@ def disruptor_cost() -> int:
     return DISRUPTOR_COST
 DISRUPTOR_MAX = 10
 DISRUPTOR_CLEAR_MAX = 12  # Bible ceiling
-# Limpet removal (h22)
+# Limpet removal (h22).
+# Stored path is the cabal TEDIT sample ($1,250). Live GameA / BigBang
+# TWSTATS prints Limpet Removal=5,000 cr (Ven 2026-10-24,
+# docs/playtests/twgs-live/ship-rename-limpet-ven.txt). SOURCE-CONFLICT.
+# One CostLimpetRemoval field fills StarDock and Class 0. Turns were not
+# measured. The handler stays credit-only.
 LIMPET_REMOVAL_COST = 1_250
+LIMPET_REMOVAL_COST_LIVE = 5_000
+
+
+def fill_measured_prompt(template: str, n: int) -> str:
+    """Substitute {N} in a tw2002.exe prompt line. The capture leaves {N} raw."""
+    return str(template).replace("{N}", str(int(n)))
+
+
+def limpet_removal_cost() -> int:
+    """Removal fee. Cabal 1,250 stays stored. The live/v311 card is 5,000.
+
+    hardware_price_live() is that BigBang card. TW2002_LIVE_PROFILE and
+    V311_PROFILE turn the card on without moving HARDWARE_PRICE_MODE.
+    """
+    if hardware_price_live():
+        return int(LIMPET_REMOVAL_COST_LIVE)
+    return int(LIMPET_REMOVAL_COST)
+
+
+# Dock offer from tw2002.exe. {N} is CostLimpetRemoval. Same lines at both docks.
+LIMPET_REMOVAL_OFFER = (
+    "A port official runs up to you as you dock and informs you that",
+    "their sensors have detected a Limpet tracking mine somewhere on",
+    "your ship.  Do you want to pay the {N} credit fee for search",
+    "and removal? :",
+)
+LIMPET_REMOVAL_DONE = (
+    "After an intensive scanning search, they find and remove the Limpet",
+    "tracking mine.  Unfortunately, they can't tell who it belonged to.",
+)
+LIMPET_REMOVAL_BROKE = (
+    "The port official frowns at you (you haven't the funds!) and storms",
+    "away in search of more profitable work.",
+)
+
+
+def limpet_removal_offer(fee: int | None = None) -> str:
+    """Dock offer. Same text at StarDock and Class 0."""
+    n = limpet_removal_cost() if fee is None else int(fee)
+    return "\n".join(fill_measured_prompt(line, n) for line in LIMPET_REMOVAL_OFFER)
+
+
+def limpet_removal_done_text() -> str:
+    return "\n".join(LIMPET_REMOVAL_DONE)
+
+
+def limpet_removal_broke_text() -> str:
+    return "\n".join(LIMPET_REMOVAL_BROKE)
+
 
 # --- Ship hardware v2 (same HARDWARE_MODE switch) -----------------------------
 # docs/playtests/ships/SHIP_HARDWARE_V2.md. Everything below is off under
@@ -5048,7 +5105,8 @@ V311_PROFILE_HELPERS: dict[str, tuple[str, str]] = {
     ),
     "ship_rename_live": (
         "SHIP_RENAME_MODE",
-        "NOTE 87: the shipyard sells a new registration and ship name",
+        "NOTE 87: the shipyard sells a new registration and ship name. "
+        "Fee 5,000 and 30 characters CONFIRMED (Ven 2026-10-24). Turns not measured",
     ),
     "exp_sources_live": (
         "EXP_SOURCES_MODE",
@@ -6202,18 +6260,49 @@ def haggle_exp_live() -> bool:
 
 # v311-exp-alignment-trade-gaps-v1 (NOTE 87) SD-n, row 112.
 # EIS ShipyardMenu.html lines 104-112: "a hefty fee" and a new name. The page
-# prints no price, no length, and no turn cost. UNVERIFIED, searched: that
-# page, the TW2002 Bible ship-name paragraph (no fee), and GAP 3.17 (about
-# 5,000 in a sample TEDIT). The fee stays 5,000, the name stays 30 characters,
-# and the action spends 0 turns (class0.handle_ship_rename).
+# prints no price and no length. Ven 2026-10-24
+# (docs/playtests/twgs-live/ship-rename-limpet-ven.txt) confirms both:
+# GameA TWSTATS "Reregister Ship=5,000 cr" and cabal TEDIT $5,000, and the
+# tw2002.exe prompts "(30 chars)" / "(30 letters)". Turns were NOT measured.
+# The handler stays credit-only (turns_spent 0). That 0 is not a confirmed
+# turn cost. The action stays behind SHIP_RENAME_MODE.
 SHIP_RENAME_MODE = "legacy"  # "legacy" | "live"
-SHIP_RENAME_COST = 5_000  # UNVERIFIED (GAP 3.17 sample TEDIT; EIS prints no number)
-SHIP_RENAME_NAME_MAX = 30  # UNVERIFIED (EIS ShipyardMenu prints no length)
+SHIP_RENAME_COST = 5_000  # CONFIRMED (Ven 2026-10-24 TWSTATS + cabal TEDIT)
+SHIP_RENAME_NAME_MAX = 30  # CONFIRMED (tw2002.exe "(30 chars)" / "(30 letters)")
+# Registrar office. {N} in the fee line is CostRegister. Name prompts use {N}
+# for the length. Broke lines have no number.
+SHIP_RENAME_FEE_PROMPT = (
+    "You enter the Federation Ship Registrar's Office and sit down.",
+    "A clerk looks you over suspiciously and then holds out his hand.",
+    '"That\'ll be {N} creds to process a different ship name."',
+    '"Still interested?"',
+)
+SHIP_RENAME_NAME_PROMPTS = (
+    "What do you want to name your ship? ({N} chars)",
+    "What do you want to name your ship? ({N} letters)",
+    "What do you want to name this ship? ({N} chars)",
+)
+SHIP_RENAME_BROKE_PROMPT = (
+    '"You don\'t have the credits!"',
+    '"Don\'t waste my time then!"',
+)
 
 
 def ship_rename_live() -> bool:
     """True when the shipyard will change this ship's registration and name."""
     return SHIP_RENAME_MODE == "live" or tw2002_live_profile() or v311_profile()
+
+
+def ship_rename_office_prompt(cost: int | None = None) -> str:
+    """Registrar office lines plus the measured name prompt."""
+    n = int(SHIP_RENAME_COST if cost is None else cost)
+    lines = [fill_measured_prompt(line, n) for line in SHIP_RENAME_FEE_PROMPT]
+    lines.append(fill_measured_prompt(SHIP_RENAME_NAME_PROMPTS[0], int(SHIP_RENAME_NAME_MAX)))
+    return "\n".join(lines)
+
+
+def ship_rename_broke_text() -> str:
+    return "\n".join(SHIP_RENAME_BROKE_PROMPT)
 
 
 # NOTE 103 GAP 13.1 / 13.3, row 161. EIS GeneralUpdated.html "New Mail", and the

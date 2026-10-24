@@ -92,11 +92,13 @@ Handlers, kept. `web/redesign.js` `key` sends a prompt `>` to `quickStats` (menu
 
 Numbers a v3.11 source does not settle. Searched before these rows were added: `CompDisplays.html` (J is a type catalog, no colonist table), `HardwareMenu.html` (better deal, more points, no amounts), `ShipyardMenu.html` ("hefty fee", no price and no length), S2 `S2_cabal_formulas.html` (no haggle-experience table), S7 `S7_softdocs_slice-10.txt` ("haggle for 2 points" as a player method). A player tip says the exact best price pays 5 experience. That tip was not adopted.
 
+Ven 2026-10-24 (`docs/playtests/twgs-live/ship-rename-limpet-ven.txt`) confirmed the rename fee and the 30-character cap from TWSTATS and tw2002.exe. Turns on a rename were not measured.
+
 | item | current value | live test | what to record | constant |
 |---|---|---|---|---|
 | Good haggle experience | +1 | Make a deal that beats the offer and stops short of the hidden bound | Experience before and after | `HAGGLE_EXP_GOOD` |
 | Great haggle experience | +2, when the accepted price reaches the hidden bound | Repeat and take the price the port will not beat | Experience before and after, and whether 5 is awarded for the exact best price | `HAGGLE_EXP_GREAT` |
-| Ship rename | 5000 credits, 30 characters, 0 turns | At the shipyard, rename the ship | Credits taken, the longest name accepted, and the turn counter | `SHIP_RENAME_COST`, `SHIP_RENAME_NAME_MAX` |
+| Ship rename | 5,000 credits CONFIRMED (Ven 2026-10-24 TWSTATS `Reregister Ship=5,000 cr`), 30 characters CONFIRMED (`(30 chars)` / `(30 letters)`). Turns not measured (credit-only; no turn cost invented) | At the shipyard, rename the ship and read the turn counter before the fee and after the name | Turns spent. Credits and the 30-character cap are already on the card and in the prompt | `SHIP_RENAME_COST`, `SHIP_RENAME_NAME_MAX` |
 
 ## Live TWGS test queue (NOTE 110)
 
@@ -134,11 +136,13 @@ GAP 14.5. Rob, steal, bust, the flee penalty, and the Underground password ladde
 
 ## Live TWGS test queue (NOTE 117)
 
-GAP 5.20, 1.15, and the confirmed corp-break-in line of GAP 9.5 are switched (profile rows 167-169). These rows were read and not switched. No number below is printed in a saved source.
+GAP 5.20, 1.15, and the confirmed corp-break-in line of GAP 9.5 are switched (profile rows 167-169). These rows were read and not switched. The limpet fee is the exception: Ven 2026-10-24 printed it. The other numbers below are still not in a saved source.
 
 Searched: `docs/plans/gap-map-refresh-v6.md` still-open ranks 6-11 and 27, `classictw_docs_wiki/Feds.html` (confiscate holds, no count), `classictw_docs_wiki/Imperial_StarShip.html` and `Iago_War_Manual.txt` (evil ISS avoids FedSpace; the three Federals are not a hunt of every evil trader), `cabal_strategy_site/formulas.html` (MBBS rob EXP * 6 and steal EXP / 21, already `ROB_CREDIT_FACTOR` and `STEAL_HOLD_DIVISOR`; alignment table), `classictw_docs_wiki/Alignment.html` (upgrade and colonist-kill cells are ellipses), `runner.tick_day` (the named Extern jobs already run).
 
 Ven 2026-10-24 GameA TWSTATS (`docs/playtests/twgs-live/twstats-costs-ven.txt`) prints `Type I TWarp=50,000 cr`, `Type II TWarp=80,000 cr`, and `TWarp Upgrade=10,000 cr`. Stored cabal samples stay 12,500, 20,000, and 9,000. SOURCE-CONFLICT. The three quotes use `hardware_price_live`. `SHIP_TW_MODE` stays. Citadel Transport Unit 50,000 and Citadel Transport Upgrade 25,000 already match `PLANET_TRANSPORTER_COST_FIRST` and `PLANET_TRANSPORTER_COST_EXTRA`. No shop switch for those. Ven 2026-10-24 GameA TWSTATS (`docs/playtests/twgs-live/twstats-costs-ven.txt`) prints `Photon Missile=40,000 cr`. Stored price stays 12,000. SOURCE-CONFLICT. DIFFERENT on the stored card. The quote uses `hardware_price_live`. Atomic detonators stay off that switch.
+
+Ven 2026-10-24 measured Limpet Removal at 5,000 credits on live GameA. The cabal TEDIT sample of 1,250 stays the stored constant. One `CostLimpetRemoval` field covers StarDock and Class 0. Turns were not measured.
 
 | item | current value | live test | what to record | constant |
 |---|---|---|---|---|
@@ -149,7 +153,7 @@ Ven 2026-10-24 GameA TWSTATS (`docs/playtests/twgs-live/twstats-costs-ven.txt`) 
 | Tax alignment | no alignment change on the daily tax | Pay the daily tax and read alignment before and after | The alignment delta next to the credits taken | an alignment figure, only if the screen prints one |
 | Port-upgrade alignment | no alignment change on a port upgrade. Alignment.html says upgrading a port gives you "..." | Upgrade one port and read alignment and experience | Both deltas | an alignment figure, only if the screen prints one |
 | Colonist-kill alignment | destroying a planet is already -1 alignment and +50 experience. Killing colonists on a planet has no separate award. Alignment.html says "..." | Attack colonists on a planet and read alignment and experience | Both deltas, and whether the planet remains | an alignment figure, only if the screen prints one |
-| Limpet removal fee | `LIMPET_REMOVAL_COST` 1250, marked UNVERIFIED | Remove one limpet at StarDock and at a Class 0 port | The credit price on each screen | `LIMPET_REMOVAL_COST` |
+| Limpet removal fee | Stored `LIMPET_REMOVAL_COST` 1,250 (cabal TEDIT). Live GameA TWSTATS `Limpet Removal=5,000 cr` when `hardware_price_live` (`limpet_removal_cost`). SOURCE-CONFLICT. One `CostLimpetRemoval` for StarDock and Class 0. Turns not measured | Interactive screen compare still open if a dock prompt is wanted | Whether StarDock and Class 0 print the same {N}, and any turn debit | `LIMPET_REMOVAL_COST` |
 | Type I TWarp price | Stored `SHIP_TW_TYPE1_COST` 12,500. Live card `ship_tw_type1_cost` 50,000 when `hardware_price_live`. SOURCE-CONFLICT | Buy a Type I drive on an ISS, FlagShip, or Havoc at StarDock with the live card on | The credit price on the hardware screen | `SHIP_TW_TYPE1_COST` |
 | Type II TWarp price | Stored `SHIP_TW_TYPE2_COST` 20,000. Live card `ship_tw_type2_cost` 80,000 when `hardware_price_live`. OldFAQ v2 80,000. SOURCE-CONFLICT | Buy a Type II drive on a TransWarp hull at StarDock with the live card on | The credit price on the hardware screen | `SHIP_TW_TYPE2_COST` |
 | TWarp upgrade price | Stored `SHIP_TW_UPGRADE_COST` 9,000. Live card `ship_tw_upgrade_cost` 10,000 when `hardware_price_live`. OldFAQ v2 40,000. SOURCE-CONFLICT | Upgrade a fitted Type I drive at StarDock with the live card on | The credit price on the hardware screen | `SHIP_TW_UPGRADE_COST` |

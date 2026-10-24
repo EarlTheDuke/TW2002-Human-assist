@@ -531,15 +531,18 @@ def class0_equip_prices(day: int) -> dict[str, int]:
 
 
 def _ship_rename_params(player) -> dict[str, Any]:
+    cost = int(K.SHIP_RENAME_COST)
     return {
         "name": {"type": "str", "required": True, "max_length": int(K.SHIP_RENAME_NAME_MAX)},
-        "cost": int(K.SHIP_RENAME_COST),
+        "cost": cost,
         "current": str(player.ship.name) if player is not None else "",
+        "prompt": K.ship_rename_office_prompt(cost),
+        "broke": K.ship_rename_broke_text(),
     }
 
 
 def clean_ship_name(raw: Any) -> tuple[str | None, str | None]:
-    """(name, error). A blank or odd name is refused. Length is UNVERIFIED."""
+    """(name, error). A blank or odd name is refused. Length 30 is CONFIRMED."""
     if not isinstance(raw, str):
         return None, "name must be text"
     cleaned = " ".join(raw.split())
@@ -567,7 +570,10 @@ def ship_rename_spec(universe: Universe, pid: str) -> tuple[bool, str | None, di
 
 
 def handle_ship_rename(universe: Universe, pid: str, action: Action) -> ActionResult:
-    """EIS ShipyardMenu, Change Ship Registration. Price is UNVERIFIED."""
+    """EIS ShipyardMenu, Change Ship Registration. Fee and length are CONFIRMED.
+
+    Turns were not measured. This stays credit-only (turns_spent 0).
+    """
     if not K.ship_rename_live():
         return ActionResult(ok=False, error="unsupported action")
     player = universe.players[pid]
