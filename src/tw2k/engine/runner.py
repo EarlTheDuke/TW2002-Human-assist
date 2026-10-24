@@ -2538,7 +2538,7 @@ def _start_fidelity_citadel(universe: Universe, player, sector, planet, next_lev
         (have_fuel < fuel, f"need {fuel} fuel ore on planet (have {have_fuel})"),
         (have_org < organics, f"need {organics} organics on planet (have {have_org})"),
         (have_eq < equipment, f"need {equipment} equipment on planet (have {have_eq})"),
-        (avail_col < colonists, f"need {colonists} colonists on planet (have {avail_col})"),
+        (avail_col < colonists, K.citadel_colonist_need_line(planet.class_id, colonists, avail_col)),
     )
     missing_bits = [message for missing, message in short if missing]
     if missing_bits:
@@ -2566,7 +2566,8 @@ def _start_fidelity_citadel(universe: Universe, player, sector, planet, next_lev
         summary=(
             f"{player.name} began Citadel L{next_level} on {planet.name} "
             f"({fuel} fuel ore, {organics} organics, {equipment} equipment, "
-            f"{colonists} colonists required and kept, ETA day {planet.citadel_complete_day})"
+            f"{K.citadel_colonist_kept_phrase(planet.class_id, colonists)} required and kept, "
+            f"ETA day {planet.citadel_complete_day})"
         ),
     )
     return ActionResult(ok=True, turns_spent=cost)
@@ -2583,7 +2584,7 @@ def _start_class_citadel(universe: Universe, player, sector, planet, next_level:
         (have_fuel < fuel, f"need {fuel} fuel_ore on planet (have {have_fuel})"),
         (have_org < organics, f"need {organics} organics on planet (have {have_org})"),
         (have_eq < equipment, f"need {equipment} equipment on planet (have {have_eq})"),
-        (avail_col < colonists, f"need {colonists} colonists on planet (have {avail_col})"),
+        (avail_col < colonists, K.citadel_colonist_need_line(planet.class_id, colonists, avail_col)),
     )
     for missing, message in short:
         if missing:
@@ -2619,8 +2620,8 @@ def _start_class_citadel(universe: Universe, player, sector, planet, next_level:
         },
         summary=(
             f"{player.name} began Citadel L{next_level} on {planet.name} "
-            f"({colonists} colonists, {fuel} fuel ore, {organics} organics, "
-            f"{equipment} equipment, ETA day {planet.citadel_complete_day})"
+            f"({K.citadel_colonist_kept_phrase(planet.class_id, colonists)}, {fuel} fuel ore, "
+            f"{organics} organics, {equipment} equipment, ETA day {planet.citadel_complete_day})"
         ),
     )
     return ActionResult(ok=True, turns_spent=cost)

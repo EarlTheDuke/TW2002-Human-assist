@@ -4284,10 +4284,19 @@
     const ready = days ? " Ready day " + (Number(S.day || 0) + days) + "." : "";
     const have = (key, stockKey) => next[key] != null ? next[key] : stock[stockKey] || 0;
     const gaps = [];
-    [["fuel ore", next.fuel_ore, have("fuel_have", "fuel_ore")], ["organics", next.organics, have("organics_have", "organics")], ["equipment", next.equipment, have("equipment_have", "equipment")], ["colonists", next.colonists, have("colonists_have", "colonists")]].forEach(([name, need, got]) => {
-      const gap = Number(need || 0) - Number(name === "colonists" && next.colonists_have == null ? cols : got || 0);
+    [["fuel ore", next.fuel_ore, have("fuel_have", "fuel_ore")], ["organics", next.organics, have("organics_have", "organics")], ["equipment", next.equipment, have("equipment_have", "equipment")]].forEach(([name, need, got]) => {
+      const gap = Number(need || 0) - Number(got || 0);
       if (gap > 0) gaps.push(name + " " + fmt(gap));
     });
+    if (next.unit === "thousands" && next.need != null) {
+      const gap = Number(next.need) - Number(next.have != null ? next.have : 0);
+      const people = Number(next.need_people || 0) - Number(next.have_people || 0);
+      if (gap > 0) gaps.push("colonists " + fmt(gap) + " (thousands)=" + fmt(people) + " people");
+    } else {
+      const got = next.colonists_have != null ? next.colonists_have : cols;
+      const gap = Number(next.colonists || 0) - Number(got || 0);
+      if (gap > 0) gaps.push("colonists " + fmt(gap));
+    }
     const dayWord = days === 1 ? "1 day" : fmt(days) + " days";
     let note;
     if (building) {
