@@ -66,6 +66,21 @@ def main(argv: list[str] | None = None) -> int:
         # NOTE 152 and NOTE 171 benches. Only this process sees the change.
         K.live_pace = lambda: False
         K.turn_regen_live = lambda: False
+        # NOTE 172d. With regen off but the v3.11 starting package on, tick_day
+        # never refills a day, so every seat had one day of turns for the whole
+        # bench. The test day hands the full day back at each roll.
+        import tw2k.engine.runner as _er
+        import tw2k.server.runner as _sr
+
+        _tick = _er.tick_day
+
+        def _tick_refill(universe) -> None:
+            _tick(universe)
+            for player in universe.players.values():
+                player.turns_today = 0
+
+        _er.tick_day = _tick_refill
+        _sr.tick_day = _tick_refill
     import uvicorn
 
     from tw2k.engine import GameConfig

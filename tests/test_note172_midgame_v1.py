@@ -253,3 +253,16 @@ def test_a_settled_seat_stops_bouncing_between_two_seen_sectors() -> None:
     opts = [(114, "1:114 (3t)", 3), (149, "2:149 (3t)", 3)]
     picks = [t._explore_choice(47, opts) for _ in range(6)]
     assert 149 in picks
+
+
+def test_the_buy_it_dialog_is_answered_yes_after_choosing_a_hull() -> None:
+    """NOTE 172d. Seed 99 chose a hull, then closed "Want to buy it?" with Escape."""
+    trader = ScriptedTrader(level="hard")
+    screen = {"menuOpen": True, "formOpen": False,
+              "menuText": "Want to buy it? Trade-in 43,220 cr, the new ship is 63,600 cr, net 20,380 cr."}
+    trader.hull_confirm = True
+    action = trader._modal(screen, ["Yes", "No"], 10)
+    assert action.op == "click" and action.label == "Yes"
+    # Without a hull chosen this turn the same dialog is closed.
+    again = trader._modal(screen, ["Yes", "No"], 10)
+    assert again.op == "press"
