@@ -1,0 +1,23 @@
+TWGS Maximum Course Length capture - Ven (VENGEANCE), 2026-10-24 ~9:35 AM PT. Read-only.
+
+MEASURED: Max Course Length = 20 (real game setting)
+  C:\Games\TWGS\program files\EIS\TWGS\Game\GameA\OUTPUT\TWSTATS.TXT line 131: "Max Course Length=20" (mtime 2026-10-24 6:27 AM PT)
+  Same "=20" in GameK\OUTPUT\TWSTATS.TXT and tw2002_reference\live_twgs\ GameA_backup, GameA_pre_extern_0730,
+  GameA_pre_killtest_20261017_1011, GameA_pre_tickedit_0736, GameA_VS_pre_restore_20261024_061632.
+Sample doc only (NOT a setting): tw2002_reference\stardock_manuals_and_text_docs\TWFAQ_20FAQ.txt:102 "Max Course length 50".
+
+tedit.exe strings (C:\Program Files (x86)\EIS\TWGS\Game\ and C:\Games\TWGS\program files\EIS\TWGS\Game\):
+  "Maximum Course Length  :"  /  "What is the maximum course length?"  /  keys "Max Course Length", "MaxCourseLength"
+  Help: "The maximum course length was set in BIGBANG when the universe was generated. This course length
+  determined the physical characteristics of the universe. You can change this length to allow the game to
+  plot longer courses such as those resulting from avoids."
+  (Editable field; TEDIT min/max bounds not exposed as strings - not determined.)
+
+tw2002.exe refusal text (color codes kept):
+  "*** {+Fr}Error{N-g} - No route within <N> warps from sector {+y}<A>{-g} to sector {+y}<B>"  then prompt "{-m}Clear Avoids? "
+  Also: "{+Bw}No possible route!"
+  Also: "Original sector information will be reloaded for next course plot."; "... has been cleared and will be used in future plots."
+  (N presumably = Max Course Length; "<N>" placeholders are format gaps in the binary.)
+
+NOT done: no TEDIT launch, no TWGS UI clicks, no twgs.exe stop/start, no ports 8031-8037/8041, no plot in any seat,
+no settings changed, AFK game 88d84b6a untouched. Only file reads / binary string scans.

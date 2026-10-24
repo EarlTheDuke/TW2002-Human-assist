@@ -1,11 +1,14 @@
 """NOTE 78 (v311-universe-planet-gaps-v1). Each switch off stays on the clone rule.
 
-On, the S1 treasury cap, the 45-hop course, the Big Bang densities, the 3%
+On, the S1 treasury cap, the course cap, the Big Bang densities, the 3%
 one-way share and the detonator planet-killer are in force. Stored defaults
 stay legacy.
 """
 
 from __future__ import annotations
+
+import pytest
+from pydantic import ValidationError
 
 import tw2k.engine.constants as K
 from tests.test_phase_abc import _make_universe
@@ -65,7 +68,7 @@ def _one_ways(u) -> int:
     return n
 
 
-def _line(hops: int) -> tuple[Universe, Player]:
+def _line(hops: int, *, max_course_length: int | None = None) -> tuple[Universe, Player]:
     """A two-way chain. Sector hops+1 is `hops` warps from sector 1."""
     n = hops + 1
     sectors = {}
@@ -76,8 +79,11 @@ def _line(hops: int) -> tuple[Universe, Player]:
         if i < n:
             warps.append(i + 1)
         sectors[i] = Sector(id=i, warps=warps)
+    cfg: dict = {"seed": 1, "universe_size": n, "enable_ferrengi": False, "enable_planets": False}
+    if max_course_length is not None:
+        cfg["max_course_length"] = max_course_length
     u = Universe(
-        config=GameConfig(seed=1, universe_size=n, enable_ferrengi=False, enable_planets=False),
+        config=GameConfig(**cfg),
         sectors=sectors,
     )
     player = Player(
@@ -187,6 +193,131 @@ def test_course_over_45_is_refused_only_when_live(monkeypatch) -> None:
     assert "UNVERIFIED" in K.course_max_live.__doc__ or "UNVERIFIED" in (
         K.__dict__["plot_course_hop_limit"].__doc__ or ""
     )
+
+
+def _plot(u: Universe, target: int, *, execute: bool = False):
+    return apply_action(u, "P1", Action(
+        kind=ActionKind.PLOT_COURSE, args={"target": target, "execute": execute},
+    ))
+
+
+def test_live_plot_accepts_the_cap_and_refuses_one_more(monkeypatch) -> None:
+    """NOTE 96. 45 stays. A computer plot of that many hops succeeds; one more is refused.
+
+    The computer course plotter reads query_route (cockpit C, then F, and CIM F).
+    plot_course is the same graph, including execute.
+    """
+    cap = int(K.V311_COURSE_MAX_HOPS)
+    assert cap == 45
+    at_cap = cap + 1
+    over = cap + 2
+    legacy, _who = _line(cap + 1)
+    assert K.course_max_live() is False
+    assert K.plot_course_hop_limit() == 60
+    assert _plot(legacy, over).ok
+    seen = query_route(legacy, "P1", over)
+    assert seen["ok"] and seen["hops"] == cap + 1
+
+    def _boundary(label: str) -> None:
+        assert K.course_max_live() is True, label
+        assert K.plot_course_hop_limit() == cap
+        fresh, who = _line(cap + 1)
+        refused = _plot(fresh, over)
+        assert refused.ok is False, label
+        assert refused.error == f"plotted course is longer than {cap} hops"
+        assert who.sector_id == 1 and who.turns_today == 0
+        flown = _plot(fresh, over, execute=True)
+        assert flown.ok is False and flown.error == refused.error
+        assert who.sector_id == 1 and who.turns_today == 0
+        asked = query_route(fresh, "P1", over)
+        assert asked["ok"] is False
+        assert asked["error"] == refused.error
+        assert asked["path"] == []
+        preview = _plot(fresh, at_cap)
+        assert preview.ok, preview.error
+        assert who.sector_id == 1
+        route = query_route(fresh, "P1", at_cap)
+        assert route["ok"] and route["hops"] == cap and len(route["path"]) == cap
+        shorter = _plot(fresh, 2)
+        assert shorter.ok, shorter.error
+        done = _plot(fresh, at_cap, execute=True)
+        assert done.ok, done.error
+        assert who.sector_id == at_cap
+        gone, pilot = _line(cap + 1)
+        prev = over - 1
+        gone.sectors[prev].warps = [w for w in gone.sectors[prev].warps if int(w) != over]
+        missing = query_route(gone, "P1", over)
+        assert missing["ok"] is False and missing["error"] == "no route"
+        blocked = _plot(gone, over)
+        assert blocked.ok is False and blocked.error == "no route to target"
+        assert pilot.sector_id == 1
+
+    monkeypatch.setattr(K, "COURSE_MAX_MODE", "live")
+    assert K.V311_PROFILE != "v311"
+    _boundary("COURSE_MAX_MODE")
+    monkeypatch.setattr(K, "COURSE_MAX_MODE", "legacy")
+    monkeypatch.setattr(K, "V311_PROFILE", "v311")
+    assert K.COURSE_MAX_MODE == "legacy"
+    _boundary("v311 profile")
+
+
+def test_a_game_refuses_one_hop_past_its_own_course_length(monkeypatch) -> None:
+    """NOTE 96. GameA TWSTATS is 20. Unset live games keep the published sample 45.
+
+    TWGS stores Maximum Course Length on the game (BIGBANG, then TEDIT). The
+    plotter reads GameConfig.max_course_length when that is set.
+    """
+    assert K.GAMEA_COURSE_MAX_HOPS == 20
+    assert K.V311_COURSE_MAX_HOPS == 45
+    assert "max_course_length" not in GameConfig(seed=1).model_dump()
+    stored = GameConfig(seed=1, max_course_length=K.GAMEA_COURSE_MAX_HOPS)
+    assert stored.model_dump()["max_course_length"] == 20
+    assert GameConfig(max_course_length=300).max_course_length == 300
+    assert GameConfig(max_course_length=0).max_course_length == 0
+    assert GameConfig(max_course_length="").max_course_length is None
+    for bad in (-1, True, "twenty"):
+        with pytest.raises(ValidationError):
+            GameConfig(max_course_length=bad)
+
+    cap = int(K.GAMEA_COURSE_MAX_HOPS)
+    at_cap = cap + 1
+    over = cap + 2
+    monkeypatch.setattr(K, "COURSE_MAX_MODE", "legacy")
+    legacy, _who = _line(cap + 1, max_course_length=cap)
+    assert K.plot_course_hop_limit(legacy.config) == 60
+    assert _plot(legacy, over).ok
+
+    monkeypatch.setattr(K, "COURSE_MAX_MODE", "live")
+    assert K.plot_course_hop_limit() == 45
+    fresh, who = _line(cap + 1, max_course_length=cap)
+    assert K.plot_course_hop_limit(fresh.config) == cap
+    refused = _plot(fresh, over)
+    assert refused.ok is False
+    assert refused.error == f"plotted course is longer than {cap} hops"
+    assert who.sector_id == 1 and who.turns_today == 0
+    flown = _plot(fresh, over, execute=True)
+    assert flown.ok is False and flown.error == refused.error
+    assert who.sector_id == 1 and who.turns_today == 0
+    asked = query_route(fresh, "P1", over)
+    assert asked["ok"] is False and asked["path"] == []
+    assert asked["error"] == refused.error
+    preview = _plot(fresh, at_cap)
+    assert preview.ok and who.sector_id == 1
+    route = query_route(fresh, "P1", at_cap)
+    assert route["ok"] and route["hops"] == cap and len(route["path"]) == cap
+    done = _plot(fresh, at_cap, execute=True)
+    assert done.ok, done.error
+    assert who.sector_id == at_cap
+
+    monkeypatch.setattr(K, "COURSE_MAX_MODE", "legacy")
+    monkeypatch.setattr(K, "V311_PROFILE", "v311")
+    assert K.COURSE_MAX_MODE == "legacy"
+    profile, pilot = _line(cap + 1, max_course_length=cap)
+    assert K.plot_course_hop_limit(profile.config) == cap
+    blocked = _plot(profile, over)
+    assert blocked.ok is False
+    assert blocked.error == f"plotted course is longer than {cap} hops"
+    assert pilot.sector_id == 1
 
 
 def test_big_bang_densities_keep_sol_terra_stardock_and_class0(monkeypatch) -> None:

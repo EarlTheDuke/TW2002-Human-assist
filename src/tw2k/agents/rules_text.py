@@ -30,7 +30,8 @@ def plot_course_call(target: object = "<sector_id>") -> str:
 
 
 def plot_course_line() -> str:
-    # Legacy reports PLOT_COURSE_MAX_DEPTH (10). Live reports 45 (UNVERIFIED for 3.11).
+    # Legacy reports PLOT_COURSE_MAX_DEPTH (10). With no per-game length, live
+    # reports V311_COURSE_MAX_HOPS (published sample 45, not GameA's 20).
     depth = int(K.plot_course_hop_limit()) if K.course_max_live() else int(K.PLOT_COURSE_MAX_DEPTH)
     return (
         f"- `{plot_course_call()}` — moves along the shortest known path, "
