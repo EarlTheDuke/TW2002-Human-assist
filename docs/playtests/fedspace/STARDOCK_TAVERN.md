@@ -68,7 +68,7 @@ NOTE 129 day-1 screen (`docs/playtests/twgs-live/stardock-menus.txt`, "Grimy, th
 
 ## NOT BUILT
 
-Tri-Cron per-cron position prompts, and a stored champion name. Singles Bar. Library. Cineplex. Illegal goods. Computer-menu Daily Log announcement. Shipyard re-registration. Live real-time bar chat (merged into the conversation). Prices that grow with the game date. Code-bot use of the Tavern. A name-change price above experience 1.
+Tri-Cron per-cron position prompts, and a stored champion name. Cineplex. Illegal goods. Computer-menu Daily Log announcement. Shipyard re-registration. Live real-time bar chat (merged into the conversation). Prices that grow with the game date. Code-bot use of the Tavern. A name-change price above experience 1. The Libram and the singles-bar door are `STARDOCK_DOORS_MODE` row 233. The unnamed 47-credit drop at that bar stays deferred.
 
 ## Decisions used
 

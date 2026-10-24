@@ -243,6 +243,8 @@ class EventKind(str, Enum):
     UG_RENAME = "ug_rename"  # NOTE 162. Never emitted while UG_NAME_MODE is legacy.
     TRICRON = "tricron"  # NOTE 129. Never emitted while TRICRON_MODE is legacy.
     CINEPLEX = "cineplex"  # flavor only. Never emitted under STARDOCK_EXTRA_MODE legacy.
+    LIBRARY = "library"  # NOTE 129. Never emitted while STARDOCK_DOORS_MODE is legacy.
+    SINGLES_BAR = "singles_bar"  # NOTE 129. Never emitted while STARDOCK_DOORS_MODE is legacy. No charge.
     SHIP_TRANSWARP = "ship_transwarp"
     SHIP_TRANSWARP_FUSE = "ship_transwarp_fuse"
     # ship-fleet-transporter-v1 (SHIP_FLEET.md fl30); never emitted under FLEET_MODE legacy

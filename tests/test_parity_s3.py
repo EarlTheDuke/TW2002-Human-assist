@@ -41,7 +41,8 @@ def _offered_kinds() -> list[str]:
             and (k is not ActionKind.FEDERATION_HALL or K.federation_hall_live())
             and (k is not ActionKind.UNDERGROUND_RENAME or K.ug_name_live())
             and (k is not ActionKind.CIM or K.cim_live())
-            and (k is not ActionKind.TRICRON or K.tricron_live())]
+            and (k is not ActionKind.TRICRON or K.tricron_live())
+            and (k not in (ActionKind.LIBRARY, ActionKind.SINGLES_BAR) or K.stardock_doors_live())]
 
 
 def _universe(seed: int = 21):
@@ -158,7 +159,8 @@ def test_matrix_legal_matches_apply_action(label: str, u) -> None:
     if not u.players["P1"].alive:
         offered = [k.value for k in ActionKind
                    if (k is not ActionKind.SHIP_RENAME or K.ship_rename_live())
-                   and (k is not ActionKind.TRICRON or K.tricron_live())]
+                   and (k is not ActionKind.TRICRON or K.tricron_live())
+                   and (k not in (ActionKind.LIBRARY, ActionKind.SINGLES_BAR) or K.stardock_doors_live())]
     else:
         offered = _offered_kinds()
     assert len(las) == len(offered), "one entry per offered ActionKind"

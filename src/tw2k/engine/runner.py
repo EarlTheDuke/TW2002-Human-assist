@@ -5330,6 +5330,15 @@ def _bind_note162() -> None:
 _bind_note162()
 
 
+def _bind_stardock_doors() -> None:
+    from .stardock_doors import handle_library, handle_singles_bar
+    _DISPATCH[ActionKind.LIBRARY] = handle_library
+    _DISPATCH[ActionKind.SINGLES_BAR] = handle_singles_bar
+
+
+_bind_stardock_doors()
+
+
 def _bind_ship_rename() -> None:
     from .class0 import handle_ship_rename
     _DISPATCH[ActionKind.SHIP_RENAME] = handle_ship_rename

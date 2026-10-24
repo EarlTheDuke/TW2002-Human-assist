@@ -257,7 +257,8 @@ def legal_actions(universe: Universe, player_id: str) -> list[LegalAction]:
                 ))
                 and ((K.tavern_on() and K.tricron_live()) or k != ActionKind.TRICRON)
                 and (K.stardock_extra_on() or k != ActionKind.CINEPLEX)
-                and (K.ship_rename_live() or k != ActionKind.SHIP_RENAME)]
+                and (K.ship_rename_live() or k != ActionKind.SHIP_RENAME)
+                and (K.stardock_doors_live() or k not in (ActionKind.LIBRARY, ActionKind.SINGLES_BAR))]
 
     release_stale_landing(universe, player)
     landed = player.planet_landed is not None
@@ -1899,6 +1900,18 @@ def legal_actions(universe: Universe, player_id: str) -> list[LegalAction]:
         from .v311_buildable import cim_spec
         ok, why, params = cim_spec(universe, player_id)
         out.append(_la(ActionKind.CIM, legal=ok, reason=why, cost=0, params=params))
+
+    # NOTE 129. Off, the Libram and the singles bar stay out of the catalog.
+    if K.stardock_doors_live():
+        from .stardock_doors import library_spec, singles_spec
+        ok, why, params = library_spec(universe, player_id)
+        if ok and challenge is not None:
+            ok, why = False, CHALLENGE_REFUSAL
+        out.append(_la(ActionKind.LIBRARY, legal=ok, reason=why, cost=0, params=params))
+        ok, why, params = singles_spec(universe, player_id)
+        if ok and challenge is not None:
+            ok, why = False, CHALLENGE_REFUSAL
+        out.append(_la(ActionKind.SINGLES_BAR, legal=ok, reason=why, cost=0, params=params))
 
     return out
 

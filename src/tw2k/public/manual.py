@@ -1470,6 +1470,7 @@ _SWITCH_PLAIN: dict[str, str] = {
     "REENTRY_FIGHTERS_MODE": "The free Scout after Ship Destroyed carries a small fighter grant.",
     "NAVPOINT_MODE": "The computer sets, lists, and clears named NavPoints, including Terra and StarDock, and a course can plot to one.",
     "FEDERATION_HALL_MODE": "Federation Hall lists each corporation. The hardware counter can show a shop screen.",
+    "STARDOCK_DOORS_MODE": "The StarDock where-to list includes the Libram. B, which is not on the list, opens the singles bar and takes no credits.",
     "CORP_CARGO_TREASURY_MODE": "Corp mates in the same sector can move cargo. Members can put credits in the treasury, and only the C.E.O. can take them out.",
     "UG_NAME_MODE": "A total unknown can buy a new name from the Underground.",
     "SHIELD_POINT_MODE": "Class 0 and StarDock shields cost 131 credits a point.",
@@ -1721,6 +1722,18 @@ def _stardock_services(f: dict) -> str:
             f"the ante is {_n(K.TRICRON_ANTE)} credits, the house pays 2 to 1, "
             f"and the jackpot opens at {_n(K.TRICRON_OPENING_JACKPOT)} credits.",
             "the tavern does not deal Tri-Cron.",
+        )
+        + "<p>The Libram Universitatus is on the StarDock where-to list. "
+        "Its menu is Archive of Alien Races, Archive of Galactic Organizations, "
+        "Miscellaneous Documents, and Q to leave. The archives have no charge. "
+        "B is not on that list. It asks if you want to enter a singles bar. "
+        "Going in names no good and takes no credits. "
+        "An unnamed drop at that bar had no printed price, so it stays deferred. "
+        "The switch is STARDOCK_DOORS_MODE.</p>"
+        + _gated(
+            K.stardock_doors_live(),
+            "the where-to list includes the Libram Universitatus, and B opens the singles bar without a charge.",
+            "the Libram and the singles bar are closed.",
         )
         + "<p>The bank takes deposits, withdrawals and transfers. The tax section states the interest.</p>"
         + f"<p>Police HQ is in sector {_n(K.STARDOCK_SECTOR)}. "
@@ -2105,10 +2118,11 @@ _COVERS: dict[str, tuple[str, ...]] = {
         "tavern_announce", "tavern_talk", "tavern_graffiti", "tavern_order",
         "grimy_ask", "grimy_curse", "underground_enter", "underground_contract", "underground_claim",
         "underground_rename", "federation_hall",
+        "library", "singles_bar",
         "tricron", "cineplex",
         "SHIP_RENAME_MODE", "BUST_CLEAR_MODE", "UG_NAME_MODE", "FEDERATION_HALL_MODE", "BOUNTY_GOOD_MODE",
         "SHIELD_POINT_MODE", "TAVERN_BAR_PRICE_MODE", "CINEPLEX_PRICE_MODE",
-        "TRICRON_MODE", "GRIMY_TIP_MODE",
+        "TRICRON_MODE", "GRIMY_TIP_MODE", "STARDOCK_DOORS_MODE",
     ),
     "communications": (
         "hail", "broadcast", "radio", "MAIL_MODE", "RADIO_CHANNEL_MODE", "FEDCOMM_MODE", "COMMS_V311_MODE",
