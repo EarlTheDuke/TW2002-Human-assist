@@ -463,7 +463,12 @@ def _combat(_f: dict) -> str:
         "<p>Attacking a ship: every fighter you send is spent. They remove your fighters times your odds, "
         "divided by theirs, of the target's shields first, then its fighters. A 2 to 1 ship kills 500 with 250. "
         "There is no random roll; the sources print none.</p>"
-        f"<p>A kill drops you in an escape pod. You lose the ship. Experience drops by {loss} percent "
+        + _gated(
+            K.attack_turn_live(),
+            f"attacking a ship spends {_n(K.attack_turn_cost())} turns.",
+            f"attacking a ship spends {_n(K.TURN_COST['attack'])} turns.",
+        )
+        + f"<p>A kill drops you in an escape pod. You lose the ship. Experience drops by {loss} percent "
         f"({_n(K.POD_EXP_LOSS)} of what you had). {pod_credits} "
         "Addendum A is the written source for what the pod keeps.</p>"
         + (
@@ -1378,6 +1383,7 @@ _SWITCH_PLAIN: dict[str, str] = {
     "PLANET_LANDING_COMBAT_MODE": "Landing on a defended planet can start a fight.",
     "OWNER_HAZARD_NOTICE_MODE": "You are told when your own fighters or mines are hit.",
     "SHIP_FLEE_MODE": "A ship can flee a fight on the published chance.",
+    "ATTACK_TURN_MODE": "Attacking a ship costs no turns.",
     "PLANET_SHIELD_MODE": "Planetary shields work once the citadel is level 5.",
     "FERRENGI_ENGAGE_MODE": "A Ferrengi can stop you and demand tribute.",
     "SIEGE_REPORT_MODE": "A siege of your planet is reported to you.",
@@ -2015,7 +2021,7 @@ _COVERS: dict[str, tuple[str, ...]] = {
         "attack", "cloak", "fire_disruptor", "photon_missile", "deploy_atomic", "surrender",
         "retreat", "pay_toll", "recall_deployed", "deploy_fighters", "deploy_mines",
         "jettison", "self_destruct",
-        "OFFENSIVE_CLASH_MODE", "KILL_CASH_MODE", "SHIP_FLEE_MODE", "PLANET_LANDING_COMBAT_MODE",
+        "OFFENSIVE_CLASH_MODE", "KILL_CASH_MODE", "SHIP_FLEE_MODE", "ATTACK_TURN_MODE", "PLANET_LANDING_COMBAT_MODE",
         "RIVAL_STRENGTH_MODE", "SPECIAL_HULL_RULES_MODE", "PHOTON_FOLLOW_DAMP_MODE",
         "CAPTURE_CREDIT_LINE_MODE", "ATOMIC_DETONATOR_MODE", "ALIEN_COMBAT_FIX_MODE", "SHIP_EXIT_MODE",
         "PHOTON_LIMPET_MODE",

@@ -38,7 +38,7 @@ A strict 1:1 exchange would ignore `A` and `D` and trade one fighter for one shi
 - Whether the defender's odds are the same "offensive odds" column, or a separate defensive factor. The engine uses the one chart column for both sides. A second column is not in the Bible chart this tree has.
 - `Misc_shipodds.txt` loss counts. The thread itself disputes the odds, so they are not used as a vector.
 - Tholian Sentinel defending a corp planet at 4:1 (`SHIP_COMBAT.md` b13). Not built. The 4:1 figure is printed; wiring it is out of this plan.
-- Attack turn cost. Not printed. The engine still charges 5.
+- Attack turn cost. Measured on live KillTest as 0 for a ship attack (`docs/playtests/twgs-live/attack-turn-cost-ven.txt`). Only a Merchant Cruiser. `ATTACK_TURN_MODE` (profile row 228) charges 0. Stored `TURN_COST["attack"]` stays 5.
 - Whether the attacker's own ship can be destroyed by the attack it started. The tw2002 attack does not destroy the attacker. UNVERIFIED.
 - Alien exchanges. NOTE 71 already forces a 1:1 soak when `ALIEN_COMBAT_FIX_MODE` is live. That is a different switch and stays as it is.
 - Ferrengi odds. `TWFAQ_FERRSPEC` calls its figures approximate. The engine's Ferrengi defender odds are a separate table, not this plan.

@@ -734,6 +734,10 @@ def get_system_prompt() -> str:
             "photon_missiles 12,000 cr each",
             f"photon_missiles {K.photon_missile_cost():,} cr each",
         )
+    text = text.replace(
+        "target must be in your sector. 5 turns.",
+        f"target must be in your sector. {int(K.attack_turn_cost())} turns.",
+    )
     if not K.class0_tw2002():
         text = _class0_legacy_text(text)
     if K.citadel_perk_live():

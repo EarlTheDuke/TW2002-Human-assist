@@ -598,7 +598,7 @@ def attack_unmanned(universe: Universe, pid: str, target: str, action: Action) -
     if why is not None:
         return ActionResult(ok=False, error=why)
     assert rec is not None
-    cost = K.TURN_COST["attack"]
+    cost = K.attack_turn_cost()
     if player.turns_today + cost > player.turns_per_day:
         return ActionResult(ok=False, error="out of turns")
     qty, bad = _attack_qty(player, action)

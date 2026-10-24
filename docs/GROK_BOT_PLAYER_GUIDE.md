@@ -174,7 +174,7 @@ Legality is a prediction, not a promise: the engine still validates every POST. 
 | `buy_equip` | `{"item":"fighters\|shields\|holds\|genesis\|colonists\|armid\|limpet\|atomic\|photon\|probe","qty":N}` | StarDock only |
 | `deploy_fighters` | `{"qty":N,"mode":"defensive\|offensive\|toll"}` | not in FedSpace |
 | `deploy_mines` | `{"qty":N,"kind":"armid\|limpet\|atomic"}` | |
-| `attack` | `{"target": "<player_id or ferrengi id>"}` | same sector; 5 turns; FedSpace attack = Federation retaliation |
+| `attack` | `{"target": "<player_id or ferrengi id>"}` | same sector; 0 turns when `ATTACK_TURN_MODE` is live (the v3.11 card); a stored game spends 5; FedSpace attack = Federation retaliation |
 | `photon_missile` | `{"target": "<player_id>"}` | |
 | `deploy_genesis` | `{}` | in space, outside FedSpace, ≥3 hops from StarDock, `ship.genesis ≥ 1` |
 | `land_planet` / `liftoff` | `{"planet_id": <id>}` / `{}` | |

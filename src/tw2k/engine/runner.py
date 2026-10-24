@@ -1578,7 +1578,7 @@ def _handle_attack(universe: Universe, pid: str, action: Action) -> ActionResult
         player.alignment -= 200
         return ActionResult(ok=False, error="FedSpace — combat forbidden")
 
-    cost = K.TURN_COST["attack"]
+    cost = K.attack_turn_cost()
     if player.turns_today + cost > player.turns_per_day:
         return ActionResult(ok=False, error="out of turns")
 
@@ -1824,7 +1824,7 @@ def _attack_sector_fighters(universe: Universe, pid: str, action: Action) -> Act
     player = universe.players[pid]
     if live_challenge(universe, pid) is None:
         return _reject_free("no fighters challenge you here")
-    cost = K.TURN_COST["attack"]
+    cost = K.attack_turn_cost()
     if player.turns_today + cost > player.turns_per_day:
         return ActionResult(ok=False, error="out of turns")
     qty, bad = _attack_qty(player, action)

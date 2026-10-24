@@ -1,0 +1,18 @@
+ATTACK TURN COST - live TWGS v2.20b / TW2002 v3.34b (Ven probe, 2026-10-24, read-only)
+VALUE: 0 turns per ship attack (engine TURN_COST["attack"]=5 is wrong; should be 0)
+SOURCE: VENGEANCE C:\Users\sugar\tw2002_reference\live_twgs\kt_transcript.txt (+ kt_addendum.md)
+  Real play 2026-10-17 10:25-10:56 AM PT, game GameK "TW KillTest" (fresh BigBang, default settings,
+  250 turns/day) on Ben's server; GameA itself not used there but same server/version. No new play done.
+HULL-DEPENDENT: not shown. Only attacker hull tested = Merchant Cruiser (Turns to Warp 3). All 6 kills cost 0,
+  so no evidence of hull dependence (TW2002 attacks do not consume turns; only moves do).
+SCREEN TEXT: none - no turn message on attack; Turns left unchanged.
+RAW (line: text):
+ 2428: Turns left     : 229
+ 2436: <Attack>
+ 2437: Attack VictimShip2's Merchant Cruiser (1,976-30) (Y/N) [N]?
+ 2476: TARGET DESTROYED
+ 2481: You lost 35 fighter(s), 1,941 remain.
+ 2502: Turns left     : 229
+ Same 229 -> 229 for attacks at lines 1481/1550, 3315/3385, 4000/4071, 4620/4691, 5552/5621.
+ Fighter attack (deployed sector fighters), line 1442: 235 -> move(3) -> attack -> move(3) -> 229 => attack 0.
+OTHER: cockpit_tester\deep_d1\fidelity_spotcheck_20261016_d5.md:59 flagged "attack turn cost (5 turns in the clone)" as UNVERIFIED.
