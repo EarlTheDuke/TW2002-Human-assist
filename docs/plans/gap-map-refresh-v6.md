@@ -11,8 +11,8 @@ A row is Match when the original rule is what a normal game does now. Match-behi
 | Grade | v5 | v6 |
 |---|---|---|
 | Match | 50 | 73 |
-| Match-behind-flag | 17 | 88 |
-| Partial | 53 | 7 |
+| Match-behind-flag | 17 | 89 |
+| Partial | 53 | 6 |
 | Different | 38 | 1 |
 | Missing | 11 | 0 |
 | Ben-decision | 2 | 2 |
@@ -21,6 +21,7 @@ A row is Match when the original rule is what a normal game does now. Match-behi
 NOTE 163 moved five rows that were still Partial. 6.7 and 9.2 are Match. 6.11, 9.5, and 13.4 are Match-behind-flag. The new switch is `BOUNTY_GOOD_MODE` row 187. Row 181 is NavPoints (`NAVPOINT_MODE`, NOTE 159). NOTE 162 uses rows 182-186 and moves 21 more rows. 14.1 is Match-behind-flag through `CIM_MODE` row 186. NOTE 164 moves 8.1 and 12.6 from Partial to Match-behind-flag. The ship switch and the fighter-report switch sit on 6.11 and 13.4 and do not grade those rows again.
 NOTE 177 moved five more Partial rows. 5.14, 5.20, and 9.8 were already the original and are Match. 6.10 (`PLANET_BLOW_ALIGN_MODE` row 214) and 10.1 (`CFS_CEO_USE_MODE` row 213) are Match-behind-flag after the rulings in `V311_SOURCE_CONFLICTS.md`. 8.1 is counted once, under NOTE 164's `FERRENGI_ODDS_MODE`.
 NOTE 178 moved two Different rows to Partial. 5.7: the tw2002 exchange already in the code is the S4/S6 Safety Rating model (chosen count, per-attack cap, hull odds, shields first, flee); only the exact loss split is unprinted. 14.6: the instant credits win is off under `ECON_WIN_MODE` row 215; alliances and play_to_day_cap stay. 11.11 stays Partial: bubbles are Gold-only (S1). 12.3 (real-time movement) stays Different: the game is turn-based by design and no speed table is printed. 12.4 stays Partial: every nightly job the sources name (MSL sweep and level-2 cap, tows, cloak fails, corp penalty, colonist trim, break-in alignment) is already in `tick_day`; no further job is printed. 2.5 is an economy call, not a source call.
+GAP 1.15 moved from Partial to Match-behind-flag. The switch was already `FED_TOW_LIMIT_MODE` row 168 (NOTE 117). Bible 50 when on. Gypsy 98 stored when off. No new switch.
 
 ## What moved
 
@@ -106,11 +107,10 @@ These rows are still Partial, Different, or Missing, and no switch names the rem
 | 2 | 5.7 | Match | L | The exchange is the printed expected value: sent x own odds / target odds removes shields then fighters (S3 Scout 2:1 kills 500 with 250, S2 1:1 loses 1,000 for 1,000, S7 fighters-to-use). S7: random factors unknown, so none. Tests pin it | `combat._resolve_ship_attack_tw2002` | test_combat_exchange_sources_v1.py |
 | 3 | 12.3 | Different | L | Movement is still by turns. `DAY_ROLL_CLOCK_MODE` rolls the day. `PLANET_REALTIME_PROD_MODE` is left off because the original produces at Extern | `runner.apply_action`, `constants.day_roll_clock_live` | constants.py, server runner, lobby |
 | 6 | 12.4 | Partial | M | Busts, tows, sweeps, and NavHaz already run in `runner.tick_day`. Collisions and special-port rebuilds are `PLANET_COLLISION_MODE` and `SPECIAL_PORT_DEFENCE_MODE`. The jobs past that list have no switch | `runner.tick_day` | |
-| 11 | 1.15 | Partial | S | A tow fires at 99 fighters (`FED_TOW_FIGHTER_LIMIT` 98). The Bible line is 50. No switch | `fed.run_tows` | constants.py |
 | 23 | 11.11 | Match-behind-flag | S | Density, one-way share, 30 percent two-way lanes (rows 87, 88, 178) and the 95 percent initial starports (`BIG_BANG_BUILT_MODE` row 221). Course length 45 holds (test). Bubbles and Gold options are Gold-only (S1), so v3.11 has none | `universe.generate_universe` | universe.py |
 | 35 | 14.6 | Match-behind-flag | L | No instant credits win (`ECON_WIN_MODE` row 215). No enforced alliance (`ALLIANCE_OFF_MODE` row 222; Bible "Secret Alliances and Treaties": "by no means binding and are not enforced"). play_to_day_cap stays as the match harness (R14 A) | several | test_alliance_off_v1.py |
 
-Rows that are Partial only because a named switch stays off are Match-behind-flag above, not in this list. `12.4` stays here for the jobs that still have no name.
+Rows that are Partial only because a named switch stays off are Match-behind-flag above, not in this list. `12.4` stays here for the jobs that still have no name. 1.15 left this list: `FED_TOW_LIMIT_MODE` row 168 tows above 50 when the profile is on. Stored Gypsy stays 98.
 
 ## Profile check
 
@@ -166,7 +166,7 @@ Most of those are stored defaults that are already tw2002, or switches the profi
 1.12 Match. A sector holds at most 5 planets. `constants.sector_has_planet_room` while `planet_limits_on` (stored `PLANET_ECONOMY_MODE` tw2002).
 1.13 Match-behind-flag `UNIVERSE_TOPOLOGY_MODE`. Dead ends, traps, tunnels, and one bubble. The profile leaves this off. `universe._add_tunnels`, `universe._cut_one_bubble`.
 1.14 Match. FedSpace keeps 5 ships per sector and tows the rest. `fed.run_tows`.
-1.15 Partial. Feds tow a ship with 99 or more fighters. The Bible says 50. `constants.FED_TOW_FIGHTER_LIMIT`, `fed.run_tows`. No switch.
+1.15 Match-behind-flag `FED_TOW_LIMIT_MODE` row 168, NOTE 117. Bible 50 when on. Gypsy 98 stored when off (`FED_TOW_FIGHTER_LIMIT`). `constants.fed_tow_fighter_limit`, `fed.run_tows`.
 1.16 Match. A good trader with under 1000 experience is already safe in FedSpace. `victory.is_fedsafe`, `constants.FEDSAFE_MAX_EXPERIENCE`.
 1.17 Match. The nightly Extern sweep runs. `class0.extern_sweep` from `runner.tick_day`.
 1.18 Match-behind-flag `BIG_BANG_DENSITY_MODE` row 87, NOTE 78. Sectors 2 through 10 get no decorative federal ports when the switch is on. `universe._place_decorative_fed_ports`.
