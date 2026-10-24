@@ -158,7 +158,7 @@ async def drive_seats(client, tokens: dict[str, str], *, brain: str, key: str, u
 
         async def tb_one(seat: str, token: str) -> None:
             await run_http(
-                client, seat, token, days, lobby=True, idle_s=max(idle_s, cfg.think_cap_s * 3),
+                client, seat, token, days, lobby=True, idle_s=max(idle_s, cfg.call_timeout_s * 3),
                 llm_key=marker, llm_ask=budgets[seat], fallback_line=TINYBOX_FALLBACK_LINE,
                 max_posts=max(6000, int(days) * 1000),
             )
