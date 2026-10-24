@@ -24,7 +24,7 @@ Report Page: https://cursor.com/canvas/store-edda9433-2d33-4b62-8d22-af10c2ff389
 | P1 | New 270-206 Class L | ~40/400 | Stockpile 150/125/150 (L1 goods met) |
 | P2 | Mid Eden #50 Class L | 336/400 | Above L1. Closest seat to L1 |
 
-P1 stopped at ~40/400 colonists after Leave false class-cap on qty=75 people from Class M → empty Class L. Fix is open PR #180 (colonist-units Class M→L thousands). The fix is already accepted. Live L3 showed the bug. Land #180 onto tip and redeploy wt_live before the next Class L ferry.
+P1 stopped at ~40/400 colonists after Leave false class-cap on qty=75 people from Class M → empty Class L. Fix is PR #180 (colonist-units Class M→L thousands). The fix is already accepted. Live L3 showed the bug. #180 is on tip as of `1e72eae`.
 
 ## Cash at stop
 

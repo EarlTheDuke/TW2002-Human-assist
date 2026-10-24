@@ -6,7 +6,7 @@ Report Page: https://cursor.com/canvas/store-edda9433-2d33-4b62-8d22-af10c2ff389
 
 Playtest wrap: `docs/playtests/multibot-2026-10-24-sat-grok-l3/README.md`
 
-Open and mergeable against `feature/grokbot-player` on 2026-10-24: #147–#181. #180 is the colonist-units Class M→L thousands fix. #181 already holds the October GAP leftover grades (1.5 Ben-decision, 1.6 Partial, 2.15 Partial, 4.8 Partial, 6.3 Ben-decision). This fold does not re-grade those cells, and it does not rewrite `docs/plans/gap-map-refresh-v6.md`.
+Open and mergeable against `feature/grokbot-player` on 2026-10-24: #147–#179, #181, and #182. #180 is on tip at `1e72eae` (colonist-units Class M→L thousands). #181 already holds the October GAP leftover grades (1.5 Ben-decision, 1.6 Partial, 2.15 Partial, 4.8 Partial, 6.3 Ben-decision). This fold does not re-grade those cells, and it does not rewrite `docs/plans/gap-map-refresh-v6.md`.
 
 ## 2026-10-24 — Sat Grok L3 wrap (`82578bfe`)
 
@@ -21,12 +21,12 @@ Ben ended Sat Grok L3 game `82578bfe` and asked this wrap folded into GAP_MAP, t
 
 ## Standing queue
 
-1. Land / merge PR #180 (colonist-units Class M→L thousands) onto tip and redeploy wt_live before the next Class L ferry. Fix already accepted; live L3 showed the bug.
+1. Tip already has #180 (`1e72eae`, colonist-units Class M→L thousands). Remaining step is a wt_live redeploy before the next Class L ferry. Player of Games will request that redeploy when about to ferry.
 2. Ops note: Computer Use seats 1–3 min/action; double-queue re-fire observed. Plan around that for the next multi-bot.
 3. Hotter L3 retest at 2M–5M start once Ben picks the start bank (after #180 on live).
 4. GAP 2.15 GameA Ven TWGS port-attack ratings (classes 0–5/7–9; Class 6 already def 98 / laser 598). Queued with Player of Games. L3 seat now free. Leave EIS :23 untouched.
 
 ## Blockers
 
-- Ben merges #180, or the #147–#181 stack, before the next Class L ferry and before wt_live is redeployed.
+- Remaining step before the next Class L ferry is the wt_live redeploy. Player of Games will request that redeploy when about to ferry. Open stack still to merge: #147–#179, #181, and #182.
 - Ben rulings still open: GAP 4.1 Genesis 25k vs 80k, GAP 1.15 Fed tow 98 vs 50, GAP 6.3 max colonists.
