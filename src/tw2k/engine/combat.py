@@ -472,6 +472,8 @@ def interdictor_planet(universe: Universe, pid: str, sector):
 
     if K.planet_interdict_quiet(sector.id):
         return None
+    if K.photon_interdict_damped(sector):
+        return None
     for item in sorted(sector.planet_ids):
         planet = universe.planets.get(item)
         if planet is None:
