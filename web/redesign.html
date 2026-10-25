@@ -82,7 +82,8 @@
     <div id="here"></div>
   </section>
 
-  <section id="term" class="panel" data-testid="comms-panel" aria-label="Comms">
+  <section id="term" class="panel">
+    <div id="commsCard" data-testid="comms-panel" aria-label="Comms">
     <h2 class="ansi"><span class="m">◄</span> COMMS</h2>
     <div id="turnLog" class="ansi" data-testid="turn-log" data-obs="turn_log"></div>
     <form id="commsForm" class="comms-form" data-testid="comms-form" data-obs="comms" data-ai-send hidden>
@@ -99,7 +100,11 @@
       <button type="button" id="commsSend" data-testid="comms-send">Send</button>
       <button type="button" id="commsFed" data-testid="comms-fed">Fed Comm off</button>
     </form>
-    <div id="log" class="ansi" data-testid="log"></div>
+    </div>
+    <div id="activityCard" data-testid="activity-log" aria-label="Log">
+      <h2 class="ansi"><span class="y">◄</span> LOG</h2>
+      <div id="log" class="ansi" data-testid="log"></div>
+    </div>
   </section>
 </main>
 
@@ -138,6 +143,7 @@
 <script src="/static/warp-variants.js"></script>
 <script src="/static/warp-video.js"></script>
 <script type="module" src="/static/warp-hull.mjs"></script>
+<script src="/static/comms-feed.js"></script>
 <script src="/static/redesign.js"></script>
 <script src="/static/layout.js"></script>
 </body>
