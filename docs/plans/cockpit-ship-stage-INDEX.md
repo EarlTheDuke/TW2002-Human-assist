@@ -1,6 +1,6 @@
 # Cockpit ship stage — sheet index
 
-Finder for the ship-stage planning pack. Docs only. Tip: `feature/grokbot-player` @ `3765f609`.
+Finder for the ship-stage planning pack. Docs only. Tip: `feature/grokbot-player` @ `04d83e5e`.
 
 ## Product order
 
@@ -14,6 +14,7 @@ P1 is the spike named in the P0 pack and the render memo. Open the sheet below t
 
 - [P1 acceptance](cockpit-ship-stage-p1-acceptance.md) — Pass / Fail / Hold-WebGL read-test for the Merchant Cruiser and Imperial StarShip SVG spike.
 - [P1 spike](cockpit-ship-stage-p1-spike.md) — Merchant Cruiser and Imperial StarShip SVG passed (#215).
+- [P1 pass](cockpit-ship-stage-p1-pass.md) — Pass on all nine acceptance bullets; WebGL stays closed (#220).
 
 ## P0
 
@@ -25,6 +26,7 @@ P1 is the spike named in the P0 pack and the render memo. Open the sheet below t
 
 ## P1b
 
+- [Four-hull build](cockpit-ship-stage-p1b-four-hull-build.md) — Product build order after the P1 pass: Scout Marauder and Merchant Freighter, then BattleShip and Corporate FlagShip, then later batches (#219).
 - [Fleet order](cockpit-ship-stage-p1b-fleet-order.md) — Batch sequence for the other 15 player hulls, one batch at a time, after the spike merges.
 - [Next hulls](cockpit-ship-stage-p1b-next-hulls.md) — Mesh contract for Scout Marauder, Merchant Freighter, BattleShip, and Corporate FlagShip.
 - [Batch 1 remainder](cockpit-ship-stage-p1b-batch1-remainder.md) — Escape Pod and T'Khasi Orion; Scout re-shot.
