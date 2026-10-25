@@ -8,6 +8,7 @@ Scaffolds with TBD cells do not stamp Pass and do not move the fleet gate. Batch
 
 | Directory | Hulls | Sheet |
 | --- | --- | --- |
+| [p1-merchant-imperial](p1-merchant-imperial/) | Merchant Cruiser, Imperial StarShip | No product sheet. Spike: [P1 spike](../cockpit-ship-stage-p1-spike.md). Acceptance: [P1 acceptance](../cockpit-ship-stage-p1-acceptance.md). TBD scaffold. No PNG. Does not stamp Pass and does not move the fleet gate. |
 | [p1b-scout-freighter](p1b-scout-freighter/) | Scout Marauder, Merchant Freighter | No product sheet. Frames: [Scout and Freighter](../cockpit-ship-stage-p1b-scout-freighter.md). Acceptance: [Scout and Freighter acceptance](../cockpit-ship-stage-p1b-scout-freighter-acceptance.md). |
 | [p1b-battleship-flagship](p1b-battleship-flagship/) | BattleShip, Corporate FlagShip | No product sheet. Frames: [BattleShip and FlagShip](../cockpit-ship-stage-p1b-battleship-flagship.md). Acceptance: [BattleShip and FlagShip acceptance](../cockpit-ship-stage-p1b-battleship-flagship-acceptance.md). |
 | [p1b-batch1-escape-orion](p1b-batch1-escape-orion/) | Escape Pod, T'Khasi Orion | No product sheet. Frames: [Escape Pod and T'Khasi](../cockpit-ship-stage-p1b-batch1-escape-orion.md). Acceptance: [batch 1 acceptance](../cockpit-ship-stage-p1b-batch1-acceptance.md). |
