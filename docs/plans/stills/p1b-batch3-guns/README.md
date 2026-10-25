@@ -1,7 +1,7 @@
 # p1b-batch3-guns
 
-Product stills for Missile Frigate and Havoc GunStar.
+Placeholder directory for the Missile Frigate and Havoc GunStar product stills.
 
-The PNGs in this directory are the product wave. Face counts, gzip, and the frame notes live on the stills sheet. This directory does not stamp Pass.
+No PNGs in this scaffold. No face counts, gzip sizes, or pixel measurements live here. The product wave drops the files named on the stills sheet and fills the TBD cells there.
 
 Sheet: [batch 3 guns product](../../cockpit-ship-stage-p1b-batch3-guns-product.md).
