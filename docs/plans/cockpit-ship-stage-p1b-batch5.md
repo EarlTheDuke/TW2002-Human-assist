@@ -4,6 +4,8 @@ Parents: [P0 pack](cockpit-ship-stage-p0.md), [silhouette bible](cockpit-ship-st
 
 Docs only. This sheet does not change `web/*`, the engine, or tests. Classic top-and-front ANSI for every hull stays **UNVERIFIED**. Do not open, trace, or approximate EIS prints, EIS wallpaper, or Drew Markham ANSI. Looks below are invented from the public role numbers on `SHIP_SPECS_TW2002` and `SHIP_ROSTER_LIVE_TABLE` in `src/tw2k/engine/constants.py`, and from the one-paragraph pictures already in the bible. This sheet is the mesh contract for the specialty wave after the guns in [cockpit-ship-stage-p1b-batch3.md](cockpit-ship-stage-p1b-batch3.md), so a follow-on does not turn the armor slabs into the Colonial's cabin, and does not turn the two hoops into the Constellation's X or the Star Master's dish.
 
+Product stills scaffold: [batch 5 brick product](cockpit-ship-stage-p1b-batch5-brick-product.md) (#340, `75997134`). Stills directory: [p1b-batch5-brick](stills/p1b-batch5-brick/). The scaffold does not stamp Pass. It ships no PNGs. Measured cells stay TBD until product.
+
 ## Implement after the spike and the earlier P1b batches
 
 Do not start these meshes until all of these have landed and passed the read bar:

@@ -4,6 +4,8 @@ Parents: [P0 pack](cockpit-ship-stage-p0.md), [silhouette bible](cockpit-ship-st
 
 Docs only. This sheet does not change `web/*`, the engine, or tests. Classic top-and-front ANSI for every hull stays **UNVERIFIED**. Do not open, trace, or approximate EIS prints, EIS wallpaper, or Drew Markham ANSI. Looks below are invented from the public role numbers on `SHIP_SPECS_TW2002` and `SHIP_ROSTER_LIVE_TABLE` in `src/tw2k/engine/constants.py`, and from the one-paragraph pictures already in the bible. This sheet is the mesh contract for the gun wave after the three in [cockpit-ship-stage-p1b-batch2-haulers.md](cockpit-ship-stage-p1b-batch2-haulers.md), so a follow-on does not turn the dorsal missiles into the Imperial's cheek barrels or the CargoTran's girder, and does not turn the split prow into the BattleShip's turret pair.
 
+Product stills scaffold: [batch 3 guns product](cockpit-ship-stage-p1b-batch3-guns-product.md) (#337, `d211b4e9`). Stills directory: [p1b-batch3-guns](stills/p1b-batch3-guns/). The scaffold does not stamp Pass. It ships no PNGs. Measured cells stay TBD until product.
+
 ## Implement after the spike, the four, and the three haulers
 
 Do not start these meshes until all three of these have landed:
