@@ -1,0 +1,440 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>P3 layout research mock</title>
+  <!--
+    Standalone research mock. Not wired to the cockpit. SVG path only.
+    Hull polygons are a copy of TW2KHullMeshes.markup for star_master
+    (yaw 0.82, pitch 0.5, fit 1.12). Checked against web/hull-meshes.js
+    on tip 0bf683e3: 183 faces, 85 drawn polygons, none missing.
+    Does not stamp Pass and does not open the P3 gate.
+  -->
+  <script>
+    (function () {
+      var q = new URLSearchParams(location.search);
+      var v = q.get("variant") || "a";
+      if (v !== "a" && v !== "b" && v !== "c") v = "a";
+      document.documentElement.dataset.variant = v;
+      document.documentElement.dataset.capture = q.get("capture") === "1" ? "1" : "0";
+    })();
+  </script>
+  <style>
+    :root {
+      --b: #0000aa; --g: #55ff55; --c: #55ffff; --r: #ff5555; --m: #ff55ff;
+      --y: #ffff55; --w: #ffffff; --gr: #aaaaaa; --dk: #555555; --dc: #00aaaa; --br: #aa5500;
+    }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; height: 100%; background: #000; color: var(--gr); }
+    body { font: 15px/1.35 Consolas, "Lucida Console", monospace; }
+    button, input, select { font: inherit; }
+    button { background: #000; color: var(--c); border: 1px solid var(--dc); cursor: default; }
+    a { color: var(--c); }
+    .g { color: var(--g); } .c { color: var(--c); } .y { color: var(--y); } .m { color: var(--m); }
+    .r { color: var(--r); } .w { color: var(--w); } .dk { color: var(--dk); } .dim { color: var(--dk); font-size: 12px; }
+
+    #gallery { padding: 28px 32px 64px; max-width: 1680px; }
+    #gallery h1 { margin: 0 0 8px; color: var(--c); font-weight: normal; font-size: 22px; letter-spacing: 0.5px; }
+    #gallery h2 { margin: 28px 0 6px; color: var(--y); font-weight: normal; font-size: 16px; }
+    #gallery p { margin: 0 0 10px; max-width: 78em; }
+    #gallery .banner { border: 1px solid var(--b); padding: 10px 12px; margin: 14px 0 8px; color: var(--w); }
+    .pair { display: flex; flex-wrap: wrap; gap: 18px; align-items: flex-start; }
+    .shot { width: max-content; }
+    .shot figcaption { color: var(--dk); font-size: 12px; padding: 4px 0 0; }
+    .shot figcaption a { margin-right: 10px; }
+    .preview { position: relative; overflow: hidden; border: 1px solid var(--b); background: #000; }
+    .preview iframe { position: absolute; top: 0; left: 0; border: 0; background: #000; }
+    .preview.s1280 { width: 640px; height: 400px; }
+    .preview.s1280 iframe { width: 1280px; height: 800px; transform: scale(0.5); transform-origin: top left; }
+    .preview.s1920 { width: 768px; height: 432px; }
+    .preview.s1920 iframe { width: 1920px; height: 1080px; transform: scale(0.4); transform-origin: top left; }
+    html[data-capture="1"] #gallery { display: none; }
+
+    .cockpit { display: flex; flex-direction: column; height: 100%; overflow: hidden; background: #000; }
+    html[data-capture="0"] .cockpit { display: none; }
+    #cmdline {
+      flex: 0 0 auto; display: flex; flex-wrap: wrap; align-items: center; gap: 6px 14px;
+      padding: 8px 14px; background: linear-gradient(#000, #000010); border-bottom: 2px solid var(--b);
+    }
+    .title-frame { margin: 0; color: var(--c); border: 1px solid var(--c); padding: 2px 8px; white-space: pre; font: inherit; line-height: 1.05; }
+    .prompt { color: var(--gr); white-space: nowrap; }
+    .stat { white-space: nowrap; }
+    .stat i { font-style: normal; color: var(--dk); font-size: 11px; margin-right: 6px; text-transform: uppercase; }
+    .stat b { font-size: 18px; font-weight: normal; }
+    .chip { border: 1px solid var(--y); color: var(--y); padding: 2px 8px; white-space: nowrap; }
+    #layoutOpen, .manual-link { white-space: nowrap; }
+    .manual-link { text-decoration: underline; }
+    .sign-in { display: flex; gap: 8px; align-items: center; color: var(--dk); }
+    .sign-in select, .sign-in input { background: #000; color: var(--c); border: 1px solid var(--dc); }
+    .sign-in input { width: 6.5em; }
+    #deck {
+      flex: 1 1 auto; min-height: 0; display: grid; gap: 8px; padding: 8px; position: relative;
+      grid-template-rows: minmax(0, 1.35fr) minmax(110px, 0.7fr);
+    }
+    html[data-variant="a"] #deck, html[data-variant="b"] #deck {
+      grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr);
+      grid-template-areas: "ship nav" "here term";
+    }
+    html[data-variant="c"] #deck {
+      grid-template-columns: minmax(0, 0.72fr) minmax(0, 1.7fr) minmax(0, 1fr);
+      grid-template-areas: "report ship nav" "here ship term";
+    }
+    .panel { border: 1px solid var(--b); background: #000; position: relative; min-width: 0; min-height: 0; overflow: auto; }
+    .panel > h2, #commsCard > h2, #activityCard > h2 {
+      margin: 0; padding: 4px 8px; font-size: 13px; font-weight: normal; color: var(--w);
+      background: linear-gradient(90deg, #0000aa, #000 70%); letter-spacing: 1px; border-bottom: 1px solid #0000aa;
+    }
+    #ship { grid-area: ship; display: flex; flex-direction: column; overflow: hidden; }
+    #nav { grid-area: nav; display: flex; flex-direction: column; overflow: hidden; }
+    #nav > h2 { white-space: nowrap; overflow: hidden; }
+    #context { grid-area: here; display: flex; flex-direction: column; overflow: auto; }
+    #term { grid-area: term; display: flex; flex-direction: column; overflow: hidden; }
+    #report { grid-area: report; display: flex; flex-direction: column; overflow: auto; }
+    html[data-variant="a"] #report, html[data-variant="b"] #report { display: none; }
+    html[data-variant="c"] #sectorInHere { display: none; }
+
+    #ship > h2 { display: flex; align-items: center; gap: 8px; flex: 0 0 auto; }
+    .modes { margin-left: auto; display: flex; gap: 4px; letter-spacing: 0; }
+    .modes button { color: var(--y); border-color: var(--dc); padding: 1px 8px; }
+    .modes button[aria-pressed="true"] { color: var(--w); border-color: var(--g); }
+    #shipStage { position: relative; flex: 1 1 auto; min-height: 0; display: flex; }
+    #stageFx { position: absolute; inset: 0; pointer-events: none; }
+    #shipSvg {
+      width: 100%; height: 100%; flex: 1 1 auto; min-height: 0; max-height: none; aspect-ratio: auto;
+      display: block;
+      background:
+        radial-gradient(ellipse at 72% 78%, rgba(22, 52, 96, 0.45), transparent 46%),
+        radial-gradient(ellipse at 18% 20%, rgba(72, 28, 96, 0.28), transparent 38%),
+        radial-gradient(ellipse at 50% 45%, #0c2040, #000 72%);
+      box-shadow: inset 0 0 28px 8px rgba(0, 0, 0, 0.45);
+    }
+    #shipReadout { display: contents; }
+    #fighterRow { flex: 0 0 auto; padding: 2px 10px 4px; color: var(--r); font-size: 12px; }
+    #shipStats {
+      flex: 0 0 auto; padding: 6px 10px; display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(min(100%, 11em), 1fr)); gap: 2px 14px; font-size: 13px;
+    }
+    .bar { display: flex; gap: 6px; align-items: center; min-width: 0; }
+    .bar .t { flex: 1; height: 8px; border: 1px solid var(--dk); background: #111; }
+    .bar .f { display: block; height: 100%; }
+    .holds { display: flex; flex-wrap: wrap; gap: 6px; padding: 6px 10px; width: 100%; min-width: 0; flex: 0 0 auto; }
+    .hold { border: 1px solid var(--br); padding: 3px 6px; flex: 1 1 5.5em; min-width: min(100%, 5.5em); }
+    .hold b { color: var(--y); font-weight: normal; }
+
+    html[data-variant="b"] #ship {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) minmax(210px, 32%);
+      grid-template-rows: auto minmax(0, 1fr);
+      grid-template-areas: "title title" "stage rail";
+    }
+    html[data-variant="b"] #ship > h2 { grid-area: title; }
+    html[data-variant="b"] #shipStage { grid-area: stage; }
+    html[data-variant="b"] #shipReadout {
+      display: flex; flex-direction: column; grid-area: rail; min-height: 0; min-width: 0;
+      overflow: auto; border-left: 1px solid var(--b);
+    }
+    html[data-variant="b"] #shipStats { grid-template-columns: 1fr; }
+
+    #mapTools { display: flex; gap: 4px; padding: 2px 8px; flex: 0 0 auto; }
+    #mapTools button { padding: 2px 8px; }
+    #map { width: 100%; flex: 1 1 auto; min-height: 0; display: block; background: radial-gradient(#000016, #000); }
+    #map .lane { stroke: var(--dc); stroke-width: 1.2; opacity: 0.55; }
+    #map .lane.oneway { stroke: var(--m); stroke-dasharray: 6 4; opacity: 0.9; }
+    #map .lane.unk { stroke: var(--r); stroke-dasharray: 3 2; opacity: 0.8; }
+    #map .arrowhead { fill: var(--m); }
+    #map .node circle { fill: #000; stroke: #00aa00; stroke-width: 2; }
+    #map .node.adj circle { stroke: var(--g); stroke-width: 3; }
+    #map .node.here circle { fill: var(--y); stroke: var(--y); }
+    #map .node.port circle { stroke: var(--c); }
+    #map .node.unk circle { stroke: var(--r); stroke-dasharray: 3 2; }
+    #map .node.unk text { fill: var(--r); }
+    #map text { fill: var(--c); font-family: Consolas, monospace; font-size: 22px; }
+    #map .node.here text { fill: var(--y); }
+    #warps { flex: 0 0 auto; padding: 6px 10px; border-top: 1px solid var(--b); }
+    #warps button { padding: 4px 10px; margin: 2px; }
+    #warps button.unk { color: var(--r); border-color: var(--r); }
+
+    #sectorInHere, #report .report { padding: 8px 10px 0; white-space: pre-wrap; font-size: 14px; }
+    #here { padding: 8px 10px; }
+    .verb { display: inline-flex; gap: 6px; border-color: var(--g); color: var(--w); padding: 4px 10px; margin: 2px; }
+    .verb kbd { color: var(--y); font: inherit; }
+    #commsCard { flex: 0 1 auto; max-height: 46%; min-height: 0; display: flex; flex-direction: column; overflow: hidden; }
+    #activityCard { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; overflow: hidden; }
+    #turnLog, #log { padding: 4px 10px; overflow: auto; font-size: 14px; }
+    #commsCard #turnLog { flex: 1 1 auto; min-height: 0; }
+    #log { flex: 1 1 auto; background: #000 repeating-linear-gradient(0deg, rgba(0, 0, 170, 0.06) 0 2px, transparent 2px 4px); }
+    .comms-form { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; padding: 4px 8px; font-size: 13px; }
+    .comms-form input, .comms-form select { background: #000; color: var(--y); border: 1px solid var(--dc); margin-left: 4px; }
+    .comms-form input { width: 8em; }
+    #keys { flex: 0 0 auto; display: flex; flex-wrap: wrap; gap: 2px; padding: 4px 10px; background: #000; border-top: 2px solid var(--b); }
+    #keys button { border-color: var(--dk); color: var(--gr); padding: 1px 6px; margin: 0; }
+    #keys button kbd { color: var(--y); margin-right: 4px; }
+    #lastResult { flex: 0 0 auto; min-height: 1.2em; margin: 0; padding: 0 14px; color: var(--g); }
+    .prompt-line { flex: 0 0 auto; margin: 0; padding: 2px 14px 6px; color: var(--y); }
+    @media (max-width: 1600px) {
+      .sign-in { display: none; }
+    }
+    @media (max-width: 1366px) and (min-width: 701px) {
+      #cmdline { flex-wrap: nowrap; gap: 2px 8px; padding: 4px 8px; overflow: hidden; }
+      .title-frame { font-size: 9px; line-height: 1.05; padding: 0 4px; }
+      .stat b { font-size: 14px; }
+      .stat i { font-size: 9px; margin-right: 3px; }
+      .prompt { font-size: 12px; }
+      #nav > h2 .dim { font-size: 11px; letter-spacing: 0; }
+    }
+  </style>
+</head>
+<body>
+  <main id="gallery">
+    <h1>P3 layout research mock</h1>
+    <p class="banner">Standalone still. Not wired to the cockpit. The P3 gate stays closed. This page does not stamp Pass. SVG path only. WebGL stays off.</p>
+    <p>The picture is one frame of the landed Star Master mesh (<code>buildHullFaces</code> / <code>projectFace</code>, 183 faces, canonical still yaw 0.82, pitch 0.5, fit 1.12). The sector map and the other panels are static copies of the current cockpit chrome. Nothing here calls the game.</p>
+    <p>Open a frame in this window with the links under each preview. The frame fills the browser. The previews below are 1280×800 at half scale and 1920×1080 at 0.4 scale, so the layout inside each frame is the real pixel grid.</p>
+
+    <h2>A — Checklist hero</h2>
+    <p>Ship column 1.5fr, map 1fr. HERE under the ship, COMMS under the map. The sector report sits in HERE. Fighters, stats, and holds stay stacked under the picture. This is the grid on the P3 layout sheet.</p>
+    <div class="pair">
+      <figure class="shot">
+        <div class="preview s1280"><iframe title="Variant A at 1280 by 800" src="index.html?variant=a&amp;capture=1"></iframe></div>
+        <figcaption><a href="index.html?variant=a&amp;capture=1">Open A, fills the window</a> 1280×800</figcaption>
+      </figure>
+      <figure class="shot">
+        <div class="preview s1920"><iframe title="Variant A at 1920 by 1080" src="index.html?variant=a&amp;capture=1"></iframe></div>
+        <figcaption><a href="index.html?variant=a&amp;capture=1">Open A, fills the window</a> 1920×1080</figcaption>
+      </figure>
+    </div>
+
+    <h2>B — Readout rail</h2>
+    <p>Same 1.5fr / 1fr deck as A. Inside the ship cell, the stat block and the holds move to a rail beside the picture so the stage gets the full row height. The deck bands do not change. The stacked order under the picture does.</p>
+    <div class="pair">
+      <figure class="shot">
+        <div class="preview s1280"><iframe title="Variant B at 1280 by 800" src="index.html?variant=b&amp;capture=1"></iframe></div>
+        <figcaption><a href="index.html?variant=b&amp;capture=1">Open B, fills the window</a> 1280×800</figcaption>
+      </figure>
+      <figure class="shot">
+        <div class="preview s1920"><iframe title="Variant B at 1920 by 1080" src="index.html?variant=b&amp;capture=1"></iframe></div>
+        <figcaption><a href="index.html?variant=b&amp;capture=1">Open B, fills the window</a> 1920×1080</figcaption>
+      </figure>
+    </div>
+
+    <h2>C — Center span</h2>
+    <p>Three tracks. The sector report takes a left rail, the ship spans both rows in the middle, and the map stays on the right with COMMS under it. The hull is geometrically central. The third track spends width the two-track grid gives to the ship and the map.</p>
+    <div class="pair">
+      <figure class="shot">
+        <div class="preview s1280"><iframe title="Variant C at 1280 by 800" src="index.html?variant=c&amp;capture=1"></iframe></div>
+        <figcaption><a href="index.html?variant=c&amp;capture=1">Open C, fills the window</a> 1280×800</figcaption>
+      </figure>
+      <figure class="shot">
+        <div class="preview s1920"><iframe title="Variant C at 1920 by 1080" src="index.html?variant=c&amp;capture=1"></iframe></div>
+        <figcaption><a href="index.html?variant=c&amp;capture=1">Open C, fills the window</a> 1920×1080</figcaption>
+      </figure>
+    </div>
+  </main>
+
+  <div class="cockpit" data-hull="star_master" data-renderer="svg">
+    <header id="cmdline">
+      <pre class="title-frame" aria-hidden="true">╔══════════════════════╗
+║  TRADE WARS 2002     ║
+╚══════════════════════╝</pre>
+      <span class="prompt"><span class="m">Command</span> <span class="y">[</span>TL=<span class="g">42</span><span class="y">]</span>:<span class="y">[</span><span class="c">247</span><span class="y">]</span> (?=Help)? :</span>
+      <span class="stat"><i>Turns</i><b class="g">42</b></span>
+      <span class="stat"><i>Credits</i><b class="y">125,430</b></span>
+      <span class="stat"><i>Day</i><b class="c">3/30</b></span>
+      <span class="stat"><i>Exp</i><b class="y">890</b></span>
+      <span class="stat"><i>Align</i><b class="g">120</b></span>
+      <span class="stat"><i>Rank</i><b class="m">Commander</b></span>
+      <span class="chip">YOUR MOVE</span>
+      <button type="button" id="layoutOpen">Layout</button>
+      <a class="manual-link" href="#manual">Manual</a>
+      <span class="sign-in"><label>Seat <select aria-label="Seat"><option>P1</option></select></label><label>Token <input aria-label="Token" type="password" value="····" /></label><button type="button">Connect</button></span>
+    </header>
+    <main id="deck">
+      <section id="ship" class="panel" aria-label="Ship">
+        <h2><span class="c">◄</span> STAR MASTER <span class="dim">star master</span>
+          <span class="modes" role="group" aria-label="Viewport">
+            <button type="button" data-vp-mode="live" aria-pressed="false">Live</button>
+            <button type="button" data-vp-mode="stills" aria-pressed="true">Stills</button>
+            <button type="button" data-vp-mode="off" aria-pressed="false">Off</button>
+          </span>
+        </h2>
+        <div id="shipStage">
+          <svg id="shipSvg" viewBox="0 0 400 260" preserveAspectRatio="xMidYMid meet" role="img" aria-label="Star Master in space" data-hull="star_master" data-motion="still" data-fit="1.12" data-view="solid">
+            <g id="starfield"><ellipse data-testid="space-glow" cx="200" cy="128" rx="168" ry="86" fill="#0c2748" opacity="0.72"/><ellipse cx="268" cy="86" rx="78" ry="34" fill="#1a4060" opacity="0.42"/><ellipse cx="118" cy="170" rx="70" ry="24" fill="#241838" opacity="0.38"/><ellipse cx="64" cy="48" rx="46" ry="18" fill="#12305a" opacity="0.35"/><circle cx="332" cy="198" r="32" fill="#1c446e"/><circle cx="346" cy="188" r="28" fill="#04070f"/><circle cx="312" cy="186" r="1.6" fill="#d7f4ff" opacity="0.9"/><circle cx="115.2" cy="24.3" r="0.81" fill="#9eb6d8" opacity="0.37"/><circle cx="270.1" cy="236.2" r="0.33" fill="#d5e4ff" opacity="0.34"/><circle cx="322.8" cy="43.1" r="0.35" fill="#f0e2b0" opacity="0.59"/><circle cx="326.1" cy="207.4" r="0.59" fill="#c9fff2" opacity="0.47"/><circle cx="275.0" cy="33.5" r="0.77" fill="#9eb6d8" opacity="0.32"/><circle cx="64.3" cy="211.0" r="0.73" fill="#d5e4ff" opacity="0.26"/><circle cx="91.5" cy="162.7" r="0.35" fill="#f0e2b0" opacity="0.38"/><circle cx="179.4" cy="231.8" r="0.65" fill="#c9fff2" opacity="0.46"/><circle cx="308.7" cy="96.4" r="0.47" fill="#9eb6d8" opacity="0.31"/><circle cx="58.1" cy="54.2" r="0.54" fill="#d5e4ff" opacity="0.37"/><circle cx="241.8" cy="10.9" r="0.42" fill="#f0e2b0" opacity="0.63"/><circle cx="150.8" cy="109.4" r="0.72" fill="#c9fff2" opacity="0.61"/><circle cx="96.6" cy="45.9" r="0.94" fill="#9eb6d8" opacity="0.29"/><circle cx="332.9" cy="27.0" r="0.56" fill="#d5e4ff" opacity="0.30"/><circle cx="237.2" cy="168.0" r="0.56" fill="#f0e2b0" opacity="0.62"/><circle cx="77.5" cy="55.9" r="0.62" fill="#c9fff2" opacity="0.42"/><circle cx="323.5" cy="197.9" r="0.82" fill="#9eb6d8" opacity="0.53"/><circle cx="50.5" cy="190.1" r="0.45" fill="#d5e4ff" opacity="0.63"/><circle cx="259.7" cy="248.1" r="0.74" fill="#f0e2b0" opacity="0.63"/><circle cx="84.1" cy="195.7" r="0.28" fill="#c9fff2" opacity="0.39"/><circle cx="237.4" cy="93.7" r="0.87" fill="#9eb6d8" opacity="0.48"/><circle cx="125.7" cy="48.5" r="0.36" fill="#d5e4ff" opacity="0.38"/><circle cx="261.5" cy="184.4" r="0.80" fill="#f0e2b0" opacity="0.55"/><circle cx="280.7" cy="43.0" r="0.86" fill="#c9fff2" opacity="0.46"/><circle cx="322.3" cy="113.1" r="0.66" fill="#9eb6d8" opacity="0.33"/><circle cx="338.3" cy="82.0" r="0.75" fill="#d5e4ff" opacity="0.47"/><circle cx="50.9" cy="201.7" r="0.91" fill="#f0e2b0" opacity="0.42"/><circle cx="332.0" cy="113.9" r="0.70" fill="#c9fff2" opacity="0.36"/><circle cx="185.1" cy="52.5" r="0.60" fill="#9eb6d8" opacity="0.42"/><circle cx="194.8" cy="242.1" r="0.78" fill="#d5e4ff" opacity="0.63"/><circle cx="25.5" cy="215.0" r="0.94" fill="#f0e2b0" opacity="0.33"/><circle cx="60.7" cy="13.8" r="0.82" fill="#c9fff2" opacity="0.27"/><circle cx="194.9" cy="82.0" r="0.93" fill="#9eb6d8" opacity="0.56"/><circle cx="49.6" cy="88.3" r="0.46" fill="#d5e4ff" opacity="0.50"/><circle cx="223.7" cy="130.1" r="0.46" fill="#f0e2b0" opacity="0.28"/><circle cx="310.0" cy="131.4" r="0.43" fill="#c9fff2" opacity="0.47"/><circle cx="274.9" cy="143.8" r="0.74" fill="#fff1c2" opacity="0.53"/><circle cx="156.8" cy="73.2" r="1.18" fill="#e7f2ff" opacity="0.48"/><circle cx="22.7" cy="62.4" r="0.78" fill="#e7f2ff" opacity="0.89"/><circle cx="184.0" cy="53.6" r="1.02" fill="#e7f2ff" opacity="0.77"/><circle cx="118.6" cy="7.3" r="1.02" fill="#e7f2ff" opacity="0.90"/><circle cx="367.8" cy="38.9" r="1.29" fill="#e7f2ff" opacity="0.75"/><circle cx="35.7" cy="227.5" r="1.25" fill="#e7f2ff" opacity="0.77"/><circle cx="367.9" cy="96.2" r="1.07" fill="#fff1c2" opacity="0.52"/><circle cx="51.7" cy="225.0" r="0.73" fill="#e7f2ff" opacity="0.58"/><circle cx="88.5" cy="91.7" r="1.06" fill="#e7f2ff" opacity="0.86"/><circle cx="387.2" cy="12.0" r="0.95" fill="#e7f2ff" opacity="0.68"/><circle cx="109.4" cy="46.7" r="1.02" fill="#e7f2ff" opacity="0.74"/><circle cx="213.2" cy="56.1" r="1.21" fill="#e7f2ff" opacity="0.88"/><circle cx="47.2" cy="164.7" r="1.42" fill="#e7f2ff" opacity="0.71"/><circle cx="23.3" cy="159.9" r="0.63" fill="#fff1c2" opacity="0.54"/><circle cx="280.4" cy="38.7" r="1.32" fill="#e7f2ff" opacity="0.65"/><circle cx="382.6" cy="226.3" r="0.96" fill="#e7f2ff" opacity="0.44"/><circle cx="52.2" cy="236.7" r="1.47" fill="#e7f2ff" opacity="0.82"/><circle cx="160.8" cy="203.6" r="1.00" fill="#e7f2ff" opacity="0.52"/><circle cx="100.2" cy="114.8" r="1.48" fill="#e7f2ff" opacity="0.71"/><circle cx="66.7" cy="195.0" r="0.87" fill="#e7f2ff" opacity="0.42"/><circle cx="113.0" cy="222.6" r="1.02" fill="#fff1c2" opacity="0.82"/><circle cx="234.4" cy="240.1" r="1.45" fill="#e7f2ff" opacity="0.85"/><circle cx="325.5" cy="198.9" r="0.74" fill="#e7f2ff" opacity="0.66"/><g opacity="0.85"><line x1="78" y1="54" x2="78" y2="70" stroke="#f4fbff" stroke-width="0.6"/><line x1="70" y1="62" x2="86" y2="62" stroke="#f4fbff" stroke-width="0.6"/><circle cx="78" cy="62" r="1.5" fill="#ffffff"/></g></g><g id="hullInk"><ellipse cx="206" cy="176" rx="78" ry="14" fill="#02040c" opacity="0.55"/><polygon stroke="rgba(6,10,20,0.35)" stroke-width="0.45" stroke-linejoin="round" points="218.8,105.6 225.1,108.3 245.0,99.2 240.8,97.5" fill="rgb(35,50,71)" opacity="1.00"/><polygon stroke="rgba(6,10,20,0.35)" stroke-width="0.45" stroke-linejoin="round" points="229.5,113.6 229.5,118.4 247.8,105.6 247.9,102.6" fill="rgb(15,23,34)" opacity="1.00"/><polygon stroke="rgba(6,10,20,0.35)" stroke-width="0.45" stroke-linejoin="round" points="225.1,108.3 229.5,113.6 247.9,102.6 245.0,99.2" fill="rgb(21,28,42)" opacity="1.00"/><polygon stroke="rgba(6,10,20,0.35)" stroke-width="0.45" stroke-linejoin="round" points="207.5,109.5 208.7,109.5 230.4,98.9 229.4,98.9" fill="rgb(149,208,247)" opacity="1.00"/><polygon stroke="rgba(6,10,20,0.35)" stroke-width="0.45" stroke-linejoin="round" points="208.7,109.5 210.4,110.3 231.8,99.5 230.4,98.9" fill="rgb(146,204,242)" opacity="1.00"/><polygon stroke="rgba(6,10,20,0.35)" stroke-width="0.45" stroke-linejoin="round" points="210.4,110.3 211.6,111.3 232.8,100.2 231.8,99.5" fill="rgb(139,194,230)" opacity="1.00"/><polygon stroke="rgba(6,10,20,0.35)" stroke-width="0.45" stroke-linejoin="round" points="211.5,105.5 213.9,106.5 228.9,99.5 227.3,98.8" fill="rgb(198,222,243)" opacity="1.00"/><polygon stroke="rgba(6,10,20,0.35)" stroke-width="0.45" stroke-linejoin="round" points="211.6,111.3 211.6,111.9 232.8,100.8 232.8,100.2" fill="rgb(95,133,158)" opacity="1.00"/><polygon stroke="rgba(6,10,20,0.35)" stroke-width="0.45" stroke-linejoin="round" points="191.2,117.2 196.3,115.5 218.8,105.6 214.4,107.1" fill="rgb(57,84,121)" opacity="1.00"/><polygon stroke="rgba(6,10,20,0.35)" stroke-width="0.45" stroke-linejoin="round" points="215.6,108.8 215.6,110.9 230.1,102.4 230.1,101.0" fill="rgb(72,83,93)" opacity="1.00"/><polygon stroke="rgba(6,10,20,0.35)" stroke-width="0.45" stroke-linejoin="round" points="213.9,106.5 215.6,108.8 230.1,101.0 228.9,99.5" fill="rgb(145,160,172)" opacity="1.00"/><polygon stroke="rgba(6,10,20,0.35)" stroke-width="0.45" stroke-linejoin="round" points="196.3,115.5 203.7,118.8 225.1,108.3 218.8,105.6" fill="rgb(38,51,72)" opacity="1.00"/><polygon stroke="rgba(6,10,20,0.35)" stroke-width="0.45" stroke-linejoin="round" points="208.7,109.5 207.5,109.5 207.5,110.1 208.7,111.1 210.4,111.9 211.6,111.9 211.6,111.3 210.4,110.3" fill="rgb(119,166,196)" opacity="1.00"/><polygon stroke="rgba(6,10,20,0.35)" stroke-width="0.45" stroke-linejoin="round" points="209.0,125.1 208.9,130.8 229.5,118.4 229.5,113.6" fill="rgb(14,21,31)" opacity="1.00"/><polygon stroke="rgba(6,10,20,0.35)" stroke-width="0.45" stroke-linejoin="round" points="203.7,118.8 209.0,125.1 229.5,113.6 225.1,108.3" fill="rgb(21,28,41)" opacity="1.00"/><polygon stroke="rgba(6,10,20,0.35)" stroke-width="0.45" stroke-linejoin="round" points="198.2,113.5 199.2,113.0 211.5,105.5 209.8,106.3" fill="rgb(231,255,255)" opacity="1.00"/><polygon stroke="rgba(6,10,20,0.35)" stroke-width="0.45" stroke-linejoin="round" points="199.2,113.0 200.8,113.7 213.9,106.5 211.5,105.5" fill="rgb(213,236,255)" opacity="1.00"/><polygon stroke="rgba(6,10,20,0.35)" stroke-width="0.45" stroke-linejoin="round" points="201.8,115.1 201.8,116.5 215.6,110.9 215.6,108.8" fill="rgb(70,79,88)" opacity="1.00"/><polygon stroke="rgba(6,10,20,0.35)" stroke-width="0.45" stroke-linejoin="round" points="200.8,113.7 201.8,115.1 215.6,108.8 213.9,106.5" fill="rgb(152,166,178)" opacity="1.00"/><polygon stroke="rgba(6,10,20,0.35)" stroke-width="0.45" stroke-linejoin="round" points="199.2,113.0 198.2,113.5 198.2,114.9 199.2,116.3 200.8,117.0 201.8,116.5 201.8,115.1 200.8,113.7" fill="rgb(105,117,128)" opacity="1.00"/><polygon stroke="rgba(6,10,20,0.35)" stroke-width="0.45" stroke-linejoin="round" points="172.5,127.9 177.1,126.4 196.3,115.5 191.2,117.2" fill="rgb(66,92,126)" opacity="1.00"/><polygon stroke="rgba(6,10,20,0.35)" stroke-width="0.45" stroke-linejoin="round" points="223.5,102.1 165.2,131.5 168.3,132.9 226.6,103.4" fill="rgb(147,205,243)" opacity="1.00"/><polygon stroke="rgba(6,10,20,0.35)" stroke-width="0.45" stroke-linejoin="round" points="202.7,117.3 202.7,93.4 200.1,94.6 200.1,118.7" fill="rgb(17,23,33)" opacity="1.00"/><polygon stroke="rgba(6,10,20,0.35)" stroke-width="0.45" stroke-linejoin="round" points="200.1,118.7 200.1,94.6 197.3,93.4 197.3,117.4" fill="rgb(22,29,40)" opacity="1.00"/><polygon stroke="rgba(6,10,20,0.35)" stroke-width="0.45" stroke-linejoin="round" points="177.1,126.4 183.7,129.4 203.7,118.8 196.3,115.5" fill="rgb(43,56,76)" opacity="1.00"/><polygon stroke="rgba(6,10,20,0.35)" stroke-width="0.45" stroke-linejoin="round" points="188.4,135.2 188.4,140.3 208.9,130.8 209.0,125.1" fill="rgb(12,18,27)" opacity="1.00"/><polygon stroke="rgba(6,10,20,0.35)" stroke-width="0.45" stroke-linejoin="round" points="183.7,129.4 188.4,135.2 209.0,125.1 203.7,118.8" fill="rgb(20,27,40)" opacity="1.00"/><polygon stroke="rgba(6,10,20,0.35)" stroke-width="0.45" stroke-linejoin="round" points="197.3,93.4 200.1,94.6 202.7,93.4 199.9,92.2" fill="rgb(50,64,85)" opacity="1.00"/><polygon stroke="rgba(6,10,20,0.35)" stroke-width="0.45" stroke-linejoin="round" points="202.7,93.4 202.7,67.0 200.1,68.2 200.1,94.6" fill="rgb(17,23,33)" opacity="1.00"/><polygon stroke="rgba(6,10,20,0.35)" stroke-width="0.45" stroke-linejoin="round" points="200.1,94.6 200.1,68.2 197.3,67.0 197.3,93.4" fill="rgb(22,29,40)" opacity="1.00"/><polygon stroke="rgba(6,10,20,0.35)" stroke-width="0.45" stroke-linejoin="round" points="154.0,139.7 157.4,138.6 177.1,126.4 172.5,127.9" fill="rgb(74,98,132)" opacity="1.00"/><polygon stroke="rgba(6,10,20,0.35)" stroke-width="0.45" stroke-linejoin="round" points="157.4,138.6 162.4,141.0 183.7,129.4 177.1,126.4" fill="rgb(47,59,79)" opacity="1.00"/><polygon stroke="rgba(6,10,20,0.35)" stroke-width="0.45" stroke-linejoin="round" points="197.3,67.0 200.1,68.2 202.7,67.0 199.9,65.8" fill="rgb(50,64,85)" opacity="1.00"/><polygon stroke="rgba(6,10,20,0.35)" stroke-width="0.45" stroke-linejoin="round" points="217.9,45.0 198.2,43.7 178.9,45.6 162.3,50.3 150.9,57.4 146.5,65.9 150.3,74.7 162.1,82.3 180.3,87.3 201.9,88.9 223.2,86.7 240.5,81.1 251.0,73.2 253.3,64.4 247.6,56.0 235.1,49.3" fill="rgb(147,205,243)" opacity="1.00"/><polygon stroke="rgba(6,10,20,0.35)" stroke-width="0.45" stroke-linejoin="round" points="166.0,145.5 166.1,149.4 188.4,140.3 188.4,135.2" fill="rgb(12,17,25)" opacity="1.00"/><polygon stroke="rgba(6,10,20,0.35)" stroke-width="0.45" stroke-linejoin="round" points="162.4,141.0 166.0,145.5 188.4,135.2 183.7,129.4" fill="rgb(20,27,40)" opacity="1.00"/><polygon stroke="rgba(6,10,20,0.35)" stroke-width="0.45" stroke-linejoin="round" points="253.3,64.4 251.0,73.2 250.9,75.1 253.2,66.2" fill="rgb(95,133,158)" opacity="1.00"/><polygon stroke="rgba(6,10,20,0.35)" stroke-width="0.45" stroke-linejoin="round" points="150.3,74.7 146.5,65.9 146.6,67.8 150.4,76.6" fill="rgb(124,173,205)" opacity="1.00"/><polygon stroke="rgba(6,10,20,0.35)" stroke-width="0.45" stroke-linejoin="round" points="138.2,150.3 140.5,149.6 157.4,138.6 154.0,139.7" fill="rgb(79,103,135)" opacity="1.00"/><polygon stroke="rgba(6,10,20,0.35)" stroke-width="0.45" stroke-linejoin="round" points="137.1,154.8 136.5,155.3 136.5,156.4 137.2,157.4 138.0,157.9 138.6,157.4 138.6,156.3 137.9,155.3" fill="rgb(8,13,20)" opacity="1.00"/><polygon stroke="rgba(6,10,20,0.35)" stroke-width="0.45" stroke-linejoin="round" points="138.6,156.3 138.6,157.4 138.8,156.6 138.8,156.0" fill="rgb(24,44,66)" opacity="1.00"/><polygon stroke="rgba(6,10,20,0.35)" stroke-width="0.45" stroke-linejoin="round" points="137.9,155.3 138.6,156.3 138.8,156.0 138.4,155.4" fill="rgb(19,34,50)" opacity="1.00"/><polygon stroke="rgba(6,10,20,0.35)" stroke-width="0.45" stroke-linejoin="round" points="140.5,149.6 144.0,151.3 162.4,141.0 157.4,138.6" fill="rgb(49,61,80)" opacity="1.00"/><polygon stroke="rgba(6,10,20,0.35)" stroke-width="0.45" stroke-linejoin="round" points="131.6,156.3 134.3,157.7 139.6,154.9 136.9,153.6" fill="rgb(50,64,85)" opacity="1.00"/><polygon stroke="rgba(6,10,20,0.35)" stroke-width="0.45" stroke-linejoin="round" points="139.7,158.4 139.6,154.9 134.3,157.7 134.4,161.1" fill="rgb(17,23,33)" opacity="1.00"/><polygon stroke="rgba(6,10,20,0.35)" stroke-width="0.45" stroke-linejoin="round" points="134.4,161.1 134.3,157.7 131.6,156.3 131.7,159.7" fill="rgb(22,29,40)" opacity="1.00"/><polygon stroke="rgba(6,10,20,0.35)" stroke-width="0.45" stroke-linejoin="round" points="146.5,154.4 146.5,157.0 166.1,149.4 166.0,145.5" fill="rgb(11,17,25)" opacity="1.00"/><polygon stroke="rgba(6,10,20,0.35)" stroke-width="0.45" stroke-linejoin="round" points="144.0,151.3 146.5,154.4 166.0,145.5 162.4,141.0" fill="rgb(21,27,40)" opacity="1.00"/><polygon stroke="rgba(6,10,20,0.35)" stroke-width="0.45" stroke-linejoin="round" points="126.5,159.4 128.0,160.2 132.8,158.5 132.5,158.3" fill="rgb(255,255,255)" opacity="0.98"/><polygon stroke="rgba(6,10,20,0.35)" stroke-width="0.45" stroke-linejoin="round" points="129.2,161.8 129.2,163.3 133.1,159.2 133.1,158.8" fill="rgb(254,255,255)" opacity="0.98"/><polygon stroke="rgba(6,10,20,0.35)" stroke-width="0.45" stroke-linejoin="round" points="128.0,160.2 129.2,161.8 133.1,158.8 132.8,158.5" fill="rgb(255,255,255)" opacity="0.98"/><polygon stroke="rgba(6,10,20,0.35)" stroke-width="0.45" stroke-linejoin="round" points="140.5,149.6 138.2,150.3 138.3,152.9 140.8,155.9 144.2,157.6 146.5,157.0 146.5,154.4 144.0,151.3" fill="rgb(16,23,34)" opacity="1.00"/><polygon stroke="rgba(6,10,20,0.35)" stroke-width="0.45" stroke-linejoin="round" points="125.1,159.0 127.2,160.1 133.1,158.0 132.5,157.7" fill="rgb(240,255,255)" opacity="0.40"/><polygon stroke="rgba(6,10,20,0.35)" stroke-width="0.45" stroke-linejoin="round" points="128.8,162.4 128.9,164.6 133.6,159.5 133.6,158.8" fill="rgb(220,255,255)" opacity="0.40"/><polygon stroke="rgba(6,10,20,0.35)" stroke-width="0.45" stroke-linejoin="round" points="127.2,160.1 128.8,162.4 133.6,158.8 133.1,158.0" fill="rgb(230,255,255)" opacity="0.40"/><polygon stroke="rgba(6,10,20,0.35)" stroke-width="0.45" stroke-linejoin="round" points="147.7,160.2 147.1,160.6 147.1,161.7 147.8,162.8 148.7,163.3 149.3,162.8 149.2,161.7 148.6,160.6" fill="rgb(8,13,20)" opacity="1.00"/><polygon stroke="rgba(6,10,20,0.35)" stroke-width="0.45" stroke-linejoin="round" points="149.2,161.7 149.3,162.8 149.5,162.0 149.5,161.4" fill="rgb(24,44,66)" opacity="1.00"/><polygon stroke="rgba(6,10,20,0.35)" stroke-width="0.45" stroke-linejoin="round" points="148.6,160.6 149.2,161.7 149.5,161.4 149.1,160.7" fill="rgb(19,34,50)" opacity="1.00"/><polygon stroke="rgba(6,10,20,0.35)" stroke-width="0.45" stroke-linejoin="round" points="125.1,159.0 123.6,159.7 123.7,161.9 125.3,164.2 127.5,165.3 128.9,164.6 128.8,162.4 127.2,160.1" fill="rgb(230,255,255)" opacity="0.40"/><polygon stroke="rgba(6,10,20,0.35)" stroke-width="0.45" stroke-linejoin="round" points="251.0,73.2 240.5,81.1 240.4,83.0 250.9,75.1" fill="rgb(95,133,158)" opacity="1.00"/><polygon stroke="rgba(6,10,20,0.35)" stroke-width="0.45" stroke-linejoin="round" points="142.2,161.7 145.0,163.1 150.3,160.3 147.5,158.9" fill="rgb(50,64,85)" opacity="1.00"/><polygon stroke="rgba(6,10,20,0.35)" stroke-width="0.45" stroke-linejoin="round" points="150.4,163.8 150.3,160.3 145.0,163.1 145.1,166.5" fill="rgb(17,23,33)" opacity="1.00"/><polygon stroke="rgba(6,10,20,0.35)" stroke-width="0.45" stroke-linejoin="round" points="119.1,165.6 119.2,165.6 126.5,159.4 125.5,159.9" fill="rgb(255,255,255)" opacity="0.98"/><polygon stroke="rgba(6,10,20,0.35)" stroke-width="0.45" stroke-linejoin="round" points="119.4,165.9 119.3,165.9 128.2,163.8 129.2,163.3" fill="rgb(254,255,255)" opacity="0.98"/><polygon stroke="rgba(6,10,20,0.35)" stroke-width="0.45" stroke-linejoin="round" points="119.2,165.6 119.3,165.7 128.0,160.2 126.5,159.4" fill="rgb(255,255,255)" opacity="0.98"/><polygon stroke="rgba(6,10,20,0.35)" stroke-width="0.45" stroke-linejoin="round" points="145.1,166.5 145.0,163.1 142.2,161.7 142.3,165.1" fill="rgb(22,29,40)" opacity="1.00"/><polygon stroke="rgba(6,10,20,0.35)" stroke-width="0.45" stroke-linejoin="round" points="119.3,165.8 119.4,165.9 129.2,163.3 129.2,161.8" fill="rgb(254,255,255)" opacity="0.98"/><polygon stroke="rgba(6,10,20,0.35)" stroke-width="0.45" stroke-linejoin="round" points="119.3,165.7 119.3,165.8 129.2,161.8 128.0,160.2" fill="rgb(255,255,255)" opacity="0.98"/><polygon stroke="rgba(6,10,20,0.35)" stroke-width="0.45" stroke-linejoin="round" points="162.1,82.3 150.3,74.7 150.4,76.6 162.2,84.2" fill="rgb(121,170,201)" opacity="1.00"/><polygon stroke="rgba(6,10,20,0.35)" stroke-width="0.45" stroke-linejoin="round" points="137.1,164.9 138.7,165.7 143.5,163.9 143.2,163.7" fill="rgb(255,255,255)" opacity="0.98"/><polygon stroke="rgba(6,10,20,0.35)" stroke-width="0.45" stroke-linejoin="round" points="139.9,167.3 139.9,168.8 143.7,164.6 143.7,164.3" fill="rgb(254,255,255)" opacity="0.98"/><polygon stroke="rgba(6,10,20,0.35)" stroke-width="0.45" stroke-linejoin="round" points="138.7,165.7 139.9,167.3 143.7,164.3 143.5,163.9" fill="rgb(255,255,255)" opacity="0.98"/><polygon stroke="rgba(6,10,20,0.35)" stroke-width="0.45" stroke-linejoin="round" points="135.7,164.5 137.9,165.6 143.8,163.5 143.2,163.1" fill="rgb(240,255,255)" opacity="0.40"/><polygon stroke="rgba(6,10,20,0.35)" stroke-width="0.45" stroke-linejoin="round" points="139.5,167.9 139.6,170.1 144.3,164.9 144.3,164.2" fill="rgb(220,255,255)" opacity="0.40"/><polygon stroke="rgba(6,10,20,0.35)" stroke-width="0.45" stroke-linejoin="round" points="137.9,165.6 139.5,167.9 144.3,164.2 143.8,163.5" fill="rgb(230,255,255)" opacity="0.40"/><polygon stroke="rgba(6,10,20,0.35)" stroke-width="0.45" stroke-linejoin="round" points="135.7,164.5 134.2,165.2 134.3,167.4 135.9,169.7 138.1,170.8 139.6,170.1 139.5,167.9 137.9,165.6" fill="rgb(230,255,255)" opacity="0.40"/><polygon stroke="rgba(6,10,20,0.35)" stroke-width="0.45" stroke-linejoin="round" points="129.7,171.2 129.8,171.2 137.1,164.9 136.1,165.4" fill="rgb(255,255,255)" opacity="0.98"/><polygon stroke="rgba(6,10,20,0.35)" stroke-width="0.45" stroke-linejoin="round" points="130.0,171.5 129.9,171.5 138.9,169.3 139.9,168.8" fill="rgb(254,255,255)" opacity="0.98"/><polygon stroke="rgba(6,10,20,0.35)" stroke-width="0.45" stroke-linejoin="round" points="129.8,171.2 129.9,171.2 138.7,165.7 137.1,164.9" fill="rgb(255,255,255)" opacity="0.98"/><polygon stroke="rgba(6,10,20,0.35)" stroke-width="0.45" stroke-linejoin="round" points="130.0,171.3 130.0,171.5 139.9,168.8 139.9,167.3" fill="rgb(254,255,255)" opacity="0.98"/><polygon stroke="rgba(6,10,20,0.35)" stroke-width="0.45" stroke-linejoin="round" points="129.9,171.2 130.0,171.3 139.9,167.3 138.7,165.7" fill="rgb(255,255,255)" opacity="0.98"/><polygon stroke="rgba(6,10,20,0.35)" stroke-width="0.45" stroke-linejoin="round" points="240.5,81.1 223.2,86.7 223.2,88.6 240.4,83.0" fill="rgb(95,133,158)" opacity="1.00"/><polygon stroke="rgba(6,10,20,0.35)" stroke-width="0.45" stroke-linejoin="round" points="180.3,87.3 162.1,82.3 162.2,84.2 180.3,89.3" fill="rgb(115,160,190)" opacity="1.00"/><polygon stroke="rgba(6,10,20,0.35)" stroke-width="0.45" stroke-linejoin="round" points="223.2,86.7 201.9,88.9 201.9,90.8 223.2,88.6" fill="rgb(95,133,158)" opacity="1.00"/><polygon stroke="rgba(6,10,20,0.35)" stroke-width="0.45" stroke-linejoin="round" points="201.9,88.9 180.3,87.3 180.3,89.3 201.9,90.8" fill="rgb(105,147,175)" opacity="1.00"/></g>
+          </svg>
+          <div id="stageFx" data-empty="1"></div>
+        </div>
+        <div id="shipReadout">
+          <div id="fighterRow">each marker = 100 fighters</div>
+          <div id="shipStats">
+            <div class="bar"><span>Fighters</span><span class="t"><span class="f" style="width:50%;background:#ff5555"></span></span><span class="w">2,500<span class="dk">/5,000</span></span></div>
+            <div class="bar"><span>Shields</span><span class="t"><span class="f" style="width:80%;background:#55ffff"></span></span><span class="w">1,600<span class="dk">/2,000</span></span></div>
+            <div class="bar"><span>Holds</span><span class="t"><span class="f" style="width:40%;background:#ffff55"></span></span><span class="w">12<span class="dk">/30</span></span></div>
+            <div class="bar"><span>armid mines</span><span class="w">5</span></div>
+            <div class="bar"><span>limpet mines</span><span class="w">0</span></div>
+            <div class="bar"><span>Cloaks</span><span class="w">1</span></div>
+            <div class="bar"><span>Disruptors</span><span class="w">0</span></div>
+            <div class="bar"><span>Towing nothing</span></div>
+            <div class="bar"><span>Scanner</span><span class="w">Density</span></div>
+          </div>
+          <div id="holds" class="holds">
+            <div class="hold"><b>Fuel Ore</b><br>4</div>
+            <div class="hold"><b>Organics</b><br>5</div>
+            <div class="hold"><b>Equipment</b><br>3</div>
+            <div class="hold"><b>Colonists</b><br>0</div>
+          </div>
+        </div>
+      </section>
+
+      <section id="nav" class="panel" aria-label="Nav computer">
+        <h2><span class="g">◄</span> NAV COMPUTER <span class="dim">click: adjacent = warp · far = course, ENTER flies</span></h2>
+        <div id="mapTools">
+          <button type="button" aria-label="Zoom in">+</button>
+          <button type="button" aria-label="Zoom out">−</button>
+          <button type="button">Center</button>
+          <button type="button" aria-pressed="false">Enlarge</button>
+        </div>
+        <svg id="map" viewBox="-300 -300 600 600" role="img" aria-label="Sector map">
+          <line class="lane" x1="-90" y1="-70" x2="-180" y2="-160"/>
+          <line class="lane oneway" x1="110" y1="-50" x2="200" y2="-140"/>
+          <polygon class="arrowhead" points="186,-132 176,-128 180,-140"/>
+          <line class="lane" x1="60" y1="110" x2="150" y2="190"/>
+          <line class="lane" x1="0" y1="0" x2="-90" y2="-70"/>
+          <line class="lane" x1="0" y1="0" x2="110" y2="-50"/>
+          <line class="lane" x1="0" y1="0" x2="60" y2="110"/>
+          <line class="lane unk" x1="0" y1="0" x2="-120" y2="80"/>
+          <g class="node port"><circle cx="-180" cy="-160" r="6"/><text x="-164" y="-154">19</text></g>
+          <g class="node adj port"><circle cx="-90" cy="-70" r="9"/><text x="-74" y="-64">12</text></g>
+          <g class="node port"><circle cx="200" cy="-140" r="6"/><text x="214" y="-134">55</text></g>
+          <g class="node adj port"><circle cx="110" cy="-50" r="9"/><text x="126" y="-44">88</text></g>
+          <g class="node adj"><circle cx="60" cy="110" r="9"/><text x="76" y="116">301</text></g>
+          <g class="node"><circle cx="150" cy="190" r="6"/><text x="164" y="196">402</text></g>
+          <g class="node adj unk"><circle cx="-120" cy="80" r="9"/><text x="-104" y="86">640</text></g>
+          <g class="node here port"><circle cx="0" cy="0" r="11"/><text x="16" y="6">247</text></g>
+        </svg>
+        <div id="warps"><span class="g">Warps:</span>
+          <button type="button">12</button>
+          <button type="button">88</button>
+          <button type="button">301</button>
+          <button type="button" class="unk">(640)</button>
+        </div>
+      </section>
+
+      <section id="report" class="panel" aria-label="Sector report">
+        <h2><span class="y">◄</span> SECTOR <span class="dim">report, no viewport picture</span></h2>
+        <div class="report ansi"><span class="g">Sector  </span><span class="y">:</span> <span class="c">247</span> <span class="g">in</span> <span class="c">uncharted space</span>.
+<span class="g">Ports   </span><span class="y">:</span> <span class="c">Artemis Station</span><span class="y">,</span> <span class="g">Class</span> <span class="c">2</span> <span class="w">(</span><span class="m">BSB</span><span class="w">)</span>
+<span class="g">Planets </span><span class="y">:</span> <span class="c">(M) Terra (colonist source, cannot be claimed).</span>
+<span class="g">Warps to Sector(s) </span><span class="y">:</span> <span class="c">12</span> - <span class="c">88</span> - <span class="c">301</span> - <span class="r">(640)</span></div>
+      </section>
+
+      <section id="context" class="panel" aria-label="Here">
+        <h2><span class="y">◄</span> HERE <span class="dim">what you can do in this sector</span></h2>
+        <div id="sectorInHere" class="ansi"><span class="g">Sector  </span><span class="y">:</span> <span class="c">247</span> <span class="g">in</span> <span class="c">uncharted space</span>.
+<span class="g">Ports   </span><span class="y">:</span> <span class="c">Artemis Station</span><span class="y">,</span> <span class="g">Class</span> <span class="c">2</span> <span class="w">(</span><span class="m">BSB</span><span class="w">)</span>
+<span class="g">Planets </span><span class="y">:</span> <span class="c">(M) Terra (colonist source, cannot be claimed).</span>
+<span class="g">Warps to Sector(s) </span><span class="y">:</span> <span class="c">12</span> - <span class="c">88</span> - <span class="c">301</span> - <span class="r">(640)</span></div>
+        <div id="here">
+          <button type="button" class="verb"><kbd>P</kbd> Port &amp; Trade</button>
+          <button type="button" class="verb"><kbd>L</kbd> Land</button>
+          <button type="button" class="verb"><kbd>A</kbd> Attack</button>
+          <button type="button" class="verb"><kbd>S</kbd> Long Range Scan</button>
+          <button type="button" class="verb"><kbd>F</kbd> Take/Leave Fighters</button>
+          <button type="button" class="verb" id="verbTail"><kbd>H</kbd> Handle Mines</button>
+        </div>
+      </section>
+
+      <section id="term" class="panel" aria-label="Comms and log">
+        <div id="commsCard" aria-label="Comms">
+          <h2><span class="m">◄</span> COMMS</h2>
+          <div id="turnLog">
+            <div><span class="c">Fed</span> Dock control is quiet.</div>
+            <div><span class="m">Radio</span> No hail on this frequency.</div>
+          </div>
+          <form class="comms-form" action="#" onsubmit="return false">
+            <label>To <select aria-label="Comms kind"><option>Fed Comm</option><option>Sub-space radio</option></select></label>
+            <label>Message <input aria-label="Message" value="" /></label>
+            <button type="button">Send</button>
+          </form>
+        </div>
+        <div id="activityCard" aria-label="Log">
+          <h2><span class="y">◄</span> LOG</h2>
+          <div id="log">
+            <div>Arrived in sector 247.</div>
+            <div>Port Artemis Station is open.</div>
+            <div>Terra is in this sector.</div>
+          </div>
+        </div>
+      </section>
+    </main>
+    <footer id="keys" aria-label="Command keys">
+      <button type="button"><kbd>M</kbd>Move</button>
+      <button type="button"><kbd>P</kbd>Port &amp; Trade</button>
+      <button type="button"><kbd>L</kbd>Land</button>
+      <button type="button"><kbd>D</kbd>Re-Display</button>
+      <button type="button"><kbd>S</kbd>Long Range Scan</button>
+      <button type="button"><kbd>A</kbd>Attack</button>
+      <button type="button"><kbd>F</kbd>Take/Leave Fighters</button>
+      <button type="button"><kbd>H</kbd>Handle Mines</button>
+      <button type="button"><kbd>U</kbd>Use Genesis</button>
+      <button type="button"><kbd>E</kbd>Ether Probe</button>
+      <button type="button"><kbd>C</kbd>Computer</button>
+      <button type="button"><kbd>I</kbd>Ship Info</button>
+      <button type="button"><kbd>Y</kbd>Read Mail</button>
+      <button type="button"><kbd>.</kbd>Wait</button>
+      <button type="button"><kbd>T</kbd>Corporate Menu</button>
+      <button type="button"><kbd>R</kbd>Release Beacon</button>
+      <button type="button"><kbd>X</kbd>Transporter Pad</button>
+      <button type="button"><kbd>W</kbd>Tow SpaceCraft</button>
+    </footer>
+    <p id="lastResult">Arrived in sector 247.</p>
+    <p class="prompt-line">Command [TL=42] (?=Help) :</p>
+  </div>
+  <script>
+    (function () {
+      if (document.documentElement.dataset.capture !== "1") return;
+      var deck = document.getElementById("deck");
+      var ship = document.getElementById("ship");
+      var nav = document.getElementById("nav");
+      var svg = document.getElementById("shipSvg");
+      var holds = document.getElementById("holds");
+      var stage = document.getElementById("shipStage");
+      var context = document.getElementById("context");
+      var term = document.getElementById("term");
+      var report = document.getElementById("report");
+      var verb = document.getElementById("verbTail");
+      var ink = document.getElementById("hullInk");
+      var cs = getComputedStyle(deck);
+      var padX = parseFloat(cs.paddingLeft) + parseFloat(cs.paddingRight);
+      var content = deck.clientWidth - padX;
+      function box(el) { return el.getBoundingClientRect(); }
+      var sb = box(ship), nb = box(nav), hb = box(holds), vb = box(svg), tb = box(stage);
+      var cb = box(context), mb = box(term), rb = box(report);
+      var shipBox = box(ship);
+      var ctx = box(context);
+      var verbBox = box(verb);
+      var ctm = ink.getScreenCTM();
+      var bb = ink.getBBox();
+      var probe = {
+        variant: document.documentElement.dataset.variant,
+        inner: [window.innerWidth, window.innerHeight],
+        content: Math.round(content),
+        shipFrac: +(sb.width / content).toFixed(3),
+        navFrac: +(nb.width / content).toFixed(3),
+        reportFrac: report.offsetParent ? +(rb.width / content).toFixed(3) : 0,
+        hereFrac: +(cb.width / content).toFixed(3),
+        termFrac: +(mb.width / content).toFixed(3),
+        topDelta: +Math.abs(sb.top - nb.top).toFixed(2),
+        svg: [Math.round(vb.width), Math.round(vb.height)],
+        stage: [Math.round(tb.width), Math.round(tb.height)],
+        ink: ctm ? [Math.round(Math.abs(bb.width * ctm.a)), Math.round(Math.abs(bb.height * ctm.d))] : null,
+        holdsInside: hb.top >= shipBox.top - 0.5 && hb.bottom <= shipBox.bottom + 0.5 && hb.left >= shipBox.left - 0.5 && hb.right <= shipBox.right + 0.5,
+        verbInside: verbBox.bottom <= ctx.bottom + 0.5 && verbBox.top >= ctx.top - 0.5,
+        areas: cs.gridTemplateAreas,
+        view: svg.getAttribute("data-view")
+      };
+      document.documentElement.dataset.probe = JSON.stringify(probe);
+    })();
+  </script>
+</body>
+</html>
