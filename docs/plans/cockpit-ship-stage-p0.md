@@ -71,6 +71,8 @@ Done when:
 
 ### P3 — Layout split
 
+Tracks, caps, and the viewport-column leftovers: [P3 layout](cockpit-ship-stage-p3-layout.md).
+
 Done when:
 
 - The top of `#deck` is the ship stage at 55–60% and `#nav` at about 35%, side by side. HERE and COMMS stay. The map is not under the ship.
