@@ -2,6 +2,8 @@
 
 Parents: [P0 pack](cockpit-ship-stage-p0.md), [silhouette bible](cockpit-ship-stage-p0-silhouette-bible.md), [render decision](cockpit-ship-stage-p0-render.md), [four-hull wave](cockpit-ship-stage-p1b-next-hulls.md), [fleet order](cockpit-ship-stage-p1b-fleet-order.md).
 
+Stills for this sheet are listed in the [stills inventory](stills/README.md) (#344) under [p1b-batch2-haulers](stills/p1b-batch2-haulers/).
+
 Docs only. This sheet does not change `web/*`, the engine, or tests. Classic top-and-front ANSI for every hull stays **UNVERIFIED**. Do not open, trace, or approximate EIS prints, EIS wallpaper, or Drew Markham ANSI. Looks below are invented from the public role numbers on `SHIP_SPECS_TW2002` and `SHIP_ROSTER_LIVE_TABLE` in `src/tw2k/engine/constants.py`, and from the one-paragraph pictures already in the bible. This sheet is the mesh contract for the hauler wave after the four in [cockpit-ship-stage-p1b-next-hulls.md](cockpit-ship-stage-p1b-next-hulls.md), so a follow-on does not turn the spine, the cabin, or the saddle back into the Freighter's cheeks or the Merchant's keel.
 
 ## Implement after P1 merges and after the four-hull wave
