@@ -1,6 +1,6 @@
 # P1 acceptance — Merchant Cruiser and Imperial StarShip
 
-Read-test for the in-flight spike. Docs only. Tip surveyed: `feature/grokbot-player` @ `4ad12856`.
+Read-test for the spike. Docs only. Tip surveyed: `feature/grokbot-player` @ `4ad12856`.
 
 Taken from these sheets, which this file does not replace:
 
@@ -96,6 +96,8 @@ Leave alone. Use these lists as written:
 ## Commander decision
 
 Reply with one of these three. Pass means every item under the render memo's "Pass, all of these" holds. Hold-WebGL means one off-ramp condition in that memo is true. Any other miss is Fail.
+
+**Pass.** The Merchant Cruiser and Imperial StarShip SVG spike passed on PR #215 (`9d29349a`), on the parent path of tip `feature/grokbot-player` @ `aebefcfc`. WebGL stays off. Gzip and frame times, as reported in the [spike sheet](cockpit-ship-stage-p1-spike.md) and on that PR: `web/hull-meshes.js` is 8,673 bytes gzipped (level 9). Imperial median / max, JS plus layout: 4.3 / 7.3 ms (drift, 500 markers, fit 0.76), 6.4 / 8.3 ms (static, 1,000 markers, fit 0.72), 6.5 / 8.1 ms (static, 1,000 markers, fit 0.76). The other 15 hulls stay on `fleet-glass-v1`.
 
 ### Pass
 
