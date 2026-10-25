@@ -2,6 +2,8 @@
 
 Parent: [batch 1 remainder](cockpit-ship-stage-p1b-batch1-remainder.md). Same path as the [P1 spike](cockpit-ship-stage-p1-spike.md), the [Scout and Freighter cut](cockpit-ship-stage-p1b-scout-freighter.md), and the [BattleShip and FlagShip cut](cockpit-ship-stage-p1b-battleship-flagship.md): `buildHullFaces` / `projectFace` in `web/hull-meshes.js`. No three.js. WebGL stays off.
 
+The stills inventory is [stills/README.md](stills/README.md) (#344), directory [p1b-batch1-escape-orion](stills/p1b-batch1-escape-orion/).
+
 Escape Pod (`escape_pod`) and T'Khasi Orion (`tkhasi_orion`) leave `fleet-glass-v1` on this cut. Scout Marauder, Merchant Freighter, BattleShip, Corporate FlagShip, Merchant Cruiser, and Imperial StarShip stay on the faces they already had. The other nine hulls stay on `fleet-glass-v1`.
 
 Panel names stay `Escape Pod` and `T'Khasi Orion`. Accents and engine counts are the panel `SHIPS` row. The pod `detail` string stays empty. The T'Khasi `detail` string stays `wings bridge`, and `wings` does not add a second pair: the face list is the same for `wings bridge`, `bridge`, `wings`, and an empty detail. Marker counts use `max(1, ceil(n / 100))` when `n ≥ 1`. Escape Pod cap 50 is 1 marker. T'Khasi cap 750 is 8. A partial last hundred has no numeral. The legend stays `each marker = 100 fighters`.
