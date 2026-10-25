@@ -284,7 +284,9 @@
   function paintLog() {
     const rows = [];
     const seen = new Set();
-    streamLog.concat((S && S.recent_events) || []).forEach((ev) => {
+    // COMMS shows player channels and world lines. Trade failures and the
+    // other refusal twins stay on the verdict and lastResult, not here.
+    window.TW2KCommsStream.forCommsActivity(streamLog.concat((S && S.recent_events) || [])).forEach((ev) => {
       if (!ev || seen.has(ev.seq)) return;
       seen.add(ev.seq);
       rows.push(ev);

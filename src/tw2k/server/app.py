@@ -160,8 +160,10 @@ def _redesign_page(web_root: Path) -> HTMLResponse:
     try:
         js_v = int((web_root / "redesign.js").stat().st_mtime)
         css_v = int((web_root / "redesign.css").stat().st_mtime)
+        comms_v = int((web_root / "comms-stream.js").stat().st_mtime)
     except OSError:
-        js_v = css_v = 0
+        js_v = css_v = comms_v = 0
+    html = html.replace("/static/comms-stream.js", f"/static/comms-stream.js?v={comms_v}")
     html = html.replace("/static/redesign.js", f"/static/redesign.js?v={js_v}")
     html = html.replace("/static/redesign.css", f"/static/redesign.css?v={css_v}")
     return HTMLResponse(
