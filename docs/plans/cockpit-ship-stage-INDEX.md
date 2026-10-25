@@ -1,6 +1,6 @@
 # Cockpit ship stage — sheet index
 
-Finder for the ship-stage planning pack. Docs only. Tip: `feature/grokbot-player` @ `336883dc`. COMMANDER_NEXT just landed through #243 (#245). #251 refreshed COMMANDER_NEXT through #250. #252 moved the tip to `b95e4219`. #253 refreshed the four-hull tip to `1c3fd84b`.
+Finder for the ship-stage planning pack. Docs only. Tip: `feature/grokbot-player` @ `7c30c78d`. COMMANDER_NEXT just landed through #243 (#245). #251 refreshed COMMANDER_NEXT through #250. #252 moved the tip to `b95e4219`. #253 refreshed the four-hull tip to `1c3fd84b`. #254 moved the tip to `336883dc`. #255 added batch-1 readiness (gated behind cut 2).
 
 ## Product order
 
@@ -37,6 +37,7 @@ P1 is the spike named in the P0 pack and the render memo. Open the sheet below t
 - [Batch 5 brick and hoops acceptance](cockpit-ship-stage-p1b-batch5-acceptance.md) — Pass / Fail / Hold-WebGL for Tholian Sentinel + Interdictor Cruiser (#240).
 - [Fleet order](cockpit-ship-stage-p1b-fleet-order.md) — Batch sequence for the other 15 player hulls, one batch at a time, after the spike merges.
 - [Next hulls](cockpit-ship-stage-p1b-next-hulls.md) — Mesh contract for Scout Marauder, Merchant Freighter, BattleShip, and Corporate FlagShip.
+- [Batch 1 readiness](cockpit-ship-stage-p1b-batch1-readiness.md) — Gate status only: Escape Pod and T'Khasi Orion stay behind the live cut 2 (#255).
 - [Batch 1 remainder](cockpit-ship-stage-p1b-batch1-remainder.md) — Escape Pod and T'Khasi Orion; Scout re-shot.
 - [Batch 2 haulers](cockpit-ship-stage-p1b-batch2-haulers.md) — Mesh contract for CargoTran, Colonial Transport, and Taurean Mule, after that four-hull wave.
 - [Batch 3 guns](cockpit-ship-stage-p1b-batch3.md) — Gun wave: Missile Frigate and Havoc GunStar; BattleShip re-shot.
