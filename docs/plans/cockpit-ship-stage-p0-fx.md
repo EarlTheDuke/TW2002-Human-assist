@@ -2,6 +2,8 @@
 
 Parent: [cockpit-ship-stage-p0.md](cockpit-ship-stage-p0.md).
 
+The stills inventory is [stills/README.md](stills/README.md) (#344).
+
 Six states. Triggers are actions and events that already exist. `EVENT_FACTS` in `src/tw2k/engine/observation.py` is the whitelist the cockpit is allowed to read. This sheet does not add keys. Where a later phase has to notice an event the cockpit ignores today, that is called out as cockpit wiring, not an engine change.
 
 The left `#viewport` (`#vpStars`, `#sceneStill`, `#warpClip`, and the stills and videos `paintScene` / `TW2KMedia` put there) loses the job of showing motion. `#sectorText` is the sector report. It moves onto a text surface in P2 and is not an FX layer.
