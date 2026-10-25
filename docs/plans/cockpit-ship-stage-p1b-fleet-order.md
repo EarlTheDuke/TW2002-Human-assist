@@ -6,7 +6,7 @@ The stills inventory is [stills/README.md](stills/README.md) (#344).
 
 Planning only. Surveyed `feature/grokbot-player` @ `8a31f30` (#194). This sheet does not change the engine, the cockpit, the meshes, or the warp clips.
 
-Merchant Cruiser and Imperial StarShip are the P1 spike. They are not in the 15. The roster below is the other player `ShipClass` values in `src/tw2k/engine/models.py`, in the order a product Cur should take them. Role numbers are `SHIP_SPECS_TW2002` and `POD_SPEC` in `src/tw2k/engine/constants.py`. Marker count is the sticky formula: `n < 1 → 0`, else `max(1, ceil(n / 100))`. Accent hexes are the `SHIPS` entries in `web/redesign.js`, already recorded in the bible. The picture follows the job, not the live-roster grant. The only fighter cap that moves a marker count is the Scout (base 150 → 2 markers, live 250 → 3).
+Merchant Cruiser and Imperial StarShip are the P1 spike. They are not in the 15. Stills directory: [`stills/p1-merchant-imperial/`](stills/p1-merchant-imperial/). TBD scaffold. No PNG. The scaffold does not stamp Pass. The roster below is the other player `ShipClass` values in `src/tw2k/engine/models.py`, in the order a product Cur should take them. Role numbers are `SHIP_SPECS_TW2002` and `POD_SPEC` in `src/tw2k/engine/constants.py`. Marker count is the sticky formula: `n < 1 → 0`, else `max(1, ceil(n / 100))`. Accent hexes are the `SHIPS` entries in `web/redesign.js`, already recorded in the bible. The picture follows the job, not the live-roster grant. The only fighter cap that moves a marker count is the Scout (base 150 → 2 markers, live 250 → 3).
 
 Bible anchors use the heading slug. The heading text is `### <id> — <panel name>`.
 
