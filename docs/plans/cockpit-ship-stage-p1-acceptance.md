@@ -2,6 +2,8 @@
 
 Read-test for the spike. Docs only. Tip surveyed: `feature/grokbot-player` @ `4ad12856`.
 
+The stills inventory is [stills/README.md](stills/README.md) (#344).
+
 Taken from these sheets, which this file does not replace:
 
 - [P0 pack](cockpit-ship-stage-p0.md) — sticky fighter rule, P1 done-when, out of scope.

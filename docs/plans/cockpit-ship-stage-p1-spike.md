@@ -2,6 +2,8 @@
 
 Parent: [cockpit-ship-stage-p0.md](cockpit-ship-stage-p0.md). Renderer stayed on the shared SVG loft. No three.js.
 
+The stills inventory [stills/README.md](stills/README.md) (#344) lists no directory covering the Merchant Cruiser or the Imperial StarShip, and no P1 stills.
+
 Measured on the spike in `web/hull-meshes.js` (`ship-view-full-v1`, look `fleet-glass-v1`). The other 15 hulls still take the fleet-glass loft.
 
 ## Faces and size
