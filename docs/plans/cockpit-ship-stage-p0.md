@@ -55,7 +55,7 @@ Done when:
 
 ### P2 — FX onto the stage, then remove the viewport
 
-Depends on P1 for the two spike hulls so the new states are not playing the red sausage. The FX sheet lists every trigger. Wiring those triggers is cockpit work. It does not add engine fields.
+Depends on P1 for the two spike hulls so the new states are not playing the red sausage. The FX sheet lists every trigger. Wiring those triggers is cockpit work. It does not add engine fields. The product checklist, with the symbols to call and the nodes to move, is [P2 wire](cockpit-ship-stage-p2-wire.md). Product code waits until the P1 Merchant Cruiser and Imperial StarShip spike has merged.
 
 Done when:
 
