@@ -1,6 +1,6 @@
 # Cockpit ship stage — sheet index
 
-Finder for the ship-stage planning pack. Docs only. Tip: `feature/grokbot-player` @ `61422328`. The mailbox tip moved with #230 and #232; COMMANDER_NEXT may lag until its own refresh.
+Finder for the ship-stage planning pack. Docs only. Tip: `feature/grokbot-player` @ `89fbc6c4`. COMMANDER_NEXT just landed through #233 (#234).
 
 ## Product order
 
