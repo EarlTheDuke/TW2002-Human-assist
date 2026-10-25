@@ -1,6 +1,6 @@
 # Cockpit ship stage — sheet index
 
-Finder for the ship-stage planning pack. Docs only. Tip: `feature/grokbot-player` @ `983b3cdf`.
+Finder for the ship-stage planning pack. Docs only. Tip: `feature/grokbot-player` @ `72f87811`. The mailbox is current through #223 / #224.
 
 ## Product order
 
