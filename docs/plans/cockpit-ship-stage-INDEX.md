@@ -16,6 +16,7 @@ P1 is the spike named in the P0 pack and the render memo. Open the sheet below t
 - [Render decision](cockpit-ship-stage-p0-render.md) — Stay on one shared shaded SVG mesh; three.js or raw WebGL is the off-ramp if the spike misses the read bar.
 - [FX state machine](cockpit-ship-stage-p0-fx.md) — Idle, warp, port, planet, mine, and combat: pictures, precedence, and the events that already start them.
 - [Silhouette bible](cockpit-ship-stage-p0-silhouette-bible.md) — Invented look for all 17 player hulls and the 100:1 fighter dart. Classic ANSI stays unverified.
+- [Fighter marker math](cockpit-ship-stage-marker-math.md) — Shared 100:1 count: none at `n = 0`; otherwise `max(1, ceil(n / 100))`, each marker standing for 100 fighters.
 
 ## P1b
 
