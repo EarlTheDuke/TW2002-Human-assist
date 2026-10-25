@@ -1,5 +1,7 @@
 # P1b batch-5 readiness — Tholian Sentinel and Interdictor Cruiser
 
+The stills inventory is [stills/README.md](stills/README.md) (#344), directory [p1b-batch5-brick](stills/p1b-batch5-brick/).
+
 Gate status only. Docs only. Branch tip: `feature/grokbot-player` @ `1ce16326` (#334). #334 landed the [batch-4 readiness](cockpit-ship-stage-p1b-batch4-readiness.md) note on parent `46529081` (#333). #333 landed the [batch-3 readiness](cockpit-ship-stage-p1b-batch3-readiness.md) note on parent `6df3b11c` (#332). #340 (`75997134`) opened the [batch 5 brick product](cockpit-ship-stage-p1b-batch5-brick-product.md) stills scaffold and the [p1b-batch5-brick](stills/p1b-batch5-brick/) directory. This note does not move the recorded tip. This note records the wait for the brick and the hoops. Meshes stay as this tip left them. This note does not stamp Pass.
 
 Sticky order stays P1 SVG, then P1b, then P2, then P3. Finder: [cockpit-ship-stage-INDEX.md](cockpit-ship-stage-INDEX.md). Standing queue: [COMMANDER_NEXT.md](COMMANDER_NEXT.md). Product order: [four-hull build](cockpit-ship-stage-p1b-four-hull-build.md) (#219). Fleet sequence: [fleet order](cockpit-ship-stage-p1b-fleet-order.md) (#196, `281680c5`).
