@@ -1,6 +1,6 @@
 # P1b batch-4 readiness — Star Master and Constellation
 
-Gate status only. Docs only. Branch tip: `feature/grokbot-player` @ `6df3b11c` (#332). #332 refreshed the four-hull tip to `a1f95e30`. #329 moved the finder tip to `af62811e`. This note records the wait for the dish and the X. Meshes stay as this tip left them. This note does not stamp Pass.
+Gate status only. Docs only. Branch tip: `feature/grokbot-player` @ `46529081` (#333). #333 landed the [batch-3 readiness](cockpit-ship-stage-p1b-batch3-readiness.md) note on parent `6df3b11c` (#332). #332 refreshed the four-hull tip to `a1f95e30`. This note records the wait for the dish and the X. Meshes stay as this tip left them. This note does not stamp Pass.
 
 Sticky order stays P1 SVG, then P1b, then P2, then P3. Finder: [cockpit-ship-stage-INDEX.md](cockpit-ship-stage-INDEX.md). Standing queue: [COMMANDER_NEXT.md](COMMANDER_NEXT.md). Product order: [four-hull build](cockpit-ship-stage-p1b-four-hull-build.md) (#219). Fleet sequence: [fleet order](cockpit-ship-stage-p1b-fleet-order.md) (#196, `281680c5`).
 
@@ -17,7 +17,7 @@ WebGL stays closed. The [P1 pass](cockpit-ship-stage-p1-pass.md) (#220, `04d83e5
 
 ## Cut ahead
 
-Missile Frigate and Havoc GunStar are the product cut ahead of this gate (batch 3). That cut holds `web/hull-meshes.js`. Read-test: [batch 3 acceptance](cockpit-ship-stage-p1b-batch3-acceptance.md) (#235, `390e6a99`). Looks: [batch 3 guns](cockpit-ship-stage-p1b-batch3.md) (#208, `d91b8e78`). Those two hulls have not landed on this tip, and that acceptance is not stamped Pass. One cut at a time. Finish the guns, including the Pass stamp, then take the next.
+Missile Frigate and Havoc GunStar are the live product cut (batch 3). That cut holds `web/hull-meshes.js`. Gate: [batch 3 readiness](cockpit-ship-stage-p1b-batch3-readiness.md) (#333, `46529081`). Read-test: [batch 3 acceptance](cockpit-ship-stage-p1b-batch3-acceptance.md) (#235, `390e6a99`). Looks: [batch 3 guns](cockpit-ship-stage-p1b-batch3.md) (#208, `d91b8e78`). Those two hulls have not landed on this tip, and that acceptance is not stamped Pass. One cut at a time. Finish the guns, including the Pass stamp, then take the next.
 
 ## Batch-4 gate
 
