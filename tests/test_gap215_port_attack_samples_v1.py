@@ -1,7 +1,9 @@
-"""GAP 2.15. Ven GameA 2026-10-24 port samples, behind PORT_ATTACK_MODE.
+"""GAP 2.15. Ven GameA port samples, behind PORT_ATTACK_MODE.
 
-The class maps are measured fallbacks. A captured port name uses that port's
-own def, and a def-only row does not borrow another port's laser.
+The class maps are measured fallbacks. Classes 2, 3, and 5 carry the
+2026-10-25 lasers. A captured port name uses that port's own row, and a
+variance row with no laser does not borrow another port's barrage.
+Engine class 8 stays off the class maps.
 """
 import pytest
 
@@ -36,30 +38,43 @@ def _port_combat(u):
 def test_switch_stays_legacy_and_samples_are_labeled() -> None:
     assert K.PORT_ATTACK_MODE == "legacy"
     assert K.port_attack_live() is False
-    sources = {row["source"] for row in K.PORT_ATTACK_GAMEA_SAMPLES}
-    assert "Ven GameA 2026-10-24" in sources
-    vergil = next(row for row in K.PORT_ATTACK_GAMEA_SAMPLES if row["name"] == "Vergil Minor")
-    assert vergil["class"] == 8 and vergil["def"] == 99 and vergil["laser"] is None
+    by_name = {row["name"]: row for row in K.PORT_ATTACK_GAMEA_SAMPLES}
+    assert by_name["H'Catha"]["source"] == "Ven GameA 2026-10-24"
+    assert by_name["Leipzig"]["source"] == "Ven GameA 2026-10-24"
+    assert by_name["Mastro"]["status"] == "VARIANCE" and by_name["Mastro"]["laser"] is None
+    assert by_name["Anaxagoras Primus"]["laser"] is None
+    assert by_name["Mirador Outpost"]["laser"] is None
+    for name in ("New Cesium", "Peleus", "Aesculapius", "Vergil Minor"):
+        assert by_name[name]["source"] == "Ven GameA 2026-10-25"
+        assert by_name[name]["status"] == "CONFIRMED"
+    vergil = by_name["Vergil Minor"]
+    assert vergil["class"] == 8 and vergil["def"] == 99 and vergil["laser"] == 954
     fed = next(row for row in K.PORT_ATTACK_GAMEA_SAMPLES if row["status"] == "FED_PRIOR")
     assert fed["def"] == 91 and fed["laser"] == 701 and fed["source"] == "REPORT.md"
+    assert K.PORT_ATTACK_ALL_CLASSES_MODE == "legacy"
+    assert K.PORT_LASER_BARRAGE[2] == 482
+    assert K.PORT_LASER_BARRAGE[3] == 873
+    assert K.PORT_LASER_BARRAGE[5] == 391
     assert 8 not in K.PORT_DEFENSE_RATING
     assert 8 not in K.PORT_LASER_BARRAGE
 
 
 def test_class_fallbacks_are_primary_samples_and_a_generated_name_does_not_inherit_a_sector() -> None:
     assert K.port_attack_sample(1, None, "generated-port") == (46, 337)
-    assert K.port_attack_sample(2, None, "generated-port") == (55, None)
-    assert K.port_attack_sample(3, None, "generated-port") == (86, None)
+    assert K.port_attack_sample(2, None, "generated-port") == (55, 482)
+    assert K.port_attack_sample(3, None, "generated-port") == (86, 873)
     assert K.port_attack_sample(4, None, "generated-port") == (110, 1419)
-    assert K.port_attack_sample(5, None, "generated-port") == (59, None)
+    assert K.port_attack_sample(5, None, "generated-port") == (59, 391)
     assert K.port_attack_sample(6, None, "generated-port") == (98, 598)
     assert K.port_attack_sample(7, None, "generated-port") == (98, 1121)
     # Sector 913 is Anaxagoras Primus in the capture. A named generated port
     # there keeps the class fallback. An unnamed port may use the sector id.
-    assert K.port_attack_sample(3, 913, "Terra-913") == (86, None)
+    assert K.port_attack_sample(3, 913, "Terra-913") == (86, 873)
     assert K.port_attack_sample(3, 913, "") == (60, None)
-    assert K.port_attack_sample(3, 436, "Peleus") == (86, None)
+    assert K.port_attack_sample(3, 436, "Peleus") == (86, 873)
     assert K.port_attack_sample(3, 100, "Anaxagoras Primus") == (60, None)
+    assert K.port_attack_sample(2, 173, "Mastro") == (71, None)
+    assert K.port_attack_sample(5, 121, "Mirador Outpost") == (44, None)
     assert K.port_attack_sample(1, 708, "Leipzig") == (49, None)
     assert K.port_attack_sample(8, 119, "Vergil Minor") == (None, None)
     assert K.port_attack_sample(8, 119, "") == (None, None)
@@ -70,7 +85,10 @@ def test_class_fallbacks_are_primary_samples_and_a_generated_name_does_not_inher
     [
         (PortClass.CLASS_1_BSS, 46, 337, 400, False),
         (PortClass.CLASS_1_BSS, 46, 337, 336, True),
+        (PortClass.CLASS_2_BSB, 55, 482, 400, True),
+        (PortClass.CLASS_3_SBB, 86, 873, 400, True),
         (PortClass.CLASS_4_SSB, 110, 1419, 400, True),
+        (PortClass.CLASS_5_SBS, 59, 391, 400, False),
         (PortClass.CLASS_6_BBS, 98, 598, 400, True),
         (PortClass.CLASS_7_BBB, 98, 1121, 400, True),
     ],
@@ -125,20 +143,21 @@ def test_named_variance_port_does_not_borrow_a_laser(monkeypatch) -> None:
     assert ev.payload["outcome"] == "survived"
 
 
-def test_def_only_sample_can_blow_the_port_without_a_laser(monkeypatch) -> None:
+def test_variance_sample_can_blow_the_port_without_borrowing_a_laser(monkeypatch) -> None:
     monkeypatch.setattr(K, "PORT_ATTACK_MODE", "live")
     monkeypatch.setattr(K, "PORT_ATTACK_ALL_CLASSES_MODE", "live")
     u, pilot = _cruiser(21543, PortClass.CLASS_3_SBB)
+    u.sectors[pilot.sector_id].port.name = "Anaxagoras Primus"
     pilot.ship.ship_class = ShipClass.INTERDICTOR_CRUISER
     odds = K.combat_hull(pilot.ship.ship_class.value)[0]
-    qty = K.port_figs_to_blow(86, odds)
+    qty = K.port_figs_to_blow(60, odds)
     pilot.ship.fighters = qty
     res = _act(u, pilot.id, ActionKind.ATTACK, target="port", confirm=True, qty=qty)
     assert res.ok is True
     assert pilot.deaths == 0 and pilot.alignment == -55 and pilot.experience == 50
     assert u.sectors[pilot.sector_id].port_destroyed_day == u.day
     ev = _port_combat(u)
-    assert ev.payload["defensive_rating"] == 86
+    assert ev.payload["defensive_rating"] == 60
     assert ev.payload["barrage"] is None
     assert ev.payload["port_destroyed"] is True
 

@@ -2,12 +2,14 @@
   "gap": "2.15",
   "game": "TW Test Game 2 (Slot A)",
   "engine": "TW2002 v3.34b / TWGS v2.20b",
-  "captured_at": "2026-10-24 America/Los_Angeles",
+  "captured_at": "2026-10-25 America/Los_Angeles",
   "method_notes": [
     "0-fighter commit aborts after def/shield text without ship loss",
     "1-fighter commit yields laser barrage battle points; usually destroys Merchant / pod",
     "Defensive rating VARIES within the same port class (samples differ)",
-    "Class 7 captured via GrokGap217 (alias GapP3) AP-scan then 1-fig attack; Gap215 was turn-starved"
+    "Class 7 captured via GrokGap217 (alias GapP3) AP-scan then 1-fig attack; Gap215 was turn-starved",
+    "2026-10-25: Slot A reactivated (existing GameA; BigBang window opened then Activate on GameA data)",
+    "Laser samples via gap215_lasers.py 1-fighter commit; classes 2/3/5/8 now CONFIRMED"
   ],
   "rows": [
     {
@@ -37,22 +39,24 @@
       "port": "New Cesium",
       "sector": 160,
       "def": 55,
-      "laser": null,
+      "laser": 482,
       "shield": "No shielding evident, plasma lasers on dock.",
-      "status": "DEF_ONLY",
-      "notes": "0-fighter abort; also Mastro@173 def=71 (variance)",
-      "verbatim_def": "This port has a defensive rating of 55\nNo shielding evident, plasma lasers on dock."
+      "status": "CONFIRMED",
+      "notes": "GrokGap218 1-fig attack; died; align effect not captured",
+      "verbatim_def": "This port has a defensive rating of 55\nNo shielding evident, plasma lasers on dock.",
+      "verbatim_laser": "Incoming laser barrage from New Cesium\nThe console reports damages of 482 battle points!"
     },
     {
       "class": 3,
       "port": "Peleus",
       "sector": 436,
       "def": 86,
-      "laser": null,
+      "laser": 873,
       "shield": "Class 2 shielding evident, Halos missile battery.",
-      "status": "DEF_ONLY",
-      "notes": "0-fighter abort; also Anaxagoras Primus@913 def=60 plasma (variance)",
-      "verbatim_def": "This port has a defensive rating of 86\nClass 2 shielding evident, Halos missile battery."
+      "status": "CONFIRMED",
+      "notes": "GrokGap219 1-fig attack; died",
+      "verbatim_def": "This port has a defensive rating of 86\nClass 2 shielding evident, Halos missile battery.",
+      "verbatim_laser": "Incoming laser barrage from Peleus\nThe console reports damages of 873 battle points!"
     },
     {
       "class": 4,
@@ -71,11 +75,12 @@
       "port": "Aesculapius",
       "sector": 404,
       "def": 59,
-      "laser": null,
+      "laser": 391,
       "shield": "No shielding evident, plasma lasers on dock.",
-      "status": "DEF_ONLY",
-      "notes": "0-fighter abort; also Mirador Outpost@121 def=44 (variance)",
-      "verbatim_def": "This port has a defensive rating of 59\nNo shielding evident, plasma lasers on dock."
+      "status": "CONFIRMED",
+      "notes": "GrokGap220b 1-fig attack; died (first GrokGap220 attempt connection-reset)",
+      "verbatim_def": "This port has a defensive rating of 59\nNo shielding evident, plasma lasers on dock.",
+      "verbatim_laser": "Incoming laser barrage from Aesculapius\nThe console reports damages of 391 battle points!"
     },
     {
       "class": 6,
@@ -104,17 +109,18 @@
       "port": "Vergil Minor",
       "sector": 119,
       "def": 99,
-      "laser": null,
+      "laser": 954,
       "shield": "Class 4 shielding evident, Sunstorm Ion battery.",
-      "status": "DEF_ONLY",
-      "notes": "NON-FED sample via 0-fighter abort. Fed prior REPORT.md: def 91 / laser 701 / class 3 shielding (Fed BBB).",
+      "status": "CONFIRMED",
+      "notes": "NON-FED GrokGap221 1-fig attack; died. Fed prior REPORT.md: def 91 / laser 701 / class 3 shielding.",
       "verbatim_def": "This port has a defensive rating of 99\nClass 4 shielding evident, Sunstorm Ion battery.",
       "fed_prior": {
         "def": 91,
         "laser": 701,
         "shield": "class 3 shielding",
         "source": "REPORT.md"
-      }
+      },
+      "verbatim_laser": "Incoming laser barrage from Vergil Minor\nThe console reports damages of 954 battle points!"
     },
     {
       "class": 9,
