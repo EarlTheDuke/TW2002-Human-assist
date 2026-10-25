@@ -4,6 +4,8 @@ Parents: [P0 pack](cockpit-ship-stage-p0.md), [silhouette bible](cockpit-ship-st
 
 Docs only. This sheet does not change `web/*`, the engine, or tests. Classic top-and-front ANSI for every hull stays **UNVERIFIED**. Do not open, trace, or approximate EIS prints, EIS wallpaper, or Drew Markham ANSI. Looks below are invented from the public role numbers on `SHIP_SPECS_TW2002` and `SHIP_ROSTER_LIVE_TABLE` in `src/tw2k/engine/constants.py`, and from the one-paragraph pictures already in the bible. This sheet is the mesh contract for the dish and the X after the guns in [cockpit-ship-stage-p1b-batch3.md](cockpit-ship-stage-p1b-batch3.md), so a follow-on does not turn the plate into the Interdictor's hoop or the FlagShip's tower, and does not turn the X into the Imperial's square of bells or the Havoc's prongs.
 
+Product stills scaffold: [batch 4 dish product](cockpit-ship-stage-p1b-batch4-dish-product.md) (#339, `c01ebb2f`). Stills directory: [p1b-batch4-dish](stills/p1b-batch4-dish/). The scaffold does not stamp Pass. It ships no PNGs. Measured cells stay TBD until product.
+
 ## Implement after the spike, the four, the haulers, and the guns
 
 Do not start these meshes until all four of these have landed:
