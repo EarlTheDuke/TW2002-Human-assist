@@ -1,8 +1,9 @@
 /* ship-view-full-v1. Shared hull meshes for the redesign ship panel and the warp clips.
    Fleet-glass pass: our own lofts and plates. No copied ANSI, no traced cinema.
    P1 spike: merchant_cruiser and imperial_starship use richer stations and kit
-   on this same face list. P1b adds scout_marauder and merchant_freighter
-   on that same path. BattleShip, FlagShip, and the other hulls stay fleet-glass-v1.
+   on this same face list. P1b adds scout_marauder, merchant_freighter,
+   battleship, and corporate_flagship on that same path. The other hulls
+   stay fleet-glass-v1.
    Classic page: window.TW2KHullMeshes
    Module: import { buildHullFaces } from "/static/hull-meshes.mjs"
 */
@@ -499,11 +500,57 @@
       bell(faces, -38, -2.3, sign * 23, metal, plume, 1.62);
     });
   }
+  // Wide short hex wedge. Turret bodies are dark metal. Barrels and the
+  // dorsal stripe carry the class accent. Three bells sit low in the tail.
+  function battleshipSpike(faces, hull, metal, accent, glass, plume) {
+    var sections = [
+      [50, 4.4, 16],
+      [32, 6.2, 30],
+      [10, 7.4, 44],
+      [-8, 7.0, 42],
+      [-26, 5.8, 30],
+      [-44, 4.6, 22]
+    ];
+    loftAt(faces, sections, 0, 0, hull, 1, false, "hex");
+    [-1, 1].forEach(function (sign) {
+      boxAt(faces, 4, 8.4, sign * 16, 16, 12.4, 12, metal, 1, false);
+      boxAt(faces, 8, 16.0, sign * 16, 10, 4.8, 8.4, metal, 1, false);
+      boxAt(faces, 18, 19.3, sign * 16, 24, 1.7, 1.7, accent, 1, false, true);
+    });
+    loftAt(faces, [[36, 1.5, 2.3], [26, 2.3, 3.2], [18, 1.35, 1.9]], 6.2, 0, glass, 1, false, "round");
+    stripe(faces, 34, -30, 6.4, 3.2, accent);
+    [-20, 0, 20].forEach(function (z) {
+      bell(faces, -46, -8.2, z, metal, plume, 1.15);
+    });
+  }
+  // Round liner. A stepped tower amidships, upper step in the class accent
+  // as flat metal. Three bells in a low row, inside the beam.
+  function flagshipSpike(faces, hull, metal, accent, glass, plume) {
+    var sections = [
+      [62, 5.2, 12],
+      [40, 6.8, 18],
+      [16, 7.6, 23],
+      [-4, 7.8, 24],
+      [-24, 7.2, 22],
+      [-42, 6.2, 18],
+      [-58, 4.8, 14]
+    ];
+    loftAt(faces, sections, 0, 0, hull, 1, false, "round");
+    boxAt(faces, -2, 12.2, 0, 28, 16.2, 24, metal, 1, false);
+    boxAt(faces, -2, 26.8, 0, 16, 13.6, 16, accent, 1, false, true);
+    loftAt(faces, [[40, 1.7, 2.5], [30, 2.6, 3.6], [20, 1.5, 2.1]], 8.2, 0, glass, 1, false, "round");
+    stripe(faces, 46, -40, 8.6, 2.6, accent);
+    [-8, 0, 8].forEach(function (z) {
+      bell(faces, -60, -7.8, z, metal, plume, 1.05);
+    });
+  }
   function spikeAccent(ship, spec) {
     if (spec && spec.accent) return parseHex(spec.accent);
     if (ship.class === "imperial_starship") return parseHex("#ffe9a0");
     if (ship.class === "scout_marauder") return parseHex("#5dffc8");
     if (ship.class === "merchant_freighter") return parseHex("#7af0ff");
+    if (ship.class === "battleship") return parseHex("#c5c8ff");
+    if (ship.class === "corporate_flagship") return parseHex("#ff77ff");
     return parseHex("#7aa2ff");
   }
   function buildSpikeFaces(ship, spec) {
@@ -517,13 +564,15 @@
     if (ship.class === "imperial_starship") imperialSpike(faces, hull, metal, accent, glass, plume);
     else if (ship.class === "scout_marauder") scoutSpike(faces, hull, metal, accent, glass, plume);
     else if (ship.class === "merchant_freighter") freighterSpike(faces, hull, metal, accent, glass, plume);
+    else if (ship.class === "battleship") battleshipSpike(faces, hull, metal, accent, glass, plume);
+    else if (ship.class === "corporate_flagship") flagshipSpike(faces, hull, metal, accent, glass, plume);
     else merchantSpike(faces, hull, metal, accent, glass, plume);
     return faces;
   }
   function buildHullFaces(sh, def) {
     var ship = sh || {};
     var spec = def || {};
-    if (ship.class === "merchant_cruiser" || ship.class === "imperial_starship" || ship.class === "scout_marauder" || ship.class === "merchant_freighter") return buildSpikeFaces(ship, spec);
+    if (ship.class === "merchant_cruiser" || ship.class === "imperial_starship" || ship.class === "scout_marauder" || ship.class === "merchant_freighter" || ship.class === "battleship" || ship.class === "corporate_flagship") return buildSpikeFaces(ship, spec);
     var sections = LOFT[ship.class] || LOFT.merchant_cruiser;
     var shape = SHAPE[ship.class] || "round";
     var accent = parseHex(spec.accent || "#7aa2ff");

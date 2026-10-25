@@ -12,13 +12,11 @@ JS = ROOT / "web" / "redesign.js"
 CSS = ROOT / "web" / "redesign.css"
 
 # Point hashes of the hulls that stay on fleet-glass (detail "bridge", engines 2).
-# Merchant, Imperial, Scout, and Freighter are cut on the spike path and are
-# not in this table.
+# Merchant, Imperial, Scout, Freighter, BattleShip, and Corporate FlagShip are
+# cut on the spike path and are not in this table.
 FLEET_GLASS = {
     "escape_pod": ("119", "4bf27da8aa208997"),
     "missile_frigate": ("135", "eed600b7b1126d27"),
-    "battleship": ("141", "0661d59578030a5d"),
-    "corporate_flagship": ("125", "210dceed430f5b61"),
     "colonial_transport": ("153", "311e19b90923c6c4"),
     "cargotran": ("123", "ff5708682381d5f3"),
     "havoc_gunstar": ("147", "a1abdd87ac67f243"),
