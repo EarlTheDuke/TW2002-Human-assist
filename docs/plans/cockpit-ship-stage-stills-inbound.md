@@ -1,6 +1,6 @@
 # Cockpit ship-stage stills — inbound map
 
-Docs only. This sheet lists which planning files on `feature/grokbot-player` @ `9d4c972f` (#381) already point at the [stills inventory](stills/README.md) (#344). It does not stamp Pass. It adds no PNG. It leaves every other sheet as this tip left it. #372 updates the inventory row for `p1b-batch3-guns`. #373 refreshes the batch-4 readiness note. #374 refreshes the batch-3 readiness note. #375 refreshes the batch-5 readiness note. #377 refreshes the P2 readiness note and adds body links to the inventory. That sheet already had a dedicated link (#366). #379 (`863e4eb2`) refreshed this map through #377. #380 (`5c719360`) records the inventory row `p1b-batch4-dish` as product in flight, not measured, no PNG. Pass is not stamped. #381 (`9d4c972f`) refreshes the fleet order onto `5c719360`. Guns stay Landed+Pass. Star Master and Constellation stay the live dish cut, in flight. Batch 5 waits behind the dish Pass. P2 stays gated. None of those adds a directory. The counts below stay the counts surveyed through #371.
+Docs only. This sheet lists which planning files on `feature/grokbot-player` @ `1ff9bef6` (#384) already point at the [stills inventory](stills/README.md) (#344). It does not stamp Pass. It adds no PNG. It leaves every other sheet as this tip left it. #372 updates the inventory row for `p1b-batch3-guns`. #373 refreshes the batch-4 readiness note. #374 refreshes the batch-3 readiness note. #375 refreshes the batch-5 readiness note. #377 refreshes the P2 readiness note and adds body links to the inventory. That sheet already had a dedicated link (#366). #379 (`863e4eb2`) refreshed this map through #377. #380 (`5c719360`) records the inventory row `p1b-batch4-dish` as product in flight, not measured, no PNG. Pass is not stamped. #381 (`9d4c972f`) refreshes the fleet order onto `5c719360`. Guns stay Landed+Pass. Star Master and Constellation stay the live dish cut, in flight. Batch 5 waits behind the dish Pass. P2 stays gated. #382 (`436bfc47`) refreshes the lagging tip sheets onto `9d4c972f`: COMMANDER_NEXT, the sheet index, the four-hull build, P2 wire, and P3 layout. That refresh also recorded #379 through #381 on this map. It adds no link and no directory. Does not stamp Pass. Adds no PNG. #383 (`2c097f6a`) refreshes the batch-4 readiness note onto `436bfc47`. The dish stays product in flight, not measured, no PNG. Pass is not stamped. Guns stay Landed+Pass (#370 on product #363). Both dish meshes stay `fleet-glass-v1`. Batch 5 waits behind the dish Pass. P2 stays gated. That note already had a dedicated link. #383 adds no link and no directory. #384 (`1ff9bef6`) refreshes the P2 readiness note onto `2c097f6a`. Guns stay Landed+Pass (#363, `5ebec08f`; Pass #370, `223dacfa`). Star Master and Constellation stay the live dish cut, in flight on `fleet-glass-v1`. The dish row stays product in flight, not measured, no PNG. Pass is not stamped. The brick waits behind the dish Pass. P2 stays gated. Guns Pass alone does not open the wire. Dish Pass is still required before P2 product. That note already had a dedicated link (#366). #384 adds further inventory links in the body. Those stay on the Readiness line. #384 adds no directory. This note does not stamp Pass and does not open the wire. None of those adds a directory. The counts below stay the counts surveyed through #371.
 
 The inventory table has eight directories. The new row is [p1-merchant-imperial](stills/p1-merchant-imperial/) (#357): Merchant Cruiser and Imperial StarShip. That row is a TBD scaffold. It holds a placeholder README and no PNG.
 
@@ -23,26 +23,26 @@ Scan rule: a hit is the literal string `stills/README.md` under `docs/plans/`. A
 ## P1b
 
 - [Fleet order](cockpit-ship-stage-p1b-fleet-order.md) — dedicated link (#356), directory [p1-merchant-imperial](stills/p1-merchant-imperial/) (#361). That directory stays a TBD scaffold, no PNG. #381 (`9d4c972f`) refreshes this sheet onto `5c719360`. The live cut is the batch-4 dish, in flight. The inventory row `p1b-batch4-dish` is product in flight, not measured, no PNG. Pass is not stamped. Guns stay Landed+Pass. Batch 5 waits behind the dish Pass. P2 stays gated. This sheet does not stamp Pass.
-- [Four-hull build](cockpit-ship-stage-p1b-four-hull-build.md) — dedicated link, and a second link in the sheet body. Tip history on the same sheet also names the path.
+- [Four-hull build](cockpit-ship-stage-p1b-four-hull-build.md) — dedicated link, and a second link in the sheet body. Tip history on the same sheet also names the path. #382 (`436bfc47`) refreshes this sheet onto `9d4c972f` (#381). The dedicated links stay. This refresh adds no link and does not stamp Pass.
 - [Scout and Freighter frames](cockpit-ship-stage-p1b-scout-freighter.md) — dedicated link, directory `p1b-scout-freighter`.
 - [BattleShip and FlagShip frames](cockpit-ship-stage-p1b-battleship-flagship.md) — dedicated link, directory `p1b-battleship-flagship`.
 - [Escape Pod and T'Khasi frames](cockpit-ship-stage-p1b-batch1-escape-orion.md) — dedicated link, directory `p1b-batch1-escape-orion`.
 
 ## P2
 
-- [P2 wire](cockpit-ship-stage-p2-wire.md) — dedicated link (#369). No stills directory owns P2. Tip history on the same sheet also names the path.
+- [P2 wire](cockpit-ship-stage-p2-wire.md) — dedicated link (#369). No stills directory owns P2. Tip history on the same sheet also names the path. #382 (`436bfc47`) refreshes the surveyed tip to `9d4c972f` (#381). P2 stays gated. This refresh adds no link and does not open the wire.
 
 ## P3
 
-- [P3 layout](cockpit-ship-stage-p3-layout.md) — dedicated link (#368). No stills directory owns P3. Tip history on the same sheet also names the path.
+- [P3 layout](cockpit-ship-stage-p3-layout.md) — dedicated link (#368). No stills directory owns P3. Tip history on the same sheet also names the path. #382 (`436bfc47`) refreshes the surveyed tip to `9d4c972f` (#381). P3 stays closed. This refresh adds no link and does not open the layout PR.
 
 ## Readiness
 
 - [Batch 1 readiness](cockpit-ship-stage-p1b-batch1-readiness.md) — dedicated link, directory `p1b-batch1-escape-orion` (#365).
 - [Batch 3 readiness](cockpit-ship-stage-p1b-batch3-readiness.md) — dedicated link, directory `p1b-batch3-guns`. #374 (`63326660`) records the guns as landed and Pass. Star Master and Constellation are the live dish cut. Does not stamp Pass.
-- [Batch 4 readiness](cockpit-ship-stage-p1b-batch4-readiness.md) — dedicated link, directory `p1b-batch4-dish`. #373 (`30b9e7fa`) names Star Master and Constellation the live cut. That product is in flight. Does not stamp Pass.
+- [Batch 4 readiness](cockpit-ship-stage-p1b-batch4-readiness.md) — dedicated link, directory `p1b-batch4-dish`. #373 (`30b9e7fa`) names Star Master and Constellation the live cut. That product is in flight. Does not stamp Pass. #383 (`2c097f6a`) refreshes this note onto `436bfc47` (#382). #380 records the dish row as product in flight, not measured, no PNG. Guns stay Landed+Pass (#370 on product #363). On this tip both meshes stay `fleet-glass-v1`. Batch 5 waits behind the dish Pass. P2 stays gated. This note does not stamp Pass. The dedicated link was already on this line. #383 adds no link.
 - [Batch 5 readiness](cockpit-ship-stage-p1b-batch5-readiness.md) — dedicated link, directory `p1b-batch5-brick`. #375 (`d389d683`) records the guns Pass and names Star Master and Constellation the live cut ahead. Tholian Sentinel and Interdictor Cruiser wait behind the batch-4 Pass. The brick product has not started. Does not stamp Pass.
-- [P2 readiness](cockpit-ship-stage-p2-readiness.md) — dedicated link (#366). No stills directory owns P2. #377 (`3e9d2909`) refreshes this note onto `6d80ef5b`. Guns stay Landed and Pass. Star Master and Constellation stay the live dish cut. Batch-4 Pass is not stamped. The brick waits behind that Pass. P2 stays gated. Body links name the inventory. This note does not stamp Pass and does not open the wire.
+- [P2 readiness](cockpit-ship-stage-p2-readiness.md) — dedicated link (#366). No stills directory owns P2. #377 (`3e9d2909`) refreshes this note onto `6d80ef5b`. #384 (`1ff9bef6`) refreshes this note onto `2c097f6a` (#383). Guns stay Landed+Pass (#363, `5ebec08f`; Pass #370, `223dacfa`). Star Master and Constellation stay the live dish cut, in flight on `fleet-glass-v1`. #380 records `p1b-batch4-dish` as product in flight, not measured, no PNG. Pass is not stamped. The brick waits behind the dish Pass. P2 stays gated. Guns Pass alone does not open the wire. Dish Pass is still required before P2 product. Body links name the inventory. This note does not stamp Pass and does not open the wire.
 
 ## Acceptance
 
@@ -72,16 +72,16 @@ Scan rule: a hit is the literal string `stills/README.md` under `docs/plans/`. A
 
 ## Other
 
-- [Sheet index](cockpit-ship-stage-INDEX.md) — dedicated finder link to the inventory. The finder row says eight directories, including `p1-merchant-imperial` (#362). The inventory table on this tip has eight.
+- [Sheet index](cockpit-ship-stage-INDEX.md) — dedicated finder link to the inventory. The finder row says eight directories, including `p1-merchant-imperial` (#362). The inventory table on this tip has eight. #382 (`436bfc47`) refreshes this finder onto `9d4c972f` (#381). The finder still counts eight directories. This refresh adds no link.
 
-Mention only. The literal string appears in the shared tip-history paragraph. This sheet has no markdown link to the inventory:
+Mention only. The literal string appears in the shared tip-history paragraph. This sheet has no markdown link to the inventory. #382 (`436bfc47`) refreshes that paragraph onto `9d4c972f` (#381). The string stays inside tip history:
 
 - [COMMANDER_NEXT](COMMANDER_NEXT.md)
 
 ## Candidates
 
-Ship-stage sheets that lacked `stills/README.md` on the #358 map are listed in the role sections above. #377 added further inventory links on P2 readiness. That sheet already sits under Readiness. Its new body links stay on that line. #379 recorded that. #380 changes the `p1b-batch4-dish` inventory row and adds no link. #381 refreshes the fleet order, which already sits under P1b, and adds no link.
+Ship-stage sheets that lacked `stills/README.md` on the #358 map are listed in the role sections above. #377 added further inventory links on P2 readiness. That sheet already sits under Readiness. Its new body links stay on that line. #379 recorded that. #380 changes the `p1b-batch4-dish` inventory row and adds no link. #381 refreshes the fleet order, which already sits under P1b, and adds no link. #382 refreshes COMMANDER_NEXT, the sheet index, the four-hull build, P2 wire, and P3 layout. Those sheets already sit in the sections above. #382 adds no link. #383 refreshes batch-4 readiness, which already sits under Readiness, and adds no link. #384 refreshes P2 readiness, which already sits under Readiness. #384 adds further inventory links in the body. Those stay on that line. #384 adds no sheet.
 
 Also scanned, and left off this list: [fighter marker math](cockpit-ship-stage-marker-math.md) records the 100:1 count and names no stills directory.
 
-Counted on this tip: 37 sheets carry a markdown link to `stills/README.md`. One more sheet contains the string only inside tip history. 38 files under `docs/plans/` contain the literal string. The P1 directory README is the extra relative link above.
+Counted on this tip: 37 sheets carry a markdown link to `stills/README.md`. One more sheet contains the string only inside tip history. 38 files under `docs/plans/` contain the literal string. The P1 directory README is the extra relative link above. Rechecked after #382, #383, and #384. None of those adds a file. #384 adds body links on the P2 readiness sheet, which is already one of the 37. The counts stay the counts surveyed through #371.
