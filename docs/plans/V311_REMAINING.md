@@ -2,9 +2,9 @@
 
 NOTE 161 listed the open rows. NOTE 163, now on the tip, matched 6.7, 6.11, 9.2, 9.5, and 13.4. NOTE 162 moved the grades that were already true, and built the printed pieces that were not. NOTE 164 adds four switches. Two of those switches sit on rows NOTE 163 already graded, and those rows are counted once. Each row is listed once.
 
-The grades are the 171 rows in the every-row list of `docs/plans/gap-map-refresh-v6.md`. Row 181 is NavPoints (`NAVPOINT_MODE`, NOTE 159). NOTE 162 uses rows 182-186. Row 187 is `BOUNTY_GOOD_MODE` from NOTE 163. NOTE 164 uses rows 200-203. Row 228 is `ATTACK_TURN_MODE` (#164). Row 235 is `SELF_DESTRUCT_PENALTY_MODE` (R5 B).
+The grades are the 171 rows in the every-row list of `docs/plans/gap-map-refresh-v6.md`. Row 181 is NavPoints (`NAVPOINT_MODE`, NOTE 159). NOTE 162 uses rows 182-186. Row 187 is `BOUNTY_GOOD_MODE` from NOTE 163. NOTE 164 uses rows 200-203. Row 228 is `ATTACK_TURN_MODE` (#164). Row 235 is `SELF_DESTRUCT_PENALTY_MODE` (R5 B). Row 236 is `STARDOCK_LOCATION_MODE` (GAP 1.5).
 
-**169 of 171 rows match the original rule (98.8%).** That count is Match 75 plus Match-behind-flag 94. The every-row list was 75 and 93 before 12.4 moved; 4.8 had already moved into the 93. A header that once said 76 and 91 was one swap off an earlier list. A Match-behind-flag row is coded, and its switch stays off until `V311_PROFILE` is `v311`. A normal game, with every switch at the stored default, matches 75 of 171 (43.9%). The other rows are Partial 1, Different 0, Missing 0, and Ben-decision 1. Two rows are still not a full match. 4.8 and 12.4 are in the 94. Detonation is Match and is not a second row. 12.4 added no switch.
+**170 of 171 rows match the original rule (99.4%).** That count is Match 75 plus Match-behind-flag 95. The every-row list was 75 and 94 before 1.5 moved. A header that once said 76 and 91 was one swap off an earlier list. A Match-behind-flag row is coded, and its switch stays off until `V311_PROFILE` is `v311`. A normal game, with every switch at the stored default, matches 75 of 171 (43.9%). The other rows are Partial 1, Different 0, Missing 0, and Ben-decision 0. One row is still not a full match: 2.15. 4.8 and 12.4 are in the 95. Detonation is Match and is not a second row. 12.4 added no switch.
 
 R1–R14 from `V311_RULINGS_FOR_BEN.md` are adopted. 6.11 and 13.4 stay one grade each. `CORP_SHIP_DISBAND_MODE` and `FIGHTER_REPORT_MODE` are extra behaviours on those rows. GAP 6.3 stays Match-behind-flag (#183). GAP 2.15 stays Partial; the confirmed samples stay Match-behind-flag (#185).
 
@@ -58,12 +58,13 @@ These nine were still on the open lists. The v6 every-row grade is Match or Matc
 
 ## Needs Ben's ruling
 
-- **1.5 StarDock location.** Ben-decision. StarDock stays in sector 1. `constants.STARDOCK_SECTOR`. Nothing in R1–R14 picks a sector.
+No row in this list is waiting on Ben. GAP 1.5 left this section for Match-behind-flag.
 
 ## Adopted from the suggested reply
 
 These left the Ben list. The grade is the every-row line in `gap-map-refresh-v6.md`.
 
+- **1.5 StarDock location.** Match-behind-flag. Ben approved the Commander recommendation 2026-10-24. `STARDOCK_LOCATION_MODE` row 236. Off, StarDock stays in sector 1. On, generation places it in a random ordinary sector. Terra stays sector 1. FedSpace is sectors 1-10 plus that sector.
 - **1.6 Terra colonists.** Match. R1 A. Stored pool `TERRA_MAX_COLONISTS` 100,000, one person per hold. `TERRA_COLONIST_MODE` is unchanged.
 - **1.15 FedSpace fighter limit.** Match-behind-flag. R2 A. `FED_TOW_LIMIT_MODE` row 168. Bible more than 50 when on. Stored Gypsy stays 98.
 - **2.5 Price scale.** Match-behind-flag. R3 A. Left as it was.

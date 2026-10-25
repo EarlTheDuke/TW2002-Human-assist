@@ -29,6 +29,18 @@ from ..engine import Action, ActionKind, Observation
 from ..engine.constants import STARDOCK_SECTOR, combat_hull
 from .base import BaseAgent
 
+
+def _observed_dock(obs: Observation) -> int:
+    """StarDock from this sector's observation. Absent means sector 1."""
+    sector = getattr(obs, "sector", None) or {}
+    raw = sector.get("stardock_sector") if isinstance(sector, dict) else None
+    if raw is None:
+        return int(STARDOCK_SECTOR)
+    try:
+        return int(raw)
+    except (TypeError, ValueError):
+        return int(STARDOCK_SECTOR)
+
 _PORT_CODE_ORDER = ("fuel_ore", "organics", "equipment")
 _HAIL_LINES = (
     "Copy that.",
@@ -137,7 +149,6 @@ class HeuristicAgent(BaseAgent):
         from ..engine.constants import (
             BOT_TAVERN_RESERVE,
             BOT_TAVERN_TRACE_GAP_DAYS,
-            STARDOCK_SECTOR,
             bots_tavern_on,
             grimy_password_cost,
             grimy_trace_cost,
@@ -147,7 +158,7 @@ class HeuristicAgent(BaseAgent):
 
         if not bots_tavern_on() or not tavern_on():
             return None
-        if int(obs.sector.get("id") or 0) != int(STARDOCK_SECTOR):
+        if int(obs.sector.get("id") or 0) != _observed_dock(obs):
             return None
         if str(obs.ship.get("class") or "") == "escape_pod":
             return None
@@ -283,6 +294,9 @@ class HeuristicAgent(BaseAgent):
         return None
 
     async def act(self, obs: Observation) -> Action:
+        legal = self._legal(obs)
+        if legal and all(str((row or {}).get("reason") or "") == "death delay" for row in legal.values()):
+            return Action(kind=ActionKind.QUERY_LIMPETS, thought="Death delay. Waiting for midnight.")
         # A new v3.11 trader starts on the home planet (NOTE 66). This bot never
         # lands on its own, so a landed ship is the opening: blast off first.
         if getattr(obs, "planet_landed", None) is not None:
@@ -320,7 +334,7 @@ class HeuristicAgent(BaseAgent):
         if (h_recovery_on()
                 and str(obs.ship.get("class") or "") == "scout_marauder"
                 and int(getattr(obs, "deaths", 0) or 0) > 0
-                and int(obs.sector.get("id") or 0) == STARDOCK_SECTOR):
+                and int(obs.sector.get("id") or 0) == _observed_dock(obs)):
             banked = self._h_bank(obs, recovery=True)
             if banked is not None:
                 return banked
@@ -426,7 +440,7 @@ class HeuristicAgent(BaseAgent):
                                   thought=f"{tier or 'basic'} scan before warping blind.")
 
         # Park spare cash before a tavern word so StarDock setup matches the pre-tavern walk.
-        if int(obs.sector.get("id") or 0) == STARDOCK_SECTOR:
+        if int(obs.sector.get("id") or 0) == _observed_dock(obs):
             banked = self._h_bank(obs, recovery=False)
             if banked is not None:
                 return banked
@@ -555,7 +569,7 @@ class HeuristicAgent(BaseAgent):
     def _h_bank(self, obs: Observation, *, recovery: bool) -> Action | None:
         """One StarDock bank step. A pod withdraws for its hull first. Otherwise
         spare cash above the keep is deposited once per visit. Legacy H skips this."""
-        if int(obs.sector.get("id") or 0) != STARDOCK_SECTOR:
+        if int(obs.sector.get("id") or 0) != _observed_dock(obs):
             self._h_deposited = False
             self._h_withdrew = False
             return None
@@ -638,7 +652,8 @@ class HeuristicAgent(BaseAgent):
         from ..engine.constants import h_recovery_on
         if not h_recovery_on() or not self._h_banks():
             return None
-        if int(obs.sector.get("id") or 0) == STARDOCK_SECTOR:
+        dock = _observed_dock(obs)
+        if int(obs.sector.get("id") or 0) == dock:
             return None
         credits = int(obs.credits)
         balance = int(getattr(obs, "bank_balance", 0) or 0)
@@ -656,7 +671,7 @@ class HeuristicAgent(BaseAgent):
         if not (legal.get("plot_course") or {}).get("legal") or not (legal.get("warp") or {}).get("legal"):
             return None
         return Action(
-            kind=ActionKind.PLOT_COURSE, args={"target": STARDOCK_SECTOR, "execute": True},
+            kind=ActionKind.PLOT_COURSE, args={"target": dock, "execute": True},
             thought="Opening the bank before one loss can zero the seat.",
         )
 
@@ -665,7 +680,8 @@ class HeuristicAgent(BaseAgent):
         from ..engine.constants import h_recovery_on
         if not h_recovery_on() or not self._h_banks():
             return None
-        if int(obs.sector.get("id") or 0) == STARDOCK_SECTOR:
+        dock = _observed_dock(obs)
+        if int(obs.sector.get("id") or 0) == dock:
             return None
         if int(obs.credits) <= max(self._h_keep(obs), 50_000):
             return None
@@ -673,7 +689,7 @@ class HeuristicAgent(BaseAgent):
         if not (legal.get("plot_course") or {}).get("legal") or not (legal.get("warp") or {}).get("legal"):
             return None
         return Action(
-            kind=ActionKind.PLOT_COURSE, args={"target": STARDOCK_SECTOR, "execute": True},
+            kind=ActionKind.PLOT_COURSE, args={"target": dock, "execute": True},
             thought="Banking the purse before one loss can take it.",
         )
 
@@ -705,7 +721,7 @@ class HeuristicAgent(BaseAgent):
         def ok(kind: str) -> bool:
             return bool((legal.get(kind) or {}).get("legal"))
 
-        if obs.sector.get("id") == STARDOCK_SECTOR:
+        if obs.sector.get("id") == _observed_dock(obs):
             if not ok("buy_ship"):
                 return None
             spec = ((legal["buy_ship"].get("params") or {}).get("ship_class") or {})
@@ -728,7 +744,7 @@ class HeuristicAgent(BaseAgent):
                                   thought=f"Trading the escape pod for a {key} ({int(cost)} cr net).")
             return None
         if ok("plot_course") and ok("warp"):
-            return Action(kind=ActionKind.PLOT_COURSE, args={"target": STARDOCK_SECTOR, "execute": True},
+            return Action(kind=ActionKind.PLOT_COURSE, args={"target": _observed_dock(obs), "execute": True},
                           thought="Escape pod: autopilot to StarDock to trade it in.")
         if self._short_for_warp(obs):
             return Action(kind=ActionKind.WAIT, thought="Escape pod short of turns for a warp; waiting for tomorrow.")
@@ -783,14 +799,15 @@ class HeuristicAgent(BaseAgent):
         if not isinstance(spec, dict) or not spec.get("legal"):
             return None
         params = (spec.get("params") or {}).get("sector_id") or {}
-        if STARDOCK_SECTOR not in [int(c) for c in (params.get("choices") or [])]:
+        dock = _observed_dock(obs)
+        if dock not in [int(c) for c in (params.get("choices") or [])]:
             return None
-        hops = int((params.get("hops_by") or {}).get(str(STARDOCK_SECTOR)) or 0)
-        need = int((params.get("ore_by") or {}).get(str(STARDOCK_SECTOR)) or 0)
+        hops = int((params.get("hops_by") or {}).get(str(dock)) or 0)
+        need = int((params.get("ore_by") or {}).get(str(dock)) or 0)
         ore = int((obs.ship.get("cargo") or {}).get("fuel_ore") or 0)
         if hops < 3 or need <= 0 or ore < 2 * need:
             return None
-        return Action(kind=ActionKind.SHIP_TRANSWARP, args={"sector_id": STARDOCK_SECTOR},
+        return Action(kind=ActionKind.SHIP_TRANSWARP, args={"sector_id": dock},
                       thought=f"TransWarp to StarDock ({hops} hops, {need} ore), ore kept for the return.")
 
     def _remembered_hazards(self, obs: Observation) -> set[int]:

@@ -167,7 +167,7 @@ def place_aliens(universe: Universe) -> None:
         return
     open_sectors = [
         sid for sid in sorted(universe.sectors)
-        if sid not in K.FEDSPACE_SECTORS and not _has_deployment(universe, sid)
+        if not K.in_fedspace(universe, sid) and not _has_deployment(universe, sid)
     ]
     if not open_sectors:
         return
@@ -234,7 +234,7 @@ def _replace_dead(universe: Universe) -> None:
         return
     rng = alien_rng(universe.config.seed, universe.day, _SALT_RESPAWN)
     for _ in range(need):
-        _spawn(universe, K.STARDOCK_SECTOR, rng)
+        _spawn(universe, K.stardock_sector_of(universe), rng)
 
 
 def apply_alien_capture(universe: Universe, attacker_id: str, alien: AlienTrader) -> None:

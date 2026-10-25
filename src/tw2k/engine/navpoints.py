@@ -59,7 +59,7 @@ def scan_line(universe: Universe, player, sector_id: int) -> str:
         and int(fighters.count) >= 1
     )
     visible = (
-        int(sector_id) in K.FEDSPACE_SECTORS
+        K.in_fedspace(universe, sector_id)
         or int(sector_id) == int(player.sector_id)
         or own
     )
@@ -100,7 +100,7 @@ def menu_rows(universe: Universe, player) -> list[dict[str, Any]]:
             "scan": scan_line(universe, player, int(row["sector"])),
         })
     terra = 1
-    dock = int(K.STARDOCK_SECTOR)
+    dock = int(K.stardock_sector_of(universe))
     rows.append({
         "kind": "fixed", "slot": "terra", "name": "Terra", "sector": terra,
         "scan": scan_line(universe, player, terra),
@@ -112,7 +112,7 @@ def menu_rows(universe: Universe, player) -> list[dict[str, Any]]:
     return rows
 
 
-def resolve_navpoint(player, token: object) -> int | None:
+def resolve_navpoint(player, token: object, universe=None) -> int | None:
     """A slot, a name, Terra, or StarDock. None when that point is not set."""
     if token is None or isinstance(token, bool):
         return None
@@ -123,7 +123,7 @@ def resolve_navpoint(player, token: object) -> int | None:
     if low == "terra":
         return 1
     if low == "stardock":
-        return int(K.STARDOCK_SECTOR)
+        return int(K.stardock_sector_of(universe))
     points = _stored(player)
     if text.isdigit():
         row = points.get(int(text))

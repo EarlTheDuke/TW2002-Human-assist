@@ -92,6 +92,45 @@ PORT_CLASS_WEIGHTS = {
 PORT_SPAWN_PROBABILITY = 0.65
 STARDOCK_SECTOR = 1
 FEDSPACE_SECTORS = set(range(1, 11))
+
+
+def stardock_sector_of(universe) -> int:
+    """Sector that holds the StarDock port.
+
+    Unset (the stored game, and any universe generated with the switch off)
+    is sector 1. A universe generated with STARDOCK_LOCATION_MODE on stores
+    the sector it drew.
+    """
+    if universe is None:
+        return int(STARDOCK_SECTOR)
+    stored = getattr(universe, "stardock_sector", None)
+    if stored is None:
+        return int(STARDOCK_SECTOR)
+    return int(stored)
+
+
+def fedspace_sectors_of(universe=None) -> set[int]:
+    """Sectors 1-10, plus the StarDock sector when that sector is outside 1-10."""
+    base = set(FEDSPACE_SECTORS)
+    if universe is None:
+        return base
+    dock = stardock_sector_of(universe)
+    if dock not in base:
+        base.add(dock)
+    return base
+
+
+def in_fedspace(universe, sector_id: int) -> bool:
+    """True for sectors 1-10, and for the StarDock sector when it sits outside them.
+
+    When the dock is sector 1 this is the same test as ``sector_id in FEDSPACE_SECTORS``.
+    """
+    sid = int(sector_id)
+    if sid in FEDSPACE_SECTORS:
+        return True
+    if universe is None:
+        return False
+    return sid == stardock_sector_of(universe)
 # "legacy": a fighter drop in FedSpace is refused and the ship is unchanged.
 # "live": the drop is annihilated. The ship loses 10 percent of its fighters
 # and 10 percent of its holds. A half rounds up, so 35 holds lose 4.
@@ -4733,6 +4772,21 @@ def self_destruct_mbbs_live() -> bool:
     return SELF_DESTRUCT_PENALTY_MODE == "v311" or v311_profile()
 
 
+# GAP 1.5, row 236. Ben approved the Commander recommendation on 2026-10-24.
+# Off, StarDock stays in sector 1 (STARDOCK_SECTOR) and FedSpace stays 1-10.
+# On, universe generation puts the StarDock port in a random ordinary sector.
+# Terra and Sol stay in sector 1. The dock is not placed on Terra, on Alpha
+# Centauri or Rylos, or on another sector the generator already reserves.
+# FedSpace is then sectors 1-10 plus that dock sector. Stored default stays
+# legacy. The string "1" does not turn it on. V311_PROFILE "v311" does.
+STARDOCK_LOCATION_MODE = "legacy"  # "legacy" | "v311"
+
+
+def stardock_location_live() -> bool:
+    """True when a new universe places StarDock in a random ordinary sector."""
+    return STARDOCK_LOCATION_MODE == "v311" or v311_profile()
+
+
 # combat-clarity-v1. Off, a same-sector rival's fighters and shields stay out of
 # the seat view, so the bank pin stays put. On, the sector line can show them.
 RIVAL_STRENGTH_MODE = "legacy"  # "legacy" | "live"
@@ -5365,6 +5419,11 @@ V311_PROFILE_HELPERS: dict[str, tuple[str, str]] = {
     "self_destruct_mbbs_live": (
         "SELF_DESTRUCT_PENALTY_MODE",
         "R5 B GAP 5.14: self-destruct loses half experience, halves a negative alignment, and leaves a non-negative alignment",
+    ),
+    # GAP 1.5. Row 236. Ben approved the Commander recommendation 2026-10-24.
+    "stardock_location_live": (
+        "STARDOCK_LOCATION_MODE",
+        "GAP 1.5: at generation, StarDock is a random ordinary sector. Terra stays at sector 1. FedSpace is 1-10 plus that sector",
     ),
 }
 
@@ -6825,9 +6884,18 @@ def planet_interdict_safe_live() -> bool:
     return PLANET_INTERDICT_SAFE_MODE == "v311" or v311_profile()
 
 
-def planet_interdict_quiet(sector_id: int) -> bool:
-    """True when this sector's interdictor must not hold a ship."""
-    return planet_interdict_safe_live() and int(sector_id) == int(STARDOCK_SECTOR)
+def planet_interdict_quiet(sector_id: int, universe=None) -> bool:
+    """True when this sector's interdictor must not hold a ship.
+
+    Quiet at Terra (sector 1) and at StarDock. Those are the same sector
+    until STARDOCK_LOCATION_MODE moves the dock.
+    """
+    if not planet_interdict_safe_live():
+        return False
+    sid = int(sector_id)
+    if sid == int(STARDOCK_SECTOR):
+        return True
+    return universe is not None and sid == stardock_sector_of(universe)
 
 
 def citadel_colonists_are_handbook(class_id) -> bool:

@@ -260,7 +260,7 @@ def test_stardock_buy_rows_follow_the_same_curve(monkeypatch) -> None:
     universe = generate_universe(
         GameConfig(seed=41, universe_size=40, enable_ferrengi=False, enable_planets=False)
     )
-    dock = universe.sectors[K.STARDOCK_SECTOR].port
+    dock = universe.sectors[K.stardock_sector_of(universe)].port
     assert dock is not None and dock.class_id == PortClass.STARDOCK
     bought: list[Commodity] = []
     for commodity, stock in dock.stock.items():
@@ -315,15 +315,23 @@ def _ten_day(profile: str) -> dict:
 
 
 def _refused(row: dict) -> int:
-    """Engine and validator refusals. A haggle counter is the port's next offer, not a refusal."""
-    refused = int(row["rejected_validate"]) + int(row["exceptions"])
+    """Engine and validator refusals. A haggle counter is the port's next offer, not a refusal.
+
+    A death delay locks every verb, so that one no-op is not a quote or a planner slip.
+    """
+    refused = int(row["exceptions"])
     listed = 0
+    delay = 0
     for reason, count in row["rejected_top"]:
         listed += int(count)
+        if "death delay" in str(reason):
+            delay += int(count)
+            continue
         if not str(reason).startswith("trade: counter "):
             refused += int(count)
     hidden = int(row["rejected_engine"]) - listed
-    return refused + max(0, hidden)
+    validate = max(0, int(row["rejected_validate"]) - delay)
+    return refused + validate + max(0, hidden)
 
 
 def test_ten_day_bots_still_profit_with_the_anchor_on() -> None:
@@ -353,8 +361,10 @@ def test_ten_day_bots_still_profit_with_the_anchor_on() -> None:
     # Row 224 (PORT_DRAIN_CURVE_MODE: economy3 slope, 10% restock) moves the
     # bots' trades, so the run meets the planner slips this docstring already
     # names: N3 buys asking for more empty holds than it has (15, 35) and N1
-    # plotting to an unreachable target. Still none is a quote refusal.
-    slips = ("in your holds", "empty holds", "plot_course: no route")
+    # plotting to an unreachable target. GAP 1.5 moves StarDock, and a death
+    # on that route ends the day with one query_limpets while the death delay
+    # locks every verb. Still none is a quote refusal.
+    slips = ("in your holds", "empty holds", "plot_course: no route", "death delay")
     for seat, row in on.items():
         for reason, _count in row["rejected_top"]:
             assert any(x in str(reason) for x in slips) or str(reason).startswith("trade: counter "), (seat, report)
