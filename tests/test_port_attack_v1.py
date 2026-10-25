@@ -57,7 +57,7 @@ def test_on_class_6_barrage_kills_the_cruiser(monkeypatch) -> None:
     assert ev.payload["outcome"] == "destroyed"
 
 
-def test_on_a_def_only_class_does_not_invent_a_laser(monkeypatch) -> None:
+def test_on_class_2_fires_the_measured_laser(monkeypatch) -> None:
     monkeypatch.setattr(K, "PORT_ATTACK_MODE", "live")
     u, pilot = _cruiser(61004)
     port = u.sectors[pilot.sector_id].port
@@ -65,7 +65,21 @@ def test_on_a_def_only_class_does_not_invent_a_laser(monkeypatch) -> None:
     port.name = "generated-port"
     res = _act(u, pilot.id, ActionKind.ATTACK, target="port", confirm=True, qty=30)
     assert res.ok is True
+    assert pilot.alignment == -5 and pilot.deaths == 1
+    ev = next(e for e in reversed(u.events) if e.kind is EventKind.COMBAT and e.payload.get("vs") == "port")
+    assert ev.payload["barrage"] == 482 and ev.payload["defensive_rating"] == 55
+    assert ev.payload["outcome"] == "destroyed"
+
+
+def test_on_a_variance_port_does_not_borrow_the_class_laser(monkeypatch) -> None:
+    monkeypatch.setattr(K, "PORT_ATTACK_MODE", "live")
+    u, pilot = _cruiser(61005)
+    port = u.sectors[pilot.sector_id].port
+    port.class_id = PortClass.CLASS_2_BSB
+    port.name = "Mastro"
+    res = _act(u, pilot.id, ActionKind.ATTACK, target="port", confirm=True, qty=30)
+    assert res.ok is True
     assert pilot.alignment == -5 and pilot.ship.fighters == 27 and pilot.deaths == 0
     ev = next(e for e in reversed(u.events) if e.kind is EventKind.COMBAT and e.payload.get("vs") == "port")
-    assert ev.payload["barrage"] is None and ev.payload["defensive_rating"] == 55
+    assert ev.payload["barrage"] is None and ev.payload["defensive_rating"] == 71
     assert ev.payload["outcome"] == "survived"

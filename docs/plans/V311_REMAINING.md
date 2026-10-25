@@ -4,9 +4,9 @@ NOTE 161 listed the open rows. NOTE 163, now on the tip, matched 6.7, 6.11, 9.2,
 
 The grades are the 171 rows in the every-row list of `docs/plans/gap-map-refresh-v6.md`. Row 181 is NavPoints (`NAVPOINT_MODE`, NOTE 159). NOTE 162 uses rows 182-186. Row 187 is `BOUNTY_GOOD_MODE` from NOTE 163. NOTE 164 uses rows 200-203. Row 228 is `ATTACK_TURN_MODE` (#164). Row 235 is `SELF_DESTRUCT_PENALTY_MODE` (R5 B). Row 236 is `STARDOCK_LOCATION_MODE` (GAP 1.5).
 
-**170 of 171 rows match the original rule (99.4%).** That count is Match 75 plus Match-behind-flag 95. The every-row list was 75 and 94 before 1.5 moved. A header that once said 76 and 91 was one swap off an earlier list. A Match-behind-flag row is coded, and its switch stays off until `V311_PROFILE` is `v311`. A normal game, with every switch at the stored default, matches 75 of 171 (43.9%). The other rows are Partial 1, Different 0, Missing 0, and Ben-decision 0. One row is still not a full match: 2.15. 4.8 and 12.4 are in the 95. Detonation is Match and is not a second row. 12.4 added no switch.
+**171 of 171 rows match the original rule (100%).** That count is Match 75 plus Match-behind-flag 96. The every-row list was 75 and 94 before 1.5 moved, then 75 and 95 while 2.15 was the only Partial. A header that once said 76 and 91 was one swap off an earlier list. A Match-behind-flag row is coded, and its switch stays off until `V311_PROFILE` is `v311`. A normal game, with every switch at the stored default, matches 75 of 171 (43.9%). The other rows are Partial 0, Different 0, Missing 0, and Ben-decision 0. 4.8 and 12.4 are in the 96. Detonation is Match and is not a second row. 12.4 added no switch. 4.10 stays Match-behind-flag in the every-row list. Its October GAP_MAP cell still says Partial for duration and was not regraded.
 
-R1–R14 from `V311_RULINGS_FOR_BEN.md` are adopted. 6.11 and 13.4 stay one grade each. `CORP_SHIP_DISBAND_MODE` and `FIGHTER_REPORT_MODE` are extra behaviours on those rows. GAP 6.3 stays Match-behind-flag (#183). GAP 2.15 stays Partial; the confirmed samples stay Match-behind-flag (#185).
+R1–R14 from `V311_RULINGS_FOR_BEN.md` are adopted. 6.11 and 13.4 stay one grade each. `CORP_SHIP_DISBAND_MODE` and `FIGHTER_REPORT_MODE` are extra behaviours on those rows. GAP 6.3 stays Match-behind-flag (#183). GAP 2.15 is Match-behind-flag. The 2026-10-25 lasers for classes 2, 3, and 5 are in `PORT_LASER_BARRAGE`. Non-Fed class 8 stays sample-list only.
 
 `docs/plans/V311_SOURCE_CONFLICTS.md` is on this tip. NOTE 164 updates the Ferrengi odds row and the times-blown row there.
 ## Matched in NOTE 163
@@ -77,7 +77,7 @@ These left the Ben list. The grade is the every-row line in `gap-map-refresh-v6.
 
 ## Can't verify without the real game
 
-A Ven or TWGS screen still has to print a missing number. Guessing it would invent a rule. 12.4 left this list: the printed Extern and midnight jobs are named in the every-row line of `gap-map-refresh-v6.md`, and they already run. 2.15 stays under Still Partial because lasers for classes 2, 3, and 5, and for non-Fed class 8, are still unmeasured.
+A Ven or TWGS screen still has to print a missing number. Guessing it would invent a rule. 12.4 left this list: the printed Extern and midnight jobs are named in the every-row line of `gap-map-refresh-v6.md`, and they already run. 2.15 left this list: the 2026-10-25 lasers are measured.
 
 ## Graded this pass
 
@@ -86,9 +86,9 @@ A Ven or TWGS screen still has to print a missing number. Guessing it would inve
 
 ## Still Partial
 
-2.15 is the only counted Partial.
+No counted Partial remains. 2.15 left this list.
 
-- **2.15 Attack a port.** Partial; confirmed samples Match-behind-flag. Ven GameA v3.34b on 2026-10-24 (`docs/playtests/twgs-live/gap215-port-attack-2026-10-24.md`). When `PORT_ATTACK_MODE` is live, class fallbacks are class 1 H'Catha def 46 / laser 337, class 4 Duriron Minor def 110 / laser 1419, class 6 Khancuhn Primus def 98 / laser 598, class 7 Balmer def 98 / laser 1121. DEF_ONLY fallbacks: class 2 def 55, class 3 def 86, class 5 def 59, with no laser. A captured port name uses that port's def (Peleus 86, Anaxagoras Primus sector 913 def 60). Non-Fed class 8 Vergil Minor def 99 is stored and not applied to engine class 8 (StarDock). Class 0 and class 9 stay BLOCKED. Lasers for classes 2, 3, 5, and non-Fed 8 are still open. `PORT_DEFENSE_RATING` and `PORT_LASER_BARRAGE` hold those confirmed samples (#185), including classes 1, 2, 3, 4, 5, and 7 beside class 6. `PORT_ATTACK_MODE` row 30 and `PORT_ATTACK_ALL_CLASSES_MODE` row 138 stay legacy. `runner._handle_port_attack`. Medium.
+- **2.15 Attack a port.** Match-behind-flag. Ven GameA v3.34b (`docs/playtests/twgs-live/gap215-port-attack-2026-10-25.md`). When `PORT_ATTACK_MODE` is live, class fallbacks are class 1 H'Catha def 46 / laser 337, class 2 New Cesium def 55 / laser 482, class 3 Peleus def 86 / laser 873, class 4 Duriron Minor def 110 / laser 1419, class 5 Aesculapius def 59 / laser 391, class 6 Khancuhn Primus def 98 / laser 598, class 7 Balmer def 98 / laser 1121. Classes 2, 3, and 5 were measured 2026-10-25. A captured port name uses that port's own row (Peleus 86/873, Anaxagoras Primus sector 913 def 60 with no laser). Non-Fed class 8 Vergil Minor def 99 / laser 954 is stored and not applied to engine class 8 (StarDock). Fed prior class 8 def 91 / laser 701 stays FED_PRIOR and unwired. Class 0 and class 9 stay BLOCKED. `PORT_DEFENSE_RATING` and `PORT_LASER_BARRAGE` hold the confirmed class samples, including classes 1 through 7, and do not hold class 8. `PORT_ATTACK_MODE` row 30 and `PORT_ATTACK_ALL_CLASSES_MODE` row 138 stay legacy. `runner._handle_port_attack`. Medium.
 
 ## NOTE 164 matched
 

@@ -4131,32 +4131,36 @@ def tw2002_live_profile() -> bool:
 # The class maps are measured samples, not the only rating a live port of that
 # class can have. Ven GameA (TW Test Game 2, Slot A, TW2002 v3.34b) on
 # 2026-10-24 recorded different defs inside one class (Peleus 86, Anaxagoras
-# Primus 60). Generation does not stamp a def onto the port. A named captured
+# Primus 60). The 2026-10-25 pass measured the lasers that day left open.
+# Generation does not stamp a def onto the port. A named captured
 # port uses its own row in PORT_ATTACK_GAMEA_SAMPLES. Any other port uses the
-# primary sample below. Capture: docs/playtests/twgs-live/gap215-port-attack-2026-10-24.md
-# CONFIRMED lasers: class 1 H'Catha 46/337, class 4 Duriron Minor 110/1419,
-# class 6 Khancuhn Primus 98/598 (REPORT2), class 7 Balmer 98/1121.
-# DEF_ONLY fallbacks have a def and no laser: class 2 New Cesium 55,
-# class 3 Peleus 86, class 5 Aesculapius 59.
-# Engine class 8 is StarDock. Canonical class 8 Vergil Minor (def 99) and the
-# Fed prior (def 91 / laser 701) stay on the sample list and are not written
-# into these maps. Class 0 and StarDock were BLOCKED in that capture.
+# primary sample below. Capture: docs/playtests/twgs-live/gap215-port-attack-2026-10-25.md
+# CONFIRMED lasers: class 1 H'Catha 46/337, class 2 New Cesium 55/482,
+# class 3 Peleus 86/873, class 4 Duriron Minor 110/1419,
+# class 5 Aesculapius 59/391, class 6 Khancuhn Primus 98/598 (REPORT2),
+# class 7 Balmer 98/1121. Classes 2, 3, and 5 are the 2026-10-25 shots.
+# Engine class 8 is StarDock. Canonical class 8 Vergil Minor (def 99 / laser
+# 954) and the Fed prior (def 91 / laser 701) stay on the sample list and are
+# not written into these maps. Class 0 and StarDock were BLOCKED in that capture.
 PORT_ATTACK_MODE = "legacy"  # "legacy" | "live"
 PORT_ATTACK_ALIGNMENT = -5
 PORT_DEFENSE_RATING = {
     1: 46,   # H'Catha @478. Leipzig @708 was 49.
-    2: 55,   # New Cesium @160. Mastro @173 was 71. No laser measured.
-    3: 86,   # Peleus @436. Anaxagoras Primus @913 was 60. No laser measured.
+    2: 55,   # New Cesium @160. Mastro @173 was 71. Laser 482.
+    3: 86,   # Peleus @436. Anaxagoras Primus @913 was 60. Laser 873.
     4: 110,  # Duriron Minor @122.
-    5: 59,   # Aesculapius @404. Mirador Outpost @121 was 44. No laser measured.
+    5: 59,   # Aesculapius @404. Mirador Outpost @121 was 44. Laser 391.
     6: 98,   # Khancuhn Primus. REPORT2 pair, same numbers as before.
     7: 98,   # Balmer @688.
 }
 PORT_LASER_BARRAGE = {
-    1: 337,
-    4: 1419,
-    6: 598,
-    7: 1121,
+    1: 337,   # H'Catha @478.
+    2: 482,   # New Cesium @160. 2026-10-25.
+    3: 873,   # Peleus @436. 2026-10-25.
+    4: 1419,  # Duriron Minor @122.
+    5: 391,   # Aesculapius @404. 2026-10-25.
+    6: 598,   # Khancuhn Primus. REPORT2.
+    7: 1121,  # Balmer @688.
 }
 PORT_ATTACK_CONFIRM = "Attacks on Federation ports are prohibited! Are you sure?"
 # One row per measured port. laser None means that shot was not taken.
@@ -4174,9 +4178,9 @@ PORT_ATTACK_GAMEA_SAMPLES: tuple[dict, ...] = (
         "source": "Ven GameA 2026-10-24",
     },
     {
-        "class": 2, "name": "New Cesium", "sector": 160, "def": 55, "laser": None,
-        "status": "DEF_ONLY", "shield": "No shielding evident, plasma lasers on dock.",
-        "source": "Ven GameA 2026-10-24",
+        "class": 2, "name": "New Cesium", "sector": 160, "def": 55, "laser": 482,
+        "status": "CONFIRMED", "shield": "No shielding evident, plasma lasers on dock.",
+        "source": "Ven GameA 2026-10-25",
     },
     {
         "class": 2, "name": "Mastro", "sector": 173, "def": 71, "laser": None,
@@ -4184,9 +4188,9 @@ PORT_ATTACK_GAMEA_SAMPLES: tuple[dict, ...] = (
         "source": "Ven GameA 2026-10-24",
     },
     {
-        "class": 3, "name": "Peleus", "sector": 436, "def": 86, "laser": None,
-        "status": "DEF_ONLY", "shield": "Class 2 shielding evident, Halos missile battery.",
-        "source": "Ven GameA 2026-10-24",
+        "class": 3, "name": "Peleus", "sector": 436, "def": 86, "laser": 873,
+        "status": "CONFIRMED", "shield": "Class 2 shielding evident, Halos missile battery.",
+        "source": "Ven GameA 2026-10-25",
     },
     {
         "class": 3, "name": "Anaxagoras Primus", "sector": 913, "def": 60, "laser": None,
@@ -4200,9 +4204,9 @@ PORT_ATTACK_GAMEA_SAMPLES: tuple[dict, ...] = (
         "source": "Ven GameA 2026-10-24",
     },
     {
-        "class": 5, "name": "Aesculapius", "sector": 404, "def": 59, "laser": None,
-        "status": "DEF_ONLY", "shield": "No shielding evident, plasma lasers on dock.",
-        "source": "Ven GameA 2026-10-24",
+        "class": 5, "name": "Aesculapius", "sector": 404, "def": 59, "laser": 391,
+        "status": "CONFIRMED", "shield": "No shielding evident, plasma lasers on dock.",
+        "source": "Ven GameA 2026-10-25",
     },
     {
         "class": 5, "name": "Mirador Outpost", "sector": 121, "def": 44, "laser": None,
@@ -4220,9 +4224,9 @@ PORT_ATTACK_GAMEA_SAMPLES: tuple[dict, ...] = (
         "source": "Ven GameA 2026-10-24",
     },
     {
-        "class": 8, "name": "Vergil Minor", "sector": 119, "def": 99, "laser": None,
-        "status": "DEF_ONLY", "shield": "Class 4 shielding evident, Sunstorm Ion battery.",
-        "source": "Ven GameA 2026-10-24",
+        "class": 8, "name": "Vergil Minor", "sector": 119, "def": 99, "laser": 954,
+        "status": "CONFIRMED", "shield": "Class 4 shielding evident, Sunstorm Ion battery.",
+        "source": "Ven GameA 2026-10-25",
     },
     {
         "class": 8, "name": "Fed class 8", "sector": None, "def": 91, "laser": 701,
@@ -4266,10 +4270,12 @@ def port_attack_sample(
 ) -> tuple[int | None, int | None]:
     """(defensive rating, laser barrage) for one live port attack.
 
-    A Ven GameA 2026-10-24 row wins when the port is that captured port.
+    A captured GameA row wins when the port is that captured port.
     A row with no laser does not borrow another port's barrage. Any other
     port uses PORT_DEFENSE_RATING and PORT_LASER_BARRAGE. Those maps are the
     primary sample for the class, not the only value live TWGS can print.
+    Classes 2, 3, and 5 carry the 2026-10-25 lasers. Engine class 8 is not
+    in those maps.
     The live attack path is the caller. PORT_ATTACK_MODE stays legacy, and
     that path is not entered while the switch is off.
     """
@@ -6270,7 +6276,8 @@ PORT_BLOW_FIGS_PER_RATING = 22
 # the same -55 the cabal subtracts when a trader dies on a blown port.
 PORT_BLOW_ALIGNMENT = -50
 # The attack lookup reads PORT_DEFENSE_RATING, PORT_LASER_BARRAGE, and
-# PORT_ATTACK_GAMEA_SAMPLES (Ven GameA 2026-10-24). Those are measured samples.
+# PORT_ATTACK_GAMEA_SAMPLES (Ven GameA 2026-10-24, lasers for classes 2, 3,
+# and 5 on 2026-10-25). Those are measured samples.
 # A named captured port can disagree with the class fallback. The pages below
 # still have no class table.
 # UNVERIFIED, searched: docs/reference/tw2002/eis_tw2002_v3_docs/Tactical.html
