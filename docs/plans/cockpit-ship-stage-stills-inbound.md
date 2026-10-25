@@ -1,6 +1,6 @@
 # Cockpit ship-stage stills — inbound map
 
-Docs only. This sheet lists which planning files on `feature/grokbot-player` @ `d389d683` (#375) already point at the [stills inventory](stills/README.md) (#344). It does not stamp Pass. It adds no PNG. It leaves every other sheet as this tip left it. #372 updates the inventory row for `p1b-batch3-guns`. #373 refreshes the batch-4 readiness note. #374 refreshes the batch-3 readiness note. #375 refreshes the batch-5 readiness note. None of those adds a directory. The counts below stay the counts surveyed through #371.
+Docs only. This sheet lists which planning files on `feature/grokbot-player` @ `3e9d2909` (#377) already point at the [stills inventory](stills/README.md) (#344). It does not stamp Pass. It adds no PNG. It leaves every other sheet as this tip left it. #372 updates the inventory row for `p1b-batch3-guns`. #373 refreshes the batch-4 readiness note. #374 refreshes the batch-3 readiness note. #375 refreshes the batch-5 readiness note. #377 refreshes the P2 readiness note and adds body links to the inventory. That sheet already had a dedicated link (#366). None of those adds a directory. The counts below stay the counts surveyed through #371.
 
 The inventory table has eight directories. The new row is [p1-merchant-imperial](stills/p1-merchant-imperial/) (#357): Merchant Cruiser and Imperial StarShip. That row is a TBD scaffold. It holds a placeholder README and no PNG.
 
@@ -42,7 +42,7 @@ Scan rule: a hit is the literal string `stills/README.md` under `docs/plans/`. A
 - [Batch 3 readiness](cockpit-ship-stage-p1b-batch3-readiness.md) — dedicated link, directory `p1b-batch3-guns`. #374 (`63326660`) records the guns as landed and Pass. Star Master and Constellation are the live dish cut. Does not stamp Pass.
 - [Batch 4 readiness](cockpit-ship-stage-p1b-batch4-readiness.md) — dedicated link, directory `p1b-batch4-dish`. #373 (`30b9e7fa`) names Star Master and Constellation the live cut. That product is in flight. Does not stamp Pass.
 - [Batch 5 readiness](cockpit-ship-stage-p1b-batch5-readiness.md) — dedicated link, directory `p1b-batch5-brick`. #375 (`d389d683`) records the guns Pass and names Star Master and Constellation the live cut ahead. Tholian Sentinel and Interdictor Cruiser wait behind the batch-4 Pass. The brick product has not started. Does not stamp Pass.
-- [P2 readiness](cockpit-ship-stage-p2-readiness.md) — dedicated link (#366). No stills directory owns P2.
+- [P2 readiness](cockpit-ship-stage-p2-readiness.md) — dedicated link (#366). No stills directory owns P2. #377 (`3e9d2909`) refreshes this note onto `6d80ef5b`. Guns stay Landed and Pass. Star Master and Constellation stay the live dish cut. Batch-4 Pass is not stamped. The brick waits behind that Pass. P2 stays gated. Body links name the inventory. This note does not stamp Pass and does not open the wire.
 
 ## Acceptance
 
@@ -80,7 +80,7 @@ Mention only. The literal string appears in the shared tip-history paragraph. Th
 
 ## Candidates
 
-Ship-stage sheets that lacked `stills/README.md` on the #358 map are listed in the role sections above.
+Ship-stage sheets that lacked `stills/README.md` on the #358 map are listed in the role sections above. #377 added further inventory links on P2 readiness. That sheet already sits under Readiness. Its new body links stay on that line.
 
 Also scanned, and left off this list: [fighter marker math](cockpit-ship-stage-marker-math.md) records the 100:1 count and names no stills directory.
 
