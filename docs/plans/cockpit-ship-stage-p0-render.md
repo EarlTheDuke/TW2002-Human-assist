@@ -2,6 +2,8 @@
 
 Parent: [cockpit-ship-stage-p0.md](cockpit-ship-stage-p0.md).
 
+The inventory of product stills scaffolds under this SVG path decision is [stills/README.md](stills/README.md) (#344).
+
 ## Recommendation
 
 Keep one shared mesh, drawn as shaded SVG, and spend the revamp on silhouette, materials, fighter placement, and stage size. Do not move the fleet to three.js or raw WebGL for this revamp. WebGL is the off-ramp if the spike below misses the bar, and that off-ramp still consumes `buildHullFaces` so the warp clips do not grow a second hull.
