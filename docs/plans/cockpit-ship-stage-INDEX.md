@@ -1,6 +1,6 @@
 # Cockpit ship stage — sheet index
 
-Finder for the ship-stage planning pack. Docs only. Tip: `feature/grokbot-player` @ `04d83e5e`.
+Finder for the ship-stage planning pack. Docs only. Tip: `feature/grokbot-player` @ `983b3cdf`.
 
 ## Product order
 
@@ -12,7 +12,7 @@ P1 is the spike named in the P0 pack and the render memo. Open the sheet below t
 
 ## P1
 
-- [P1 acceptance](cockpit-ship-stage-p1-acceptance.md) — Pass / Fail / Hold-WebGL read-test for the Merchant Cruiser and Imperial StarShip SVG spike.
+- [P1 acceptance](cockpit-ship-stage-p1-acceptance.md) — Pass / Fail / Hold-WebGL read-test for the Merchant Cruiser and Imperial StarShip SVG spike. Pass stamp for that spike (#222).
 - [P1 spike](cockpit-ship-stage-p1-spike.md) — Merchant Cruiser and Imperial StarShip SVG passed (#215).
 - [P1 pass](cockpit-ship-stage-p1-pass.md) — Pass on all nine acceptance bullets; WebGL stays closed (#220).
 
