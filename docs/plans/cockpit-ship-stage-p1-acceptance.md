@@ -2,7 +2,7 @@
 
 Read-test for the spike. Docs only. Tip surveyed: `feature/grokbot-player` @ `4ad12856`.
 
-The stills inventory is [stills/README.md](stills/README.md) (#344).
+The stills inventory is [stills/README.md](stills/README.md) (#344), directory [p1-merchant-imperial](stills/p1-merchant-imperial/) (TBD scaffold, no PNG, does not stamp Pass).
 
 Taken from these sheets, which this file does not replace:
 
