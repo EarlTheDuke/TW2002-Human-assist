@@ -30,14 +30,13 @@ def test_research_recommends_our_own_art() -> None:
     assert "not copied" in doc.lower() or "not a copy" in doc.lower() or "No ANSI file" in doc
 
 
-def test_panel_states_the_cluster_rule_and_keeps_the_legend() -> None:
+def test_panel_states_the_marker_rule_and_keeps_the_legend() -> None:
     js = _text(JS)
-    assert "FIGHTER_EXACT_CAP = 200" in js
-    assert 'each triangle = ' in js
-    assert "One red triangle is one fighter." in js
-    assert "Counts add to the bay." in js
-    assert "data-cluster-rule" in js
-    assert "ceil(fighters / 200)" in js
+    assert "FIGHTER_EXACT_CAP" not in js
+    assert "each marker = 100 fighters" in js
+    assert "Math.ceil(count / 100)" in js
+    assert "data-marker-rule" in js
+    assert "ceil(fighters / 200)" not in js
     assert "fleet-glass" in _text(MESHES) or 'look: "fleet-glass-v1"' in _text(MESHES)
     assert "Drew Markham" not in _text(MESHES)
     for name in ("bot.html", "bot.js", "bot-parity.js"):

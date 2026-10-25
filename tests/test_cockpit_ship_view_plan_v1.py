@@ -16,8 +16,6 @@ SHOTS = Path("/opt/cursor/artifacts/note116")
 JS = ROOT / "web" / "redesign.js"
 PLAN = ROOT / "docs" / "plans" / "cockpit-ship-view-v1.md"
 TOK = "ship-view-plan-v1-token-p2-0000"
-CAP = 200
-CLUSTER_MAX = 4
 LABELS = ("Fighters", "Shields", "Holds", "armid mines", "limpet mines", "Cloaks", "Disruptors", "Towing nothing")
 VIEWPORTS = ((1280, 720), (1600, 1000), (390, 844))
 PROTO = tuple(cls.value for cls in ShipClass)
@@ -29,31 +27,13 @@ def _text(path: Path) -> str:
 
 def _plan(fighters: int) -> tuple[int, int]:
     count = max(0, int(fighters))
-    if count <= CAP:
-        return count, 1
-    scale = math.ceil(count / CAP)
-    return math.ceil(count / scale), scale
+    if count < 1:
+        return 0, 1
+    return max(1, math.ceil(count / 100)), 100
 
 
 def _clusters(cls: str, fighters: int) -> list[tuple[int, int]]:
-    if cls not in PROTO:
-        return []
-    triangles, scale = _plan(fighters)
-    if scale <= 1 or triangles < 1:
-        return []
-    groups = min(CLUSTER_MAX, triangles)
-    base, extra = divmod(triangles, groups)
-    sizes = [base + (1 if i < extra else 0) for i in range(groups)]
-    last = fighters - scale * (triangles - 1)
-    out: list[tuple[int, int]] = []
-    idx = 0
-    for use in sizes:
-        count = 0
-        for _ in range(use):
-            count += last if idx == triangles - 1 else scale
-            idx += 1
-        out.append((use, count))
-    return out
+    return []
 
 
 def test_plan_names_the_art_and_bot_stays_plain() -> None:
@@ -65,7 +45,8 @@ def test_plan_names_the_art_and_bot_stays_plain() -> None:
     assert "Drew Markham" in plan
     js = _text(JS)
     assert "const PROTOTYPE_HULLS" not in js
-    assert "fighterClusters" in js
+    assert "each marker = 100 fighters" in js
+    assert "fighterClusters" not in js
     assert "shipViewHull" in js
     for hull in PROTO:
         assert hull in js
@@ -102,7 +83,7 @@ def _wait_view(page, cls: str, fighters: int) -> None:
           const n = svg.querySelectorAll("[data-testid=fighter-triangle]").length;
           const legend = document.querySelector("[data-testid=fighter-legend]");
           const legendOk = scale > 1
-            ? !!legend && legend.textContent === ("each triangle = " + scale + " fighters")
+            ? !!legend && legend.textContent === "each marker = 100 fighters"
             : !legend;
           const nodes = [...svg.querySelectorAll("[data-testid=fighter-cluster]")];
           const got = nodes.map((el) => [Number(el.getAttribute("data-triangles")), Number(el.getAttribute("data-count"))]);

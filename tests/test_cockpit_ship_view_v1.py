@@ -14,16 +14,14 @@ from tests._cu_host import CuHost
 ROOT = Path(__file__).resolve().parents[1]
 SHOTS = ROOT / "docs" / "playtests" / "cockpit-ship-view-v1"
 TOK = "ship-view-v1-token-p2-00000000000"
-CAP = 200
 LABELS = ("Fighters", "Shields", "Holds", "armid mines", "limpet mines", "Cloaks", "Disruptors", "Towing nothing")
 
 
 def _plan(fighters: int) -> tuple[int, int]:
     count = max(0, int(fighters))
-    if count <= CAP:
-        return count, 1
-    scale = math.ceil(count / CAP)
-    return math.ceil(count / scale), scale
+    if count < 1:
+        return 0, 1
+    return max(1, math.ceil(count / 100)), 100
 
 
 def _set_ship(host: CuHost, cls: str, fighters: int) -> None:
@@ -56,7 +54,7 @@ def _wait_view(page, cls: str, fighters: int) -> None:
           const n = svg.querySelectorAll("[data-testid=fighter-triangle]").length;
           const legend = document.querySelector("[data-testid=fighter-legend]");
           const legendOk = scale > 1
-            ? !!legend && legend.textContent === ("each triangle = " + scale + " fighters")
+            ? !!legend && legend.textContent === "each marker = 100 fighters"
             : !legend;
           return svg.getAttribute("data-hull") === cls
             && svg.getAttribute("data-fighters") === String(fighters)
