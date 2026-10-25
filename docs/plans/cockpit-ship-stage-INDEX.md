@@ -28,6 +28,7 @@ P1 is the spike named in the P0 pack and the render memo. Open the sheet below t
 
 - [Four-hull build](cockpit-ship-stage-p1b-four-hull-build.md) — Product build order after the P1 pass: Scout Marauder and Merchant Freighter, then BattleShip and Corporate FlagShip, then later batches (#219).
 - [Cut 1 acceptance](cockpit-ship-stage-p1b-scout-freighter-acceptance.md) — Pass / Fail / Hold-WebGL read-test for cut 1 Scout Marauder + Merchant Freighter (#226).
+- [Scout and Freighter stills](cockpit-ship-stage-p1b-scout-freighter.md) — Measured faces, markers, and frame times for the needle and the freighter.
 - [Cut 2 acceptance](cockpit-ship-stage-p1b-battleship-flagship-acceptance.md) — Pass / Fail / Hold-WebGL for BattleShip + Corporate FlagShip (#227).
 - [Batch 1 acceptance](cockpit-ship-stage-p1b-batch1-acceptance.md) — Pass / Fail / Hold-WebGL read-test for Escape Pod + T'Khasi Orion (#230).
 - [Batch 2 haulers acceptance](cockpit-ship-stage-p1b-batch2-haulers-acceptance.md) — Pass / Fail / Hold-WebGL for CargoTran + Colonial Transport + Taurean Mule (#232).
