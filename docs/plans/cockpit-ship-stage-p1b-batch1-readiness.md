@@ -1,6 +1,6 @@
 # P1b batch-1 readiness — Escape Pod and T'Khasi Orion
 
-Gate status only. Docs only. Branch tip: `feature/grokbot-player` @ `1c3fd84b` (#252). #252 moved the finder tip to `b95e4219`. This note records the wait for the next P1b product cut. Meshes stay as this tip left them.
+Gate status only. Docs only. Branch tip: `feature/grokbot-player` @ `336883dc` (#253). #253 refreshed the four-hull tip to `1c3fd84b`. #252 moved the finder tip to `b95e4219`. This note records the wait for the next P1b product cut. Meshes stay as this tip left them.
 
 Sticky order stays P1 SVG, then P1b, then P2, then P3. Finder: [cockpit-ship-stage-INDEX.md](cockpit-ship-stage-INDEX.md). Standing queue: [COMMANDER_NEXT.md](COMMANDER_NEXT.md). Product order: [four-hull build](cockpit-ship-stage-p1b-four-hull-build.md) (#219).
 
