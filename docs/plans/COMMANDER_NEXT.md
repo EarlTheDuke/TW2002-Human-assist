@@ -6,7 +6,7 @@ Report Page: https://cursor.com/canvas/store-edda9433-2d33-4b62-8d22-af10c2ff389
 
 Playtest wrap: `docs/playtests/multibot-2026-10-24-sat-grok-l3/README.md`
 
-Tip parent: `feature/grokbot-player` @ `81df2c1b` (#198, COMMS stays on player channels). Counts, checked on this tip against the live-totals sentence in `docs/plans/GAP_MAP.md`, the every-row list in `docs/plans/gap-map-refresh-v6.md`, and `docs/plans/V311_REMAINING.md`: 75 Match, 96 Match-behind-flag, 0 Partial, 0 Ben-decision. The Dev fidelity backlog is empty (171/171). The October GAP_MAP cell for 4.10 duration is Match-behind-flag (#194, `8a31f30f`). Duration recommendation is cabal and the modern manual, 1 second. The tip already maps that to `PHOTON_WAVE_DURATION` 1 day-tick. Gypsy 10 seconds and GameA 20 seconds stay recorded. No realtime clock. No duration switch. Limpet, interdictor, and price subgrades were not flipped. `PORT_ATTACK_MODE` and `PORT_ATTACK_ALL_CLASSES_MODE` stay legacy.
+Tip parent: `feature/grokbot-player` @ `b466108d` (#203, COMMS feed contract note). Counts, checked on this tip against the live-totals sentence in `docs/plans/GAP_MAP.md`, the every-row list in `docs/plans/gap-map-refresh-v6.md`, and `docs/plans/V311_REMAINING.md`: 75 Match, 96 Match-behind-flag, 0 Partial, 0 Ben-decision. The Dev fidelity backlog is empty (171/171). The October GAP_MAP cell for 4.10 duration is Match-behind-flag (#194, `8a31f30f`). Duration recommendation is cabal and the modern manual, 1 second. The tip already maps that to `PHOTON_WAVE_DURATION` 1 day-tick. Gypsy 10 seconds and GameA 20 seconds stay recorded. No realtime clock. No duration switch. Limpet, interdictor, and price subgrades were not flipped. `PORT_ATTACK_MODE` and `PORT_ATTACK_ALL_CLASSES_MODE` stay legacy.
 
 ## Standing queue
 
@@ -19,23 +19,23 @@ PoG (Player of Games) owns gameplay, playtests, the wt_live redeploy, and the ho
 
 Ops note, not a fidelity gap: Computer Use seats 1–3 min/action; double-queue re-fire observed. Plan around that for the next multi-bot.
 
-History (DONE GAP items, collapsed; do not reopen as fidelity work): GAP 2.15 lasers are Match-behind-flag on #193. Classes 2, 3, and 5 are 482, 873, and 391 in `PORT_LASER_BARRAGE` (defs 55, 86, 59). Vergil Minor laser 954 stays sample-list only. Classes 1, 4, 6, and 7 stay 46/337, 110/1419, 98/598, and 98/1121. Fed prior class 8 stays FED_PRIOR and unwired. GAP 1.5 is Match-behind-flag on `STARDOCK_LOCATION_MODE` row 236 (`5a8cab96`; Ben approved the Commander recommendation 2026-10-24). GAP 6.3 handbook curve is Match-behind-flag (#183). GAP 4.8 detonation is Match. The shop unit price is Match-behind-flag on `HARDWARE_PRICE_MODE` (stored 100, live card 1,000). No third price. GAP 12.4 is Match-behind-flag (`fec5d73c`). No new switch. `INACTIVE_USER_MODE` and `INACTIVITY_TIMEOUT_MODE` stay off. R1–R14 are adopted. Libram key C is `ec4bc50b`. The singles-bar price and the unnamed 47-credit drop stay deferred (`2ba08a05`). The mailbox sha `307f2b07` is not an object on this branch. Parent chain on this tip: `81df2c1b` (#198), `c630252a` (#197), `281680c5` (#196), `26d15088` (#195), `8a31f30f` (#194), `7a0fcf03` (#193), `5a8cab96`, `ec4bc50b`, `2ba08a05`, `fec5d73c`.
+History (DONE GAP items, collapsed; do not reopen as fidelity work): GAP 2.15 lasers are Match-behind-flag on #193. Classes 2, 3, and 5 are 482, 873, and 391 in `PORT_LASER_BARRAGE` (defs 55, 86, 59). Vergil Minor laser 954 stays sample-list only. Classes 1, 4, 6, and 7 stay 46/337, 110/1419, 98/598, and 98/1121. Fed prior class 8 stays FED_PRIOR and unwired. GAP 1.5 is Match-behind-flag on `STARDOCK_LOCATION_MODE` row 236 (`5a8cab96`; Ben approved the Commander recommendation 2026-10-24). GAP 6.3 handbook curve is Match-behind-flag (#183). GAP 4.8 detonation is Match. The shop unit price is Match-behind-flag on `HARDWARE_PRICE_MODE` (stored 100, live card 1,000). No third price. GAP 12.4 is Match-behind-flag (`fec5d73c`). No new switch. `INACTIVE_USER_MODE` and `INACTIVITY_TIMEOUT_MODE` stay off. R1–R14 are adopted. Libram key C is `ec4bc50b`. The singles-bar price and the unnamed 47-credit drop stay deferred (`2ba08a05`). The mailbox sha `307f2b07` is not an object on this branch. Parent chain on this tip: `b466108d` (#203), `5c613db2` (#202), `4aecd89c` (#201), `6a4ef414` (#200), `81df2c1b` (#198), `c630252a` (#197), `281680c5` (#196), `26d15088` (#195), `8a31f30f` (#194), `7a0fcf03` (#193), `5a8cab96`, `ec4bc50b`, `2ba08a05`, `fec5d73c`.
 
 ## Next Dev (product / hygiene)
 
 1. In flight, next product: P1 cockpit ship-stage spike. Merchant Cruiser and Imperial StarShip only. Commander-owned. SVG path (`buildHullFaces` / `projectFace`) from the P0 pack: `docs/plans/cockpit-ship-stage-p0.md`, `docs/plans/cockpit-ship-stage-p0-render.md`, `docs/plans/cockpit-ship-stage-p0-fx.md`, and `docs/plans/cockpit-ship-stage-p0-silhouette-bible.md`. Fighter markers are 100:1 (`max(1, ceil(n / 100))` when n is at least 1).
 
-2. After that spike passes the render bar, P1b batch meshes. Fleet order for the other 15 player hulls: `docs/plans/cockpit-ship-stage-p1b-fleet-order.md` (#196). Mesh contracts for the next four (Scout Marauder, Merchant Freighter, BattleShip, Corporate FlagShip): `docs/plans/cockpit-ship-stage-p1b-next-hulls.md` (#197). One batch at a time, on the same SVG path.
+2. After that spike passes the render bar, P1b batch meshes, one batch at a time, on the same SVG path. Fleet order for the other 15 player hulls: `docs/plans/cockpit-ship-stage-p1b-fleet-order.md` (#196). Mesh contracts for the next four (Scout Marauder, Merchant Freighter, BattleShip, Corporate FlagShip): `docs/plans/cockpit-ship-stage-p1b-next-hulls.md` (#197). Batch-2 hauler mesh contracts (CargoTran, Colonial Transport, Taurean Mule): `docs/plans/cockpit-ship-stage-p1b-batch2-haulers.md` (#202). The hauler wave follows the four-hull wave.
 
 3. Then P2 FX product, from the wire checklist `docs/plans/cockpit-ship-stage-p2-wire.md` (#195). The checklist is on the tip. Product code starts after the P1 spike has merged. Six states onto the ship stage, then the left viewport comes off.
 
-4. Then P3 layout, from the P3 section of `docs/plans/cockpit-ship-stage-p0.md`. Ship stage about 55–60% and the nav map about 35%, side by side. `#shipSvg` leaves the 140px cap.
+4. Then P3 layout product, from the checklist `docs/plans/cockpit-ship-stage-p3-layout.md` (#201). The P3 section of `docs/plans/cockpit-ship-stage-p0.md` links that checklist. Ship stage about 55–60% and the nav map about 35%, side by side. `#shipSvg` leaves the 140px cap. Product code starts after P2 has merged.
 
 Player of Games owns gameplay, playtests, the wt_live redeploy, and the hotter L3 retest. Dev does not drive seats.
 
 Drafts #25, #28, #37, #82, #99, and #103 stay draft and out of merge order.
 
-Landed, and off this queue: COMMS stays on player channels. `TRADE_FAILED`, haggle misses, and other action outcomes stay off the COMMS card (#198, `81df2c1b`). They stay on the activity log and on lastResult / verdict.
+Landed, and off this queue: COMMS stays on player channels. The contract note is `docs/plans/comms-feed-v1.md` (#203, `b466108d`). `TRADE_FAILED`, haggle misses, and other action outcomes stay off the COMMS card (#198, `81df2c1b`). They stay on the activity log and on lastResult / verdict. COMMS filter work stays closed.
 
 ## Blockers
 
@@ -73,6 +73,10 @@ Ben ended Sat Grok L3 game `82578bfe` and asked this wrap folded into GAP_MAP, t
 - P2 Mid Eden #50 Class L: goods above L1. Colonists 336/400. Closest to L1.
 - Cash at stop: P4 227k, P2 201k, P1 91k, P3 70k, P6 19k, P5 18k.
 - GWC lobby empty. Dual-seat watch paused. Original EIS TWGS :23 left running (untouched).
+
+## 2026-10-25 — queue after #201–#203
+
+Since the #200 mailbox refresh (`6a4ef414`), three docs landed. #201 (`4aecd89c`) landed the P3 layout checklist (`docs/plans/cockpit-ship-stage-p3-layout.md`) and the link from the P3 section of `docs/plans/cockpit-ship-stage-p0.md`. P3 layout product starts after P2. #202 (`5c613db2`) landed the P1b batch-2 hauler mesh contracts (`docs/plans/cockpit-ship-stage-p1b-batch2-haulers.md`) for CargoTran, Colonial Transport, and the Taurean Mule. Those meshes follow the four-hull wave. #203 (`b466108d`) recorded the landed COMMS feed contract in `docs/plans/comms-feed-v1.md`. COMMS filter work stays closed. Counted grades on this tip stay 75 Match, 96 Match-behind-flag, 0 Partial, 0 Ben-decision (`docs/plans/GAP_MAP.md` live totals, `docs/plans/gap-map-refresh-v6.md`, `docs/plans/V311_REMAINING.md`). The next product item is still the P1 Merchant Cruiser and Imperial StarShip SVG spike. It is in flight and Commander-owned. After that spike passes the render bar: P1b batch meshes (fleet order, the next-four contracts, then batch 2), then P2 FX product, then P3 layout product. Player of Games owns gameplay, the wt_live redeploy, and the hotter L3 retest.
 
 ## 2026-10-25 — queue after #194–#198
 
