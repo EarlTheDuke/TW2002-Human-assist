@@ -2,9 +2,9 @@
 
 Parent: [cockpit-ship-stage-p0.md](cockpit-ship-stage-p0.md). FX move that this split follows: [P2 wire](cockpit-ship-stage-p2-wire.md). Renderer: [render memo](cockpit-ship-stage-p0-render.md).
 
-Planning only. This file does not change the engine, the redesign cockpit, the hull meshes, or the warp clips. Tip surveyed: `feature/grokbot-player` @ `81df2c1b` (`Keep trade failures off the COMMS card`).
+Planning only. This file does not change the engine, the redesign cockpit, the hull meshes, or the warp clips. Tip surveyed: `feature/grokbot-player` @ `62766208` (#248). #248 refreshed the P2 readiness note onto `f7176883`. #246 (`f7176883`) recorded the Cut 1 Pass on the four-hull build order. #244 (`f057cac7`) stamped Pass on the Scout Marauder and Merchant Freighter acceptance. Product meshes for that cut landed in #238 (`54051577`).
 
-P3 product code waits until P2 has merged on `feature/grokbot-player`, and until the P1 Merchant Cruiser and Imperial StarShip spike has merged. Start the product PR from that tip. The stage is still the shared SVG in `#shipSvg` (`viewBox="0 0 400 260"`). If the spike missed the bar and the WebGL off-ramp in the render memo is the path that merged, stop. Do not lay a second renderer into this grid.
+Sticky order stays P1 SVG, then P1b, then P2, then P3. P3 product code stays closed on this tip. It waits behind the P1b cut-2 product pass (BattleShip and Corporate FlagShip), behind the remaining P1b product in that standing order, and behind P2. The landings above do not open the layout PR. The P1 SVG spike has already passed (#215, `9d29349a`). Start the product PR only after cut 2, the remaining P1b passes, and P2 have merged, from that later tip on `feature/grokbot-player`. The stage is still the shared SVG in `#shipSvg` (`viewBox="0 0 400 260"`). If a cut opened the WebGL off-ramp in the render memo, stop. Do not lay a second renderer into this grid.
 
 No new engine field, no new `EVENT_FACTS` key, no new action, no new event. No EIS, Markham, or ANSI tracing.
 
@@ -48,7 +48,7 @@ At 700px and under, document order is the stack: `#viewport`, `#nav`, `#ship`, `
 
 `.panel` is `position: relative`. `#ship` is set to `overflow: hidden` and later to `overflow: auto`; the later rule wins. `#fighterRow`, `#shipStats`, and `#holds` are `flex: 0 0 auto`.
 
-P2 leaves this template in place on purpose. It removes `#viewport`, parks the sector report in `#sectorReport` on grid area `view`, and puts `#stageFx` (with `#warpClip` inside it) beside `#shipSvg` inside `#ship`. P3 is the change that deletes area `view` and the 140px cap. Until P2 has merged, do not start the product PR.
+P2 leaves this template in place on purpose. It removes `#viewport`, parks the sector report in `#sectorReport` on grid area `view`, and puts `#stageFx` (with `#warpClip` inside it) beside `#shipSvg` inside `#ship`. P3 is the change that deletes area `view` and the 140px cap. P3 stays behind P1b cut 2, the remaining P1b product, and P2. Do not start the product PR.
 
 ## Target grid
 
@@ -205,7 +205,7 @@ If P2 already edited either layout test, keep that edit and only change assertio
 
 Files this product PR may edit: `web/redesign.css`, `web/redesign.html` (order, `#shipStage`, where `#sectorReport` sits), `web/layout.js`, and the two layout tests above. It does not edit `web/redesign.js`, `web/hull-meshes.js`, `web/media/warp-clips.json`, `web/bot.html`, `web/bot2.html`, `web/viewport.js`, or `src/tw2k/**`.
 
-1. Branch from `feature/grokbot-player` after P2 has merged and the P1 spike has merged. Confirm `#viewport` is gone, `#sectorText` still resolves, `#stageFx` and `#warpClip` live under `#ship`, and `TW2KHullMeshes` is still the shared SVG path. If the spike opened the WebGL off-ramp, stop.
+1. Branch from `feature/grokbot-player` after P1b cut 2, the remaining P1b product, and P2 have merged. Order is P1 SVG, then P1b, then P2, then P3. The P1 spike has already passed. Confirm `#viewport` is gone, `#sectorText` still resolves, `#stageFx` and `#warpClip` live under `#ship`, and `TW2KHullMeshes` is still the shared SVG path. If a cut opened the WebGL off-ramp, stop.
 2. Set the desktop areas and tracks in the target-grid section. Point `DEFAULT_COLS`, `SLOTS`, `PANELS`, and the single column splitter at that grid. Confirm a default 1101px-wide deck measures inside the ship and nav bands, with the map on the right.
 3. Wrap `#shipSvg` and `#stageFx` in `#shipStage`. Remove the 140 / 124 / 164 / 34% / 210 caps. Let the SVG fill `#shipStage` with `max-height: none` and `aspect-ratio: auto` above 700px. Keep the viewBox. On `max-width: 700px`, cap the picture at `46vh` and stack ship, nav, HERE, COMMS. At 701–1100px use equal columns and areas `"ship nav" "here term"`.
 4. Move `#sectorReport` into `#context` in normal flow. Keep `sectorText()` and every selector it writes (`#sectorText`, `[data-port-class]`, `[data-planet="class"]`, `[data-mines="sector"]`, `[data-navhaz=here]`, `[data-beacon=here]`, `[data-terra=row]`). Delete `#vpScreen { height: 120px }` and any `#deck` rule that still names area `view`.
