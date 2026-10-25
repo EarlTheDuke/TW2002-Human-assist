@@ -1,9 +1,9 @@
 /* ship-view-full-v1. Shared hull meshes for the redesign ship panel and the warp clips.
    Fleet-glass pass: our own lofts and plates. No copied ANSI, no traced cinema.
    P1 spike: merchant_cruiser and imperial_starship use richer stations and kit
-   on this same face list. P1b adds scout_marauder, merchant_freighter,
-   battleship, and corporate_flagship on that same path. The other hulls
-   stay fleet-glass-v1.
+   on this same face list.    P1b adds scout_marauder, merchant_freighter,
+   battleship, corporate_flagship, escape_pod, and tkhasi_orion on that
+   same path. The other hulls stay fleet-glass-v1.
    Classic page: window.TW2KHullMeshes
    Module: import { buildHullFaces } from "/static/hull-meshes.mjs"
 */
@@ -544,6 +544,114 @@
       bell(faces, -60, -7.8, z, metal, plume, 1.05);
     });
   }
+  // Short side plate. The body stays dark metal, including the edges, so the
+  // plate reads as shape and does not take the class accent.
+  function stubFin(faces, sign, xLead, xTrail, zIn, zOut, y, metal) {
+    var s = sign < 0 ? -1 : 1;
+    var span = Math.abs(xLead - xTrail) || 1;
+    var tipLead = xLead - span * 0.12;
+    var tipTrail = xTrail + span * 0.02;
+    var thick = 4.6;
+    var zTip = s * zOut;
+    var zRoot = s * zIn;
+    var top = [
+      [xLead, y + thick, zRoot],
+      [tipLead, y + thick * 0.75, zTip],
+      [tipTrail, y + thick * 0.58, zTip * 0.97],
+      [xTrail, y + thick * 0.85, s * Math.max(zIn * 0.9, 1.2)]
+    ];
+    var bot = [
+      [xLead, y - thick, zRoot],
+      [xTrail, y - thick * 0.82, s * Math.max(zIn * 0.9, 1.2)],
+      [tipTrail, y - thick * 0.48, zTip * 0.97],
+      [tipLead, y - thick * 0.64, zTip]
+    ];
+    var ref = [(xLead + tipLead) / 2, y, s * (zIn + zOut) / 2];
+    pushFace(faces, top, metal, 1, false, ref);
+    pushFace(faces, bot, shade(metal, 0.55), 1, false, ref);
+    pushFace(faces, [top[0], top[1], bot[3], bot[0]], shade(metal, 0.84), 1, false, ref);
+    pushFace(faces, [top[1], top[2], bot[2], bot[3]], shade(metal, 0.7), 1, false, ref);
+    pushFace(faces, [top[2], top[3], bot[1], bot[2]], shade(metal, 0.62), 1, false, ref);
+    pushFace(faces, [top[3], top[0], bot[0], bot[1]], shade(metal, 0.76), 1, false, ref);
+  }
+  // One swept plate. The body stays metal. The leading edge and the tip
+  // carry the accent. The tip sits aft of the trailing root, past the tail.
+  function crescent(faces, sign, noseX, tailX, zIn, zOut, y, metal, accent) {
+    var s = sign < 0 ? -1 : 1;
+    var span = Math.abs(noseX - tailX) || 1;
+    var tipLead = noseX - span * 0.56;
+    var tipTrail = tailX - span * 0.2;
+    var rootT = 2.3;
+    var tipT = 3.6;
+    var drop = 2.8;
+    var zTip = s * zOut;
+    var zRoot = s * zIn;
+    var top = [
+      [noseX, y + rootT, zRoot],
+      [tipLead, y - drop * 0.35 + tipT, zTip],
+      [tipTrail, y - drop + tipT * 0.4, zTip * 0.9],
+      [tailX, y + rootT * 0.65, zRoot * 1.25]
+    ];
+    var bot = [
+      [noseX, y - rootT * 0.75, zRoot],
+      [tailX, y - rootT * 0.45, zRoot * 1.25],
+      [tipTrail, y - drop - tipT * 0.45, zTip * 0.9],
+      [tipLead, y - drop * 0.35 - tipT * 0.5, zTip]
+    ];
+    var ref = [(noseX + tipTrail) / 2, y - drop, s * (zIn + zOut) / 2];
+    pushFace(faces, top, metal, 1, false, ref);
+    pushFace(faces, bot, shade(metal, 0.54), 1, false, ref);
+    pushFace(faces, [top[0], top[1], bot[3], bot[0]], accent, 1, false, ref, true);
+    pushFace(faces, [top[1], top[2], bot[2], bot[3]], accent, 1, false, ref, true);
+    pushFace(faces, [top[2], top[3], bot[1], bot[2]], shade(metal, 0.66), 1, false, ref);
+    pushFace(faces, [top[3], top[0], bot[0], bot[1]], shade(metal, 0.76), 1, false, ref);
+  }
+  // Lifeboat. A short round capsule, almost as tall as it is long. Two stub
+  // fins sit outside the beam. One round port on the nose carries the cyan.
+  // One bell sits low on the centerline, inside the fin span.
+  function podSpike(faces, hull, metal, accent, glass, plume) {
+    var sections = [
+      [26, 20, 20],
+      [13, 32, 32],
+      [0, 38, 38],
+      [-13, 32, 32],
+      [-26, 18, 18]
+    ];
+    loftAt(faces, sections, 0, 0, hull, 1, false, "round");
+    [-1, 1].forEach(function (sign) {
+      stubFin(faces, sign, 4, -12, 24, 64, -1.5, metal);
+    });
+    loftAt(faces, [
+      [34.6, 14.8, 14.8],
+      [24.2, 16.4, 16.4]
+    ], 1.4, 0, accent, 1, false, "round", true);
+    stripe(faces, 8, -14, 36.2, 2.1, accent);
+    bell(faces, -28, -16, 0, metal, plume, 0.48);
+  }
+  // Alien fast hull. One pair of swept plates leaves the nose and runs past
+  // the tail. Plate bodies stay metal; the edges carry the accent. The
+  // `wings` token does not grow a second pair. The canopy stays inside the
+  // crescent. Two bells sit low, inside the plate span.
+  function orionSpike(faces, hull, metal, accent, glass, plume) {
+    var sections = [
+      [44, 2.2, 2.6],
+      [24, 3.2, 3.6],
+      [6, 3.6, 4.0],
+      [-14, 3.2, 3.6],
+      [-30, 2.4, 2.8],
+      [-40, 1.6, 1.9]
+    ];
+    loftAt(faces, sections, 0, 0, hull, 1, false, "round");
+    [-1, 1].forEach(function (sign) {
+      crescent(faces, sign, 40, -54, 3.1, 36, 0.5, metal, accent);
+    });
+    loftAt(faces, [[20, 1.2, 1.55], [8, 1.8, 2.2], [-2, 1.05, 1.35]], 4.0, 0, glass, 1, false, "round");
+    loftAt(faces, [[22, 0.45, 1.2], [6, 0.52, 1.45]], 3.7, 0, accent, 1, false, "round", true);
+    stripe(faces, 28, -32, 4.15, 0.6, accent);
+    [-1, 1].forEach(function (sign) {
+      bell(faces, -44, -4.4, sign * 11, metal, plume, 0.7);
+    });
+  }
   function spikeAccent(ship, spec) {
     if (spec && spec.accent) return parseHex(spec.accent);
     if (ship.class === "imperial_starship") return parseHex("#ffe9a0");
@@ -551,6 +659,8 @@
     if (ship.class === "merchant_freighter") return parseHex("#7af0ff");
     if (ship.class === "battleship") return parseHex("#c5c8ff");
     if (ship.class === "corporate_flagship") return parseHex("#ff77ff");
+    if (ship.class === "escape_pod") return parseHex("#55ffff");
+    if (ship.class === "tkhasi_orion") return parseHex("#ff6d8a");
     return parseHex("#7aa2ff");
   }
   function buildSpikeFaces(ship, spec) {
@@ -566,13 +676,15 @@
     else if (ship.class === "merchant_freighter") freighterSpike(faces, hull, metal, accent, glass, plume);
     else if (ship.class === "battleship") battleshipSpike(faces, hull, metal, accent, glass, plume);
     else if (ship.class === "corporate_flagship") flagshipSpike(faces, hull, metal, accent, glass, plume);
+    else if (ship.class === "escape_pod") podSpike(faces, hull, metal, accent, glass, plume);
+    else if (ship.class === "tkhasi_orion") orionSpike(faces, hull, metal, accent, glass, plume);
     else merchantSpike(faces, hull, metal, accent, glass, plume);
     return faces;
   }
   function buildHullFaces(sh, def) {
     var ship = sh || {};
     var spec = def || {};
-    if (ship.class === "merchant_cruiser" || ship.class === "imperial_starship" || ship.class === "scout_marauder" || ship.class === "merchant_freighter" || ship.class === "battleship" || ship.class === "corporate_flagship") return buildSpikeFaces(ship, spec);
+    if (ship.class === "merchant_cruiser" || ship.class === "imperial_starship" || ship.class === "scout_marauder" || ship.class === "merchant_freighter" || ship.class === "battleship" || ship.class === "corporate_flagship" || ship.class === "escape_pod" || ship.class === "tkhasi_orion") return buildSpikeFaces(ship, spec);
     var sections = LOFT[ship.class] || LOFT.merchant_cruiser;
     var shape = SHAPE[ship.class] || "round";
     var accent = parseHex(spec.accent || "#7aa2ff");
