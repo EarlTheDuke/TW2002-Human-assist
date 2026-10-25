@@ -6,7 +6,7 @@ Report Page: https://cursor.com/canvas/store-edda9433-2d33-4b62-8d22-af10c2ff389
 
 Playtest wrap: `docs/playtests/multibot-2026-10-24-sat-grok-l3/README.md`
 
-Tip: `feature/grokbot-player` @ `75686f34` before this adoption. That tip already contains #180, the handbook curve (#183), the port-attack samples (#185), attack turns row 228 (#164), ship capacity row 229 (#163), the photon-cloak card row 230 (#161), Tri-Cron row 231 (#160), Grimy tips row 232 (#155), StarDock doors row 233 (#153), the interdictor damp row 234 (#171), the limpet and rename capture (#154), the full TWSTATS capture (#157), the October Missing-cell close (#173), and the leftover grades (#181). `SELF_DESTRUCT_PENALTY_MODE` is row 235.
+Tip: `feature/grokbot-player` @ `061df2c1` (Adopt V311 rulings R1–R14, #186). That tip already contains #180, the handbook curve (#183), the port-attack samples (#185), attack turns row 228 (#164), ship capacity row 229 (#163), the photon-cloak card row 230 (#161), Tri-Cron row 231 (#160), Grimy tips row 232 (#155), StarDock doors row 233 (#153), the interdictor damp row 234 (#171), the limpet and rename capture (#154), the full TWSTATS capture (#157), the October Missing-cell close (#173), and the leftover grades (#181). `SELF_DESTRUCT_PENALTY_MODE` is row 235.
 
 ## Standing queue
 
