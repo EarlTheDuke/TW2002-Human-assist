@@ -6430,7 +6430,9 @@ def federation_hall_live() -> bool:
 # NOTE 129 GAP 1.8, row 233. Live TWGS 3.34b lists the Libram Universitatus on
 # the StarDock where-to menu. B is not on that list and asks the singles-bar
 # question. The visit that lowered a balance named no item and printed no
-# price, so this door does not take credits. Stored default stays legacy.
+# price, so this door does not take credits. Key C lists Ferrengi hulls a
+# living ship in this game already carries. A and B stay the capture header
+# and one empty line. Stored default stays legacy.
 # "1" does not turn this on. V311_PROFILE "v311" does.
 STARDOCK_DOORS_MODE = "legacy"  # "legacy" | "v311"
 
