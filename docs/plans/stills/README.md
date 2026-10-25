@@ -4,7 +4,7 @@ Index of every directory under `docs/plans/stills/`. Directory names stay as the
 
 This index adds no PNG. It does not stamp Pass. It does not move the fleet gate.
 
-Scaffolds with TBD cells do not stamp Pass and do not move the fleet gate. Batch 5 brick (#340) is that scaffold. It waits behind the dish Pass. Its directory holds a placeholder README and no PNG.
+Scaffolds with TBD cells do not stamp Pass and do not move the fleet gate. Batch 5 brick (#340) is that scaffold. The dish Pass cleared the wait. The live cut is the batch-5 brick. The product Cur is in flight. The brick is not landed and not Pass. The brick product has not started. Its directory holds a placeholder README and no PNG. This index records no brick face count. P2 stays behind the batch-5 Pass. P3 stays behind that Pass and P2.
 
 | Directory | Hulls | Sheet |
 | --- | --- | --- |
@@ -15,4 +15,4 @@ Scaffolds with TBD cells do not stamp Pass and do not move the fleet gate. Batch
 | [p1b-batch2-haulers](p1b-batch2-haulers/) | CargoTran, Colonial Transport, Taurean Mule | [batch 2 haulers product](../cockpit-ship-stage-p1b-batch2-haulers-product.md) |
 | [p1b-batch3-guns](p1b-batch3-guns/) | Missile Frigate, Havoc GunStar | [batch 3 guns product](../cockpit-ship-stage-p1b-batch3-guns-product.md) (#363). Measured. Missile Frigate 283 faces, Havoc GunStar 261 faces. PNGs are in this directory. Pass ([batch 3 acceptance](../cockpit-ship-stage-p1b-batch3-acceptance.md) #370). |
 | [p1b-batch4-dish](p1b-batch4-dish/) | Star Master, Constellation | [batch 4 dish product](../cockpit-ship-stage-p1b-batch4-dish-product.md) (#387). Measured. Star Master 183 faces, Constellation 311 faces. PNGs are in this directory. Pass ([batch 4 acceptance](../cockpit-ship-stage-p1b-batch4-acceptance.md) #390). |
-| [p1b-batch5-brick](p1b-batch5-brick/) | Tholian Sentinel, Interdictor Cruiser | [batch 5 brick product](../cockpit-ship-stage-p1b-batch5-brick-product.md) (#340). TBD scaffold. No PNG. Does not stamp Pass and does not move the fleet gate. |
+| [p1b-batch5-brick](p1b-batch5-brick/) | Tholian Sentinel, Interdictor Cruiser | [batch 5 brick product](../cockpit-ship-stage-p1b-batch5-brick-product.md) (#340). Product Cur in flight. TBD scaffold. Not measured. No PNG. Tholian Sentinel and Interdictor Cruiser stay on fleet-glass-v1. The brick is not landed and not Pass. The brick product has not started. This row records no face count. Pass is not stamped. Does not move the fleet gate. |
