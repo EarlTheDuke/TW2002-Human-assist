@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>P2 FX sample — Merchant Cruiser</title>
+  <link rel="stylesheet" href="./sample.css">
+</head>
+<body>
+  <header>
+    <h1>P2 FX sample — Merchant Cruiser</h1>
+    <p>Standalone SVG research. Not wired into the cockpit. WebGL stays off. The P2 gate stays closed.</p>
+  </header>
+  <main>
+    <aside class="viewport-pane">
+      <h2>Left viewport, aging out</h2>
+      <p class="hint">Swatches fade across 8 seconds. The ship keeps the tell. Skip clears a tell.</p>
+      <ul id="viewportList"></ul>
+    </aside>
+    <div class="stage">
+      <svg id="stageSvg" viewBox="0 0 400 260" role="img" aria-label="Merchant Cruiser research stage">
+        <defs>
+          <clipPath id="planetClip"><circle cx="158" cy="156" r="78"/></clipPath>
+        </defs>
+        <g data-testid="starfield"></g>
+        <g data-testid="planet-disc"></g>
+        <g data-testid="warp-streaks"></g>
+        <g data-testid="fighter-back"></g>
+        <g data-testid="ship-body"></g>
+        <g data-testid="landing-gear"></g>
+        <g data-testid="shield-flare"></g>
+        <g data-testid="mines"></g>
+        <g data-testid="fighter-front"></g>
+        <g data-testid="battle-streak"></g>
+        <g data-testid="mine-label"></g>
+      </svg>
+    </div>
+  </main>
+  <footer>
+    <div class="controls" id="fighterPresets">
+      <span>Fighters</span>
+      <button type="button" data-fighters="0">0</button>
+      <button type="button" data-fighters="50">50</button>
+      <button type="button" data-fighters="100">100</button>
+      <button type="button" data-fighters="250">250</button>
+      <button type="button" data-fighters="1000">1000</button>
+      <input id="fighterInput" type="number" min="0" step="1" value="50" aria-label="Fighter count">
+    </div>
+    <div class="controls">
+      <span>Tell</span>
+      <button type="button" data-tell="idle">Idle</button>
+      <button type="button" data-tell="mine">Mine</button>
+      <button type="button" data-tell="warp">Warp</button>
+      <button type="button" data-tell="land">Land</button>
+      <button type="button" data-tell="battle">Battle</button>
+      <button type="button" id="liftoff">Liftoff</button>
+      <button type="button" id="play">Play</button>
+      <button type="button" id="skip">Skip</button>
+      <label>Kind
+        <select id="mineKind">
+          <option value="armid">armid</option>
+          <option value="limpet">limpet</option>
+        </select>
+      </label>
+      <label>Qty
+        <input id="mineQty" type="number" min="1" step="1" value="8">
+      </label>
+      <label>Planet
+        <select id="planet"></select>
+      </label>
+    </div>
+    <div class="controls">
+      <span>Viewport age</span>
+      <button type="button" data-clock="0">0s</button>
+      <button type="button" data-clock="4000">4s</button>
+      <button type="button" data-clock="6400">6.4s</button>
+      <button type="button" data-clock="8000">8s</button>
+      <input id="clock" type="range" min="0" max="8000" step="100" value="0" aria-label="Viewport age">
+      <button type="button" id="motion" aria-pressed="false">Live orbit</button>
+    </div>
+    <p class="readout" id="readout"></p>
+    <p class="readout" id="perf"></p>
+  </footer>
+  <script src="./fx-model.js"></script>
+  <script src="./sample.js"></script>
+</body>
+</html>

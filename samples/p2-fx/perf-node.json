@@ -1,0 +1,68 @@
+{
+  "hull": "merchant_cruiser",
+  "faces": 217,
+  "radius": 79.03,
+  "fit": 1.12,
+  "engine": "node v22.23.4",
+  "project": {
+    "median": 0.4817560000000185,
+    "max": 0.5758910000000128
+  },
+  "rows": [
+    {
+      "fighters": 0,
+      "markers": 0,
+      "placed": 0,
+      "bake": {
+        "median": 0.001072000000000628,
+        "max": 0.006820999999995081
+      }
+    },
+    {
+      "fighters": 50,
+      "markers": 1,
+      "placed": 1,
+      "bake": {
+        "median": 4.398439999999994,
+        "max": 5.180905999999993
+      }
+    },
+    {
+      "fighters": 100,
+      "markers": 1,
+      "placed": 1,
+      "bake": {
+        "median": 0.7676299999999969,
+        "max": 2.733550000000008
+      }
+    },
+    {
+      "fighters": 250,
+      "markers": 3,
+      "placed": 3,
+      "bake": {
+        "median": 0.6165440000000046,
+        "max": 0.6995650000000069
+      }
+    },
+    {
+      "fighters": 1000,
+      "markers": 10,
+      "placed": 10,
+      "bake": {
+        "median": 0.696472,
+        "max": 0.7503859999999918
+      }
+    }
+  ],
+  "markers1000": {
+    "asked": 1000,
+    "placed": 1000,
+    "fit": 0.72,
+    "bake": {
+      "median": 3.5084740000000068,
+      "max": 6.017365000000012
+    }
+  },
+  "webgl": false
+}
