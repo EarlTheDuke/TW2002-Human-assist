@@ -1,6 +1,6 @@
 # Cockpit ship stage — sheet index
 
-Finder for the ship-stage planning pack. Docs only. Tip: `feature/grokbot-player` @ `d1b53755`. COMMANDER_NEXT just landed through #243 (#245). #251 refreshed COMMANDER_NEXT through #250. #252 moved the tip to `b95e4219`. #253 refreshed the four-hull tip to `1c3fd84b`. #254 moved the tip to `336883dc`. #255 added batch-1 readiness (gated behind cut 2). #256 moved the tip to `7c30c78d` (and added the batch-1 readiness pointer). #257 refreshed COMMANDER_NEXT through #255. #258 refreshed the four-hull tip to `9ad2c989`. #259 moved the tip to `6b54bec5`. #260 refreshed P2 readiness onto `6b54bec5`. #261 moved the tip to `489c44e3`. #262 refreshed COMMANDER_NEXT through #261.
+Finder for the ship-stage planning pack. Docs only. Tip: `feature/grokbot-player` @ `1487293d`. COMMANDER_NEXT just landed through #243 (#245). #251 refreshed COMMANDER_NEXT through #250. #252 moved the tip to `b95e4219`. #253 refreshed the four-hull tip to `1c3fd84b`. #254 moved the tip to `336883dc`. #255 added batch-1 readiness (gated behind cut 2). #256 moved the tip to `7c30c78d` (and added the batch-1 readiness pointer). #257 refreshed COMMANDER_NEXT through #255. #258 refreshed the four-hull tip to `9ad2c989`. #259 moved the tip to `6b54bec5`. #260 refreshed P2 readiness onto `6b54bec5`. #261 moved the tip to `489c44e3`. #262 refreshed COMMANDER_NEXT through #261. #263 refreshed the four-hull tip to `d1b53755`. #264 refreshed the P3 layout tip to `d1b53755`.
 
 ## Product order
 
