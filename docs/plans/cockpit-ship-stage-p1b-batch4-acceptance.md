@@ -2,6 +2,8 @@
 
 Read-test for the batch-4 dish and X wave. Docs only. Tip surveyed: `feature/grokbot-player` @ `d01d56a5`.
 
+Stills for this sheet are listed in the [stills inventory](stills/README.md) (#344) under [p1b-batch4-dish](stills/p1b-batch4-dish/).
+
 Taken from these sheets, which this file does not replace:
 
 - [Batch 4](cockpit-ship-stage-p1b-batch4.md) — the mesh contract for this wave. Dish, X, the FlagShip re-shot, accents, and the numbered checks live there.
