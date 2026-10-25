@@ -1477,7 +1477,7 @@ _SWITCH_PLAIN: dict[str, str] = {
     "REENTRY_FIGHTERS_MODE": "The free Scout after Ship Destroyed carries a small fighter grant.",
     "NAVPOINT_MODE": "The computer sets, lists, and clears named NavPoints, including Terra and StarDock, and a course can plot to one.",
     "FEDERATION_HALL_MODE": "Federation Hall lists each corporation. The hardware counter can show a shop screen.",
-    "STARDOCK_DOORS_MODE": "The StarDock where-to list includes the Libram. B, which is not on the list, opens the singles bar and takes no credits.",
+    "STARDOCK_DOORS_MODE": "The StarDock where-to list includes the Libram. Miscellaneous Documents lists the Ferrengi hulls in use. B, which is not on the list, opens the singles bar and takes no credits.",
     "CORP_CARGO_TREASURY_MODE": "Corp mates in the same sector can move cargo. Members can put credits in the treasury, and only the C.E.O. can take them out.",
     "UG_NAME_MODE": "A total unknown can buy a new name from the Underground.",
     "SHIELD_POINT_MODE": "Class 0 and StarDock shields cost 131 credits a point.",
@@ -1734,13 +1734,17 @@ def _stardock_services(f: dict) -> str:
         + "<p>The Libram Universitatus is on the StarDock where-to list. "
         "Its menu is Archive of Alien Races, Archive of Galactic Organizations, "
         "Miscellaneous Documents, and Q to leave. The archives have no charge. "
+        "Miscellaneous Documents is the Ferrengi ship list. "
+        "Archive of Alien Races and Archive of Galactic Organizations stay empty. "
         "B is not on that list. It asks if you want to enter a singles bar. "
         "Going in names no good and takes no credits. "
         "An unnamed drop at that bar had no printed price, so it stays deferred. "
         "The switch is STARDOCK_DOORS_MODE.</p>"
         + _gated(
             K.stardock_doors_live(),
-            "the where-to list includes the Libram Universitatus, and B opens the singles bar without a charge.",
+            "the where-to list includes the Libram Universitatus. "
+            "Miscellaneous Documents lists each Ferrengi hull in this game, with its odds and fighters. "
+            "B opens the singles bar without a charge.",
             "the Libram and the singles bar are closed.",
         )
         + "<p>The bank takes deposits, withdrawals and transfers. The tax section states the interest.</p>"

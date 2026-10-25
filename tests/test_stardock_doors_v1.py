@@ -11,13 +11,16 @@ from pathlib import Path
 from tw2k.engine import Action, ActionKind, GameConfig, apply_action, generate_universe
 from tw2k.engine import constants as K
 from tw2k.engine.legality import legal_actions
-from tw2k.engine.models import EventKind, Player, Ship
+from tw2k.engine.models import EventKind, FerrengiShip, Player, Ship
 from tw2k.engine.stardock_doors import (
+    FERRSPEC_KEY,
     HIDDEN_KEYS,
     SINGLES_ENTERED,
     SINGLES_PROMPT,
     WHERE_TO_PROMPT,
+    archive_document_lines,
     archive_lines,
+    ferrengi_hull_lines,
     where_to_lines,
 )
 
@@ -117,17 +120,45 @@ def test_v311_lists_the_library_and_the_hidden_bar(monkeypatch) -> None:
     assert "U" not in {row["key"] for row in library.params["where_to"]}
 
 
+def _library(universe, key: str):
+    result = apply_action(universe, "P1", Action(kind=ActionKind.LIBRARY, args={"archive": key}))
+    event = next(row for row in reversed(universe.events) if row.kind == EventKind.LIBRARY)
+    return result, event
+
+
+def _put_ferr(universe, *, fid: str, hull: str, alive: bool = True, name: str = "Ship") -> None:
+    universe.ferrengi[fid] = FerrengiShip(
+        id=fid,
+        name=name,
+        sector_id=int(K.STARDOCK_SECTOR),
+        aggression=3,
+        fighters=10,
+        shields=10,
+        hull=hull,
+        alive=alive,
+    )
+
+
 def test_archives_are_empty_and_free(monkeypatch) -> None:
     monkeypatch.setattr(K, "STARDOCK_DOORS_MODE", "v311")
+    monkeypatch.setattr(K, "V311_PROFILE", "legacy")
     universe = _world()
     player = _seat(universe, sector=int(K.STARDOCK_SECTOR), credits=140)
-    for key, label in (("A", "Archive of Alien Races"), ("B", "Archive of Galactic Organizations"), ("C", "Miscellaneous Documents")):
-        result = apply_action(universe, "P1", Action(kind=ActionKind.LIBRARY, args={"archive": key}))
+    assert universe.ferrengi == {}
+    for key, label in (
+        ("A", "Archive of Alien Races"),
+        ("B", "Archive of Galactic Organizations"),
+        ("C", "Miscellaneous Documents"),
+    ):
+        result, event = _library(universe, key)
         assert result.ok is True and result.turns_spent == 0
-        event = next(row for row in reversed(universe.events) if row.kind == EventKind.LIBRARY)
-        assert event.summary == label
-        assert event.payload["lines"] == []
+        assert event.payload["lines"] == [f"<{key}> {label}", ""]
+        assert event.summary == "\n".join(event.payload["lines"])
         assert event.payload["charge"] == 0
+        assert event.payload["label"] == label
+        assert "Ferrengi" not in event.summary
+        assert "Derelict" not in event.summary
+    assert next(row for row in reversed(universe.events) if row.payload["archive"] == "C").payload["hulls"] == []
     leave = apply_action(universe, "P1", Action(kind=ActionKind.LIBRARY, args={"archive": "Q"}))
     assert leave.ok is True
     left = next(row for row in reversed(universe.events) if row.kind == EventKind.LIBRARY)
@@ -136,6 +167,90 @@ def test_archives_are_empty_and_free(monkeypatch) -> None:
     assert player.credits == 140
     refused = apply_action(universe, "P1", Action(kind=ActionKind.LIBRARY, args={"archive": "Z"}))
     assert refused.ok is False
+
+
+def test_legacy_door_does_not_list_ferrengi_in_use(monkeypatch) -> None:
+    monkeypatch.setattr(K, "STARDOCK_DOORS_MODE", "legacy")
+    monkeypatch.setattr(K, "V311_PROFILE", "legacy")
+    universe = _world()
+    player = _seat(universe, sector=int(K.STARDOCK_SECTOR), credits=140)
+    _put_ferr(universe, fid="F1", hull=K.FERRENGI_HULL_ASSAULT, name="Grabby")
+    _put_ferr(universe, fid="F2", hull=K.FERRENGI_HULL_DREAD, name="Big")
+    result = apply_action(universe, "P1", Action(kind=ActionKind.LIBRARY, args={"archive": "C"}))
+    assert result.ok is False
+    assert player.credits == 140
+    assert not any(event.kind == EventKind.LIBRARY for event in universe.events)
+    assert "library" not in _kinds(universe)
+
+
+def test_doors_on_lists_only_living_ferrengi_hulls(monkeypatch) -> None:
+    monkeypatch.setattr(K, "STARDOCK_DOORS_MODE", "v311")
+    monkeypatch.setattr(K, "V311_PROFILE", "legacy")
+    monkeypatch.setattr(K, "FERRENGI_ODDS_MODE", "legacy")
+    universe = _world()
+    player = _seat(universe, sector=int(K.STARDOCK_SECTOR), credits=140)
+    _put_ferr(universe, fid="F1", hull=K.FERRENGI_HULL_ASSAULT, name="Grabby")
+    _put_ferr(universe, fid="F1b", hull=K.FERRENGI_HULL_ASSAULT, name="Second")
+    _put_ferr(universe, fid="F2", hull=K.FERRENGI_HULL_CRUISER, name="Cruiser Name")
+    _put_ferr(universe, fid="F3", hull=K.FERRENGI_HULL_DREAD, alive=False, name="Dead Dread")
+    _put_ferr(universe, fid="F4", hull="", name="Legacy Raider")
+    _put_ferr(universe, fid="F5", hull="derelict", name="Alien Derelict")
+    result, event = _library(universe, FERRSPEC_KEY)
+    assert result.ok is True and result.turns_spent == 0
+    lines = event.payload["lines"]
+    assert lines == archive_document_lines(universe, "C")
+    assert event.summary == "\n".join(lines)
+    assert event.payload["hulls"] == [K.FERRENGI_HULL_ASSAULT, K.FERRENGI_HULL_CRUISER]
+    assert event.payload["charge"] == 0
+    assault = K.FERRENGI_HULL_SPECS[K.FERRENGI_HULL_ASSAULT]
+    cruiser = K.FERRENGI_HULL_SPECS[K.FERRENGI_HULL_CRUISER]
+    assert lines == [
+        "<C> Miscellaneous Documents",
+        "",
+        *ferrengi_hull_lines(K.FERRENGI_HULL_ASSAULT),
+        "",
+        *ferrengi_hull_lines(K.FERRENGI_HULL_CRUISER),
+    ]
+    assert assault["max_fighters"] == 3000
+    assert assault["odds"] == 1.0
+    assert K.ferrengi_fighters_per_attack(K.FERRENGI_HULL_ASSAULT) == 1000
+    assert cruiser["max_fighters"] == 8000
+    assert "Odds 1.0" in lines
+    assert "Fighters 3000" in lines
+    assert "Fighters per attack 1000" in lines
+    assert "Odds 1.2" in lines
+    assert "Fighters 8000" in lines
+    assert "Fighters per attack 2000" in lines
+    assert lines.count("Ferrengi Assault Trader") == 1
+    assert "Ferrengi Dreadnought" not in lines
+    assert "Grabby" not in event.summary
+    assert "Dead Dread" not in event.summary
+    assert "Legacy Raider" not in event.summary
+    assert "Derelict" not in event.summary
+    assert "\x1b" not in event.summary
+    for key, label in (("A", "Archive of Alien Races"), ("B", "Archive of Galactic Organizations")):
+        _result, stub = _library(universe, key)
+        assert stub.payload["lines"] == [f"<{key}> {label}", ""]
+        assert "Ferrengi" not in stub.summary
+        assert "hulls" not in stub.payload
+    assert player.credits == 140
+
+
+def test_doors_on_bible_chart_when_the_odds_switch_is_on(monkeypatch) -> None:
+    monkeypatch.setattr(K, "STARDOCK_DOORS_MODE", "v311")
+    monkeypatch.setattr(K, "V311_PROFILE", "legacy")
+    monkeypatch.setattr(K, "FERRENGI_ODDS_MODE", "v311")
+    universe = _world()
+    _seat(universe, sector=int(K.STARDOCK_SECTOR))
+    _put_ferr(universe, fid="F1", hull=K.FERRENGI_HULL_ASSAULT)
+    _result, event = _library(universe, "C")
+    lines = event.payload["lines"]
+    assert "Odds 1.2" in lines
+    assert "Fighters per attack 2000" in lines
+    assert "Fighters 3000" in lines
+    assert "Odds 1.0" not in lines
+    assert "Ferrengi Battle Cruiser" not in lines
+    assert "Ferrengi Dreadnought" not in lines
 
 
 def test_singles_door_confirms_without_a_charge(monkeypatch) -> None:
