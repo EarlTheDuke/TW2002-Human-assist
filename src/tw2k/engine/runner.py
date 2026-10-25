@@ -525,19 +525,35 @@ def _note_inactive_users(universe: Universe) -> None:
 def tick_day(universe: Universe) -> None:
     """Advance the game by one day: reset turns, regenerate ports, spawn Ferrengi, grow planets.
 
-    Extern jobs already on this path (NOTE 82 DAY-b, cabal glossary Extern /
-    Midnight). No new switch: they already run.
-    - overnight fighter retreats, then a tow drop on retreat
-    - Ferrengi encounters, alliance expiry, turn reset, daily experience
-    - corp mixed-alignment penalty and a dead C.E.O. (corp.extern_corp_step)
-    - Class 0 / MSL fighter and mine sweep (class0.extern_sweep) and Terra regen
-    - empty-ship repossession in FedSpace (fleet.extern_repossess)
-    - FedSpace tows for too many fighters and for crowding (fed.run_tows)
-    - port regeneration, bust-record clearing, photon waves, cloak fails
-    - FedSpace NavHaz cleared, other NavHaz dispersed (hardware.tick_navhaz)
-    - Ferrengi and alien movement, planet production, citadels, treasury, tax
-    Class 0 and StarDock fighter, shield and hold prices already follow the
-    day (fighter_unit_price, shield_unit_price, hold_day_base).
+    Printed Extern and midnight jobs (cabal glossary, docs-wiki Glossary,
+    cabal twgs.html, MBBS, Gypsy). No new switch: each one already runs, or
+    it stays behind a switch that already exists.
+    - mixed-corp penalty, dead C.E.O., and the corp-break-in alignment reset
+      (corp.extern_corp_step)
+    - FedSpace NavHaz cleared; other NavHaz reduced by NAVHAZ_DISPERSION_PER_DAY
+      (hardware.tick_navhaz). Cabal twgs.html prints 100 percent. The stored
+      night is the MBBS 3 percent.
+    - empty FedSpace ships repossessed, and a ship locked in tow is kept
+      (fleet.extern_repossess)
+    - armament tows and FedSpace crowding tows (fed.run_tows)
+    - the once-a-day tax (bank.collect_daily_tax)
+    - busts, on the bust-clear schedule (rob_steal.clear_all_busts)
+    - MSL fighters and mines swept, then Terra regen (class0.extern_sweep).
+      MSL citadels stay CLASS0_EXTERN_PLANET_RULE keep.
+    - port regen, port construction, planet production, citadel construction
+    - photon waves and cloak fails
+    - Class 0 and StarDock fighter, shield, and hold prices follow the day
+    - +1 experience and +1 alignment for a living trader (the midnight login award)
+    - a death delay counts down, so a locked trader is back the next day.
+      Two pods come back because pods_day is this day.
+    - the Grimy curse, colonist jettison, and Underground password attempts
+      reset because they are stamped with this day
+    - overloaded sectors may lose two planets (PLANET_COLLISION_MODE, off)
+    - a destroyed Class 0 or Class 9 port is rebuilt when the radiation is
+      gone (SPECIAL_PORT_DEFENCE_MODE, off)
+    - a disconnected human can be deleted after 30 quiet wall-clock days
+      (INACTIVE_USER_MODE, off). A quiet lobby game can sleep after 14,400
+      seconds (INACTIVITY_TIMEOUT_MODE, off).
     """
     _note_inactive_users(universe)
     _overnight_retreats(universe)
