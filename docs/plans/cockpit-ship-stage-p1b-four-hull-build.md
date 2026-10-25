@@ -2,7 +2,7 @@
 
 Parents: [P1 acceptance](cockpit-ship-stage-p1-acceptance.md), [P1 spike](cockpit-ship-stage-p1-spike.md), [next hulls](cockpit-ship-stage-p1b-next-hulls.md), [fleet order](cockpit-ship-stage-p1b-fleet-order.md).
 
-Docs only. Tip: `feature/grokbot-player` @ `1c3fd84b` (#252). P1 SVG spike passed (#215). This sheet is the product build order after that pass. Looks stay on the contracts already on this tip. #252 moved the INDEX tip to `b95e4219`. #251 (`dbbee178`) refreshed COMMANDER_NEXT through #250. #250 refreshed the P3 layout tip to `62766208`. #249 moved the INDEX tip to `62766208`. #248 refreshed P2 readiness onto `f7176883`. Cut 1 Pass stays recorded (#246 / #244 / #238). BattleShip and Corporate FlagShip remain the live product cut.
+Docs only. Tip: `feature/grokbot-player` @ `9ad2c989` (#257). P1 SVG spike passed (#215). This sheet is the product build order after that pass. Looks stay on the contracts already on this tip. #256 (`cf8ec830`) moved the INDEX tip to `7c30c78d` and pointed at batch-1 readiness. #257 refreshed COMMANDER_NEXT through #255. #255 recorded batch-1 readiness: Escape Pod and T'Khasi Orion wait behind cut 2. #254 moved the INDEX tip to `336883dc`. #253 refreshed the four-hull tip to `1c3fd84b`. #252 moved the INDEX tip to `b95e4219`. #251 (`dbbee178`) refreshed COMMANDER_NEXT through #250. #250 refreshed the P3 layout tip to `62766208`. #249 moved the INDEX tip to `62766208`. #248 refreshed P2 readiness onto `f7176883`. Cut 1 Pass stays recorded (#246 / #244 / #238). BattleShip and Corporate FlagShip remain the live product cut.
 
 ## Build order
 
