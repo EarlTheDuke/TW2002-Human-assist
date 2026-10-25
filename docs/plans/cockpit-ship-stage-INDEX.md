@@ -1,0 +1,36 @@
+# Cockpit ship stage — sheet index
+
+Finder for the ship-stage planning pack. Docs only. Tip: `feature/grokbot-player` @ `b466108d`.
+
+## Product order
+
+P1 Merchant Cruiser + Imperial StarShip spike (in flight) → P1b batches → P2 FX product → P3 layout product.
+
+SVG path (`buildHullFaces` / `projectFace`). WebGL only if the P1 spike fails the read test.
+
+P1 is the spike named in the P0 pack and the render memo. Open the sheet below that matches the cut you are on.
+
+## P0
+
+- [P0 pack](cockpit-ship-stage-p0.md) — Parent: today's picture, sticky rules, phased done-when, and the defaults Ben can override.
+- [Render decision](cockpit-ship-stage-p0-render.md) — Stay on one shared shaded SVG mesh; three.js or raw WebGL is the off-ramp if the spike misses the read bar.
+- [FX state machine](cockpit-ship-stage-p0-fx.md) — Idle, warp, port, planet, mine, and combat: pictures, precedence, and the events that already start them.
+- [Silhouette bible](cockpit-ship-stage-p0-silhouette-bible.md) — Invented look for all 17 player hulls and the 100:1 fighter dart. Classic ANSI stays unverified.
+
+## P1b
+
+- [Fleet order](cockpit-ship-stage-p1b-fleet-order.md) — Batch sequence for the other 15 player hulls, one batch at a time, after the spike merges.
+- [Next hulls](cockpit-ship-stage-p1b-next-hulls.md) — Mesh contract for Scout Marauder, Merchant Freighter, BattleShip, and Corporate FlagShip.
+- [Batch 2 haulers](cockpit-ship-stage-p1b-batch2-haulers.md) — Mesh contract for CargoTran, Colonial Transport, and Taurean Mule, after that four-hull wave.
+
+## P2
+
+- [P2 wire](cockpit-ship-stage-p2-wire.md) — Product checklist that plays the six FX states on the ship stage and retires the left viewport.
+
+## P3
+
+- [P3 layout](cockpit-ship-stage-p3-layout.md) — Product checklist for ship about 55–60% on the left, the nav map about 35% on the right, and dropping the 140px `#shipSvg` cap.
+
+## COMMS
+
+Related cockpit hygiene, outside this pack. COMMS readers start at [comms-feed-v1.md](comms-feed-v1.md): the card is player channels only, and trade failures stay on the LOG.
