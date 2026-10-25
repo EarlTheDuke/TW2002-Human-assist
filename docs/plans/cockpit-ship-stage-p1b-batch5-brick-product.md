@@ -2,6 +2,8 @@
 
 Parent: [batch 5 brick and hoops](cockpit-ship-stage-p1b-batch5.md). Read-test: [batch 5 acceptance](cockpit-ship-stage-p1b-batch5-acceptance.md). Gate: [batch 5 readiness](cockpit-ship-stage-p1b-batch5-readiness.md) (#335). Stills directory: [p1b-batch5-brick](stills/p1b-batch5-brick/). Same path as the [P1 spike](cockpit-ship-stage-p1-spike.md) and the cuts already on `feature/grokbot-player`: `buildHullFaces` / `projectFace` in `web/hull-meshes.js`. No three.js. WebGL stays off.
 
+[Batch 5 acceptance](cockpit-ship-stage-p1b-batch5-acceptance.md) already points here (#343). The stills index is [stills/README.md](stills/README.md) (#344). This scaffold does not stamp Pass. It ships no PNGs. TBD cells await product.
+
 This sheet is the product stills skeleton for Tholian Sentinel (`tholian_sentinel`) and Interdictor Cruiser (`interdictor_cruiser`). It follows the shape of the [hauler stills](cockpit-ship-stage-p1b-batch2-haulers-product.md). It does not stamp Pass. It does not record a face count, a raw byte size, or a gzip size. Every measured cell below is **TBD / awaiting product**. A later product Cur fills those cells and drops the PNGs into `docs/plans/stills/p1b-batch5-brick/` after batch 3 (Missile Frigate and Havoc GunStar) and batch 4 (Star Master and Constellation) have passed. Until those Pass stamps, both hulls stay on `fleet-glass-v1`. This scaffold ships no PNG. It does not invent a pixel size for a frame that has not been shot.
 
 Opened on `feature/grokbot-player` @ `e3250783` (#338). This note does not move that tip.

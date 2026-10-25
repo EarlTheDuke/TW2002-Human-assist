@@ -2,6 +2,8 @@
 
 Parent: [batch 4 dish and X](cockpit-ship-stage-p1b-batch4.md). Read-test: [batch 4 acceptance](cockpit-ship-stage-p1b-batch4-acceptance.md). Gate: [batch 4 readiness](cockpit-ship-stage-p1b-batch4-readiness.md) (#334). Stills directory: [p1b-batch4-dish](stills/p1b-batch4-dish/). Same path as the [P1 spike](cockpit-ship-stage-p1-spike.md) and the cuts already on `feature/grokbot-player`: `buildHullFaces` / `projectFace` in `web/hull-meshes.js`. No three.js. WebGL stays off.
 
+[Batch 4 acceptance](cockpit-ship-stage-p1b-batch4-acceptance.md) already points here (#343). The stills index is [stills/README.md](stills/README.md) (#344). This scaffold does not stamp Pass. It ships no PNGs. TBD cells await product.
+
 This sheet is the product stills skeleton for Star Master (`star_master`) and Constellation (`constellation`). It follows the shape of the [gun stills scaffold](cockpit-ship-stage-p1b-batch3-guns-product.md) and the [hauler stills](cockpit-ship-stage-p1b-batch2-haulers-product.md). It does not stamp Pass. It does not record a face count, a raw byte size, or a gzip size. Every measured cell below is **TBD / awaiting product**. The later product wave, after the batch-3 guns acceptance is stamped Pass, fills those cells and drops the PNGs into `docs/plans/stills/p1b-batch4-dish/`. This scaffold ships no PNG. It does not invent a pixel size for a frame that has not been shot.
 
 Opened on `feature/grokbot-player` @ `d211b4e9` (#337). This note does not move that tip.
