@@ -1,6 +1,6 @@
 # P1b batch-4 readiness — Star Master and Constellation
 
-Gate status only. Docs only. Branch tip: `feature/grokbot-player` @ `46529081` (#333). #333 landed the [batch-3 readiness](cockpit-ship-stage-p1b-batch3-readiness.md) note on parent `6df3b11c` (#332). #332 refreshed the four-hull tip to `a1f95e30`. This note records the wait for the dish and the X. Meshes stay as this tip left them. This note does not stamp Pass.
+Gate status only. Docs only. Branch tip: `feature/grokbot-player` @ `46529081` (#333). #333 landed the [batch-3 readiness](cockpit-ship-stage-p1b-batch3-readiness.md) note on parent `6df3b11c` (#332). #332 refreshed the four-hull tip to `a1f95e30`. #339 (`c01ebb2f`) opened the [batch 4 dish product](cockpit-ship-stage-p1b-batch4-dish-product.md) stills scaffold and the [p1b-batch4-dish](stills/p1b-batch4-dish/) directory. This note does not move the recorded tip. This note records the wait for the dish and the X. Meshes stay as this tip left them. This note does not stamp Pass.
 
 Sticky order stays P1 SVG, then P1b, then P2, then P3. Finder: [cockpit-ship-stage-INDEX.md](cockpit-ship-stage-INDEX.md). Standing queue: [COMMANDER_NEXT.md](COMMANDER_NEXT.md). Product order: [four-hull build](cockpit-ship-stage-p1b-four-hull-build.md) (#219). Fleet sequence: [fleet order](cockpit-ship-stage-p1b-fleet-order.md) (#196, `281680c5`).
 
@@ -21,9 +21,9 @@ Missile Frigate and Havoc GunStar are the live product cut (batch 3). That cut h
 
 ## Batch-4 gate
 
-The next P1b product cut after Missile Frigate and Havoc GunStar is the batch-4 dish and X: Star Master (`star_master`) and Constellation (`constellation`), judged with the Corporate FlagShip re-shot. The FlagShip mesh already landed in cut 2. This wave does not recut that tower.
+The next P1b product cut after Missile Frigate and Havoc GunStar is the batch-4 dish and X: Star Master (`star_master`) and Constellation (`constellation`), judged with the Corporate FlagShip re-shot. The FlagShip mesh already landed in cut 2. This wave does not recut that tower. Product stills scaffold: [batch 4 dish product](cockpit-ship-stage-p1b-batch4-dish-product.md) (#339, `c01ebb2f`). Stills directory: [p1b-batch4-dish](stills/p1b-batch4-dish/). The scaffold does not stamp Pass.
 
-The acceptance sheet already exists: [batch 4 acceptance](cockpit-ship-stage-p1b-batch4-acceptance.md) (#236, `3798d2aa`). The mesh contract is [batch 4 dish and X](cockpit-ship-stage-p1b-batch4.md) (#212, `d39a3ab7`). This note does not replace either sheet. It does not stamp Pass.
+The acceptance sheet already exists: [batch 4 acceptance](cockpit-ship-stage-p1b-batch4-acceptance.md) (#236, `3798d2aa`). The mesh contract is [batch 4 dish and X](cockpit-ship-stage-p1b-batch4.md) (#212, `d39a3ab7`). The product stills scaffold is [batch 4 dish product](cockpit-ship-stage-p1b-batch4-dish-product.md) (#339, `c01ebb2f`). The stills directory is [p1b-batch4-dish](stills/p1b-batch4-dish/). This note does not replace any of those sheets, and it does not stamp Pass. The scaffold ships no PNG. Measured cells on that sheet stay awaiting product.
 
 Batch-4 product waits until the batch-3 guns (Missile Frigate and Havoc GunStar) product lands and that acceptance is stamped Pass. Star Master and Constellation faces edit `web/hull-meshes.js`, and the gun wave edits it too. The product PR for those two hulls starts from the merge of batch 3, after the Pass stamp. Until that Pass, both stay on `fleet-glass-v1`. When the product PR opens, faces land through `buildHullFaces` / `projectFace`. Build order inside that later PR is Star Master, then Constellation. WebGL stays the closed off-ramp.
 
