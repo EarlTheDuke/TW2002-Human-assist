@@ -11,8 +11,8 @@ A row is Match when the original rule is what a normal game does now. Match-behi
 | Grade | v5 | v6 |
 |---|---|---|
 | Match | 50 | 75 |
-| Match-behind-flag | 17 | 92 |
-| Partial | 53 | 3 |
+| Match-behind-flag | 17 | 93 |
+| Partial | 53 | 2 |
 | Different | 38 | 0 |
 | Missing | 11 | 0 |
 | Ben-decision | 2 | 1 |
@@ -26,6 +26,7 @@ NOTE 178 recorded 5.7 as the printed expected value, 14.6 with the credit finish
 GAP 1.15 moved from Partial to Match-behind-flag. The switch was already `FED_TOW_LIMIT_MODE` row 168 (NOTE 117). Bible 50 when on. Gypsy 98 stored when off. No new switch.
 The level 6 interdictor damp is `PHOTON_INTERDICT_DAMP_MODE` row 234 and stays off. The interdictor piece itself is Match-behind-flag. Duration stays 1 day-tick. The FedSpace photon card is `PHOTON_CLOAK_SETTINGS_MODE` row 230.
 R1–R14 are adopted from the suggested reply in `V311_RULINGS_FOR_BEN.md`. 1.6, 4.1, 6.2, 10.1, and 12.3 are Match. 5.14 and 5.20 moved to Match-behind-flag. 6.3 is the handbook curve from #183 and stays Match-behind-flag. 2.15 stays Partial; the confirmed samples stay Match-behind-flag. The only Ben-decision left in this list is 1.5.
+The every-row list before this pass was 75 Match and 92 Match-behind-flag. Headers that said 76 and 91 were one swap off that list. 4.8 leaves Partial and is counted once, as Match-behind-flag. Detonation is Match and is not a second row. The shop unit price is `HARDWARE_PRICE_MODE` row 14. No third price was added. Partial is now 2.15 and 12.4. 4.10 stays Match-behind-flag in this list. Its duration is still three printed seconds (cabal and the modern manual 1, Gypsy 10, GameA 20) and was not given a switch.
 
 ## What moved
 
@@ -63,8 +64,8 @@ Only rows whose grade changed. Evidence is `file:function`.
 | 3.17 | Partial | Match-behind-flag | `TRADE_IN_MODE` row 13 and `TRADE_IN_PARTS_MODE` row 76. `constants.ship_cost` |
 | 4.2 | Partial | Match-behind-flag | `ATOMIC_DETONATOR_MODE` row 89, NOTE 78. `runner._handle_deploy_atomic` |
 | 4.6 | Different | Match | the probe walks a route and dies at hostile fighters. `scanners.handle_probe`. `PROBE_MAX_HOPS` is 45 |
-| 4.8 | Different | Partial | price is `HARDWARE_PRICE_MODE` row 14. Detonation is already `hardware.armid_detonation_hits` (profile row 92, no helper) |
-| 4.10 | Different | Partial | frigate and ISS already carry the photon cap in `SHIP_SPECS_TW2002`. A follower's quasar damp is `PHOTON_FOLLOW_DAMP_MODE` row 90, NOTE 79. Limpet attach is `PHOTON_LIMPET_MODE` row 174. The level 6 interdictor damp is `PHOTON_INTERDICT_DAMP_MODE` row 234. Duration stays deferred. The FedSpace card is `PHOTON_CLOAK_SETTINGS_MODE` row 230 |
+| 4.8 | Different | Match-behind-flag | detonation is Match: stored half-count at 20 (`hardware.armid_detonation_hits`, profile row 92). Shop unit price is this grade on `HARDWARE_PRICE_MODE` row 14: stored `ARMID_MINE_COST` 100, live `ARMID_MINE_COST_LIVE` 1,000. Bible prints no unit price. Cabal $4,000 is the TEDIT sample, not a third price |
+| 4.10 | Different | Match-behind-flag | frigate and ISS already carry the photon cap in `SHIP_SPECS_TW2002`. A follower's quasar damp is `PHOTON_FOLLOW_DAMP_MODE` row 90, NOTE 79. Limpet attach is `PHOTON_LIMPET_MODE` row 174. The level 6 interdictor damp is `PHOTON_INTERDICT_DAMP_MODE` row 234. The FedSpace card is `PHOTON_CLOAK_SETTINGS_MODE` row 230. Duration stays 1 day-tick: cabal and the modern manual print 1 second, Gypsy prints 10, GameA prints 20. No duration switch |
 | 4.11 | Different | Match | a density scan needs the bought device. `scanners.scan_reason`. Profile row 100 unused |
 | 4.12 | Different | Match | a holo scan needs the bought device. `scanners.scan_reason`. Profile row 103 unused |
 | 4.13 | Missing | Match-behind-flag | `PLANET_SCANNER_MODE` row 43. `runner._buy_planet_scanner`, `observation._planet_brief` |
@@ -221,9 +222,9 @@ Most of those are stored defaults that are already tw2002, or switches the profi
 4.5 Match. Cloaks are on. `CLOAK_FAIL_RATE` 0.03 is GameA `Cloak Fail Percent=3%` (`docs/playtests/twgs-live/twstats-costs-ven.txt`) and stays the stored rate. `constants.hardware_tw2002`.
 4.6 Match. An ether probe walks the route up to `PROBE_MAX_HOPS` (45) and dies at the first hostile fighters. `scanners.handle_probe`. The owner's name on that notice is `PROBE_SHOOTDOWN_MODE` row 99, NOTE 85, and stays off.
 4.7 Match. Mine disruptors are on. `hardware` disruptor path.
-4.8 Partial. Armid detonation is the stored half-count at 20 damage (`hardware.armid_detonation_hits`, profile row 92). The shop price moves only under `HARDWARE_PRICE_MODE` row 14. `constants.armid_hit_damage`.
+4.8 Match-behind-flag. Counted once. Detonation is Match: stored half-count at 20 (`hardware.armid_detonation_hits`, profile row 92). Shop unit price is this grade on `HARDWARE_PRICE_MODE` row 14. Stored `ARMID_MINE_COST` is 100. The live card `ARMID_MINE_COST_LIVE` is 1,000 (`armid_mine_cost`). The Bible (S3 Hardware Emporium) prints no Armid unit price: half the mines, 20 damage, sector cap sysop-configurable. Cabal `twgs.html` General Editor Three prints $4,000 in the same TEDIT sample as Genesis $80,000. That sample is not a third price. Ven GameA TWSTATS prints `Armid Mine=1,000 cr`, already on this card (`docs/playtests/twgs-live/twstats-costs-ven.txt`). `constants.armid_hit_damage`.
 4.9 Match. Limpets attach and can be queried. Stored removal is 1,250 (`LIMPET_REMOVAL_COST`, cabal TEDIT). Live GameA is 5,000 behind `hardware_price_live` via `limpet_removal_cost` (SOURCE-CONFLICT, Ven 2026-10-24). Same fee at StarDock and Class 0. `hardware.handle_remove_limpet`.
-4.10 Match-behind-flag `PHOTON_LIMPET_MODE` row 174, NOTE 148. The level 6 interdictor damp is Match-behind-flag `PHOTON_INTERDICT_DAMP_MODE` row 234: legacy still holds, matching S1, and on, the hold fails open for the wave, matching HardwareMenu. The wave decloaks, damps a quasar, and holds mines and fighters. A limpet during that wave stays off until the limpet switch is on. GameA FedSpace Photons=False, Photons Disable Players=True, and Multiple Photons=False are `PHOTON_CLOAK_SETTINGS_MODE` row 230 and stay off in a stored game. Duration stays 1 day-tick. GameA `Photon Missile Duration=20 Sec` is DIFFERENT and deferred (cabal 1 second, Gypsy 10 seconds, no realtime clock). Price SOURCE-CONFLICT: stored `PHOTON_MISSILE_COST` 12,000. Live GameA TWSTATS `Photon Missile=40,000 cr` is `photon_missile_cost` on `hardware_price_live` (Ven 2026-10-24). Cabal sample is 160,000. DIFFERENT on the stored card. `runner` photon handler, `runner._try_interdict`.
+4.10 Match-behind-flag `PHOTON_LIMPET_MODE` row 174, NOTE 148. The level 6 interdictor damp is Match-behind-flag `PHOTON_INTERDICT_DAMP_MODE` row 234: legacy still holds, matching S1, and on, the hold fails open for the wave, matching HardwareMenu. The wave decloaks, damps a quasar, and holds mines and fighters. A limpet during that wave stays off until the limpet switch is on. GameA FedSpace Photons=False, Photons Disable Players=True, and Multiple Photons=False are `PHOTON_CLOAK_SETTINGS_MODE` row 230 and stay off in a stored game. Duration stays 1 day-tick. GameA `Photon Missile Duration=20 Sec` is DIFFERENT and deferred (cabal `twgs.html` and the modern manual print 1 second, Gypsy prints 10 seconds, no realtime clock). Those three seconds were not collapsed. No duration switch was added. Price SOURCE-CONFLICT: stored `PHOTON_MISSILE_COST` 12,000. Live GameA TWSTATS `Photon Missile=40,000 cr` is `photon_missile_cost` on `hardware_price_live` (Ven 2026-10-24). Cabal sample is 160,000. DIFFERENT on the stored card. `runner` photon handler, `runner._try_interdict`.
 4.11 Match. Density info needs a bought scanner. `scanners.scan_reason`, `runner._buy_scanner`.
 4.12 Match. Holo info needs a bought scanner. `scanners.scan_reason`, `runner._handle_scan`.
 4.13 Match-behind-flag `PLANET_SCANNER_MODE` row 43 (`planet_scanner_live`). Shielded planets stay visible until the scanner is on. EIS HardwareMenu: owner and fighters of a planet with no shields. `runner._buy_planet_scanner`. `observation._planet_brief` (~1990) adds fighters when shields are 0. A shielded planet stays dark.

@@ -6,7 +6,7 @@ Report Page: https://cursor.com/canvas/store-edda9433-2d33-4b62-8d22-af10c2ff389
 
 Playtest wrap: `docs/playtests/multibot-2026-10-24-sat-grok-l3/README.md`
 
-Tip: `feature/grokbot-player` @ `061df2c1` (Adopt V311 rulings R1–R14, #186). That tip already contains #180, the handbook curve (#183), the port-attack samples (#185), attack turns row 228 (#164), ship capacity row 229 (#163), the photon-cloak card row 230 (#161), Tri-Cron row 231 (#160), Grimy tips row 232 (#155), StarDock doors row 233 (#153), the interdictor damp row 234 (#171), the limpet and rename capture (#154), the full TWSTATS capture (#157), the October Missing-cell close (#173), and the leftover grades (#181). `SELF_DESTRUCT_PENALTY_MODE` is row 235.
+Tip: `feature/grokbot-player` @ `45620d23` (Point COMMANDER_NEXT at the R1–R14 tip). That tip already contains #186 (R1–R14), #180, the handbook curve (#183), the port-attack samples (#185), attack turns row 228 (#164), ship capacity row 229 (#163), the photon-cloak card row 230 (#161), Tri-Cron row 231 (#160), Grimy tips row 232 (#155), StarDock doors row 233 (#153), the interdictor damp row 234 (#171), the limpet and rename capture (#154), the full TWSTATS capture (#157), the October Missing-cell close (#173), and the leftover grades (#181). `SELF_DESTRUCT_PENALTY_MODE` is row 235. GAP 4.8 detonation is Match. The shop unit price is Match-behind-flag on `HARDWARE_PRICE_MODE`. No third Armid price was added.
 
 ## Standing queue
 
@@ -14,14 +14,16 @@ Tip: `feature/grokbot-player` @ `061df2c1` (Adopt V311 rulings R1–R14, #186). 
 2. Hotter L3 retest start bank is **2M** credits. Decided by the Commander under Ben's proactive grant.
 3. Ops note: Computer Use seats 1–3 min/action; double-queue re-fire observed. Plan around that for the next multi-bot.
 4. DONE. GAP 6.3 handbook curve is Match-behind-flag on the tip (#183). Do not regress.
-5. DONE. GAP 2.15 stays Partial. The confirmed Ven GameA samples are Match-behind-flag on the tip (#184 recorded, #185 wired). Do not regress.
+5. DONE. GAP 2.15 stays Partial. The confirmed Ven GameA samples are Match-behind-flag. #185 wired them into `PORT_DEFENSE_RATING` and `PORT_LASER_BARRAGE` for classes 1–7 (lasers on 1, 4, 6, and 7). Do not regress.
 6. DONE. R1–R14 from `docs/plans/V311_RULINGS_FOR_BEN.md` are adopted. Grades are in `docs/plans/gap-map-refresh-v6.md`.
+7. DONE. GAP 4.8 detonation is Match. Shop unit price is Match-behind-flag on `HARDWARE_PRICE_MODE` (stored 100, live card 1,000). No third price.
+8. The merge stack is cleared. Drafts #25, #28, #37, #82, #99, and #103 stay draft and out of merge order.
 
 ## Blockers
 
 - The Class L ferry waits on the wt_live redeploy. Player of Games requests it.
 - Ben-decision still open: GAP 1.5 StarDock location. StarDock stays in sector 1. R1–R14 did not pick a sector.
-- The serial restack of #163, #161, #160, #155, #153, #171, #154, #157, #173, and #181 landed on `75686f34` before this adoption. Older track PRs #103, #99, #82, #37, #28, and #25 were not in that merge order.
+- Drafts #25, #28, #37, #82, #99, and #103 stay open and out of merge order. They are not the next merge.
 
 ## Adopted R1–R14
 
@@ -61,7 +63,7 @@ Player of Games measured TW Test Game 2 (Slot A), TW2002 v3.34b under TWGS v2.20
 
 CONFIRMED lasers: class 1 H'Catha sector 478, 337 battle points (def 46); class 4 Duriron Minor sector 122, 1419 (def 110); class 6 Khancuhn Primus, 598 (def 98, prior REPORT2); class 7 Balmer sector 688, 1121 (def 98). DEF_ONLY: class 2 New Cesium 160 def 55, class 3 Peleus 436 def 86, class 5 Aesculapius 404 def 59, class 8 Vergil Minor 119 (non-Fed) def 99. BLOCKED: class 0 Sol and class 9 StarDock.
 
-A 0-fighter commit aborts after the def and shield text. Def rating is per port (class 3 Peleus 86 vs Anaxagoras Primus sector 913 def 60). Non-Fed class 8 (def 99, class 4 Sunstorm) differs from the Fed class 8 prior (def 91 / laser 701). `PORT_DEFENSE_RATING` and `PORT_LASER_BARRAGE` still hold class 6 only, so GAP 2.15 stays Partial. No engine change in this fold.
+A 0-fighter commit aborts after the def and shield text. Def rating is per port (class 3 Peleus 86 vs Anaxagoras Primus sector 913 def 60). Non-Fed class 8 (def 99, class 4 Sunstorm) differs from the Fed class 8 prior (def 91 / laser 701). This fold did not change the engine. Tip #185 (`7fd2db0d`) then stored the confirmed samples in `PORT_DEFENSE_RATING` and `PORT_LASER_BARRAGE`: class 1 H'Catha 46/337, class 4 Duriron Minor 110/1419, class 6 Khancuhn Primus 98/598, class 7 Balmer 98/1121, and DEF_ONLY defs for class 2 (55), class 3 (86), and class 5 (59). The class 6 pair is one row in that set. GAP 2.15 stays Partial because lasers for classes 2, 3, 5, and non-Fed 8 are still unmeasured.
 
 ## Standing queue (superseded)
 

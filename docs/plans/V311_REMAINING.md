@@ -4,7 +4,7 @@ NOTE 161 listed the open rows. NOTE 163, now on the tip, matched 6.7, 6.11, 9.2,
 
 The grades are the 171 rows in the every-row list of `docs/plans/gap-map-refresh-v6.md`. Row 181 is NavPoints (`NAVPOINT_MODE`, NOTE 159). NOTE 162 uses rows 182-186. Row 187 is `BOUNTY_GOOD_MODE` from NOTE 163. NOTE 164 uses rows 200-203. Row 228 is `ATTACK_TURN_MODE` (#164). Row 235 is `SELF_DESTRUCT_PENALTY_MODE` (R5 B).
 
-**167 of 171 rows match the original rule (97.7%).** That count is Match 76 plus Match-behind-flag 91. A Match-behind-flag row is coded, and its switch stays off until `V311_PROFILE` is `v311`. A normal game, with every switch at the stored default, matches 76 of 171 (44.4%). The other rows are Partial 3, Different 0, Missing 0, and Ben-decision 1. Four rows are still not a full match.
+**168 of 171 rows match the original rule (98.2%).** That count is Match 75 plus Match-behind-flag 93. The every-row list was 75 and 92 before 4.8 moved; a header that said 76 and 91 was one swap off that list. A Match-behind-flag row is coded, and its switch stays off until `V311_PROFILE` is `v311`. A normal game, with every switch at the stored default, matches 75 of 171 (43.9%). The other rows are Partial 2, Different 0, Missing 0, and Ben-decision 1. Three rows are still not a full match. 4.8 is one of the 93. Detonation is Match and is not a second row.
 
 R1–R14 from `V311_RULINGS_FOR_BEN.md` are adopted. 6.11 and 13.4 stay one grade each. `CORP_SHIP_DISBAND_MODE` and `FIGHTER_REPORT_MODE` are extra behaviours on those rows. GAP 6.3 stays Match-behind-flag (#183). GAP 2.15 stays Partial; the confirmed samples stay Match-behind-flag (#185).
 
@@ -76,10 +76,15 @@ A Ven or TWGS screen still has to print the missing number. Guessing it would in
 
 - **12.4 Nightly Extern.** Partial. `runner.tick_day` already runs the jobs the sources name: retreats, Ferrengi, the corp penalty, the Class 0 sweep, Terra regen, empty-ship repossession, Fed tows, port regen, bust clearing, photon waves, cloak fails, NavHaz, alien hops, planet production, citadels, treasury, and tax. Collisions and special-port rebuilds are `PLANET_COLLISION_MODE` and `SPECIAL_PORT_DEFENCE_MODE`. `INACTIVE_USER_MODE` row 177 deletes a disconnected human after 30 quiet wall-clock days and stays off. `V311_SOURCE_CONFLICTS.md`, NOTE 151, "Days until an inactive user is deleted" (30, or Gypsy's 7). `INACTIVITY_TIMEOUT_MODE` row 178 sleeps a quiet lobby game after 14,400 seconds and stays off. A job past that list has no name. A live Extern would have to print it. Medium.
 
+## Graded this pass
+
+- **4.8 Armid price.** Detonation Match. Shop unit price Match-behind-flag. Counted once, as Match-behind-flag. Stored half-count at 20 (`hardware.armid_detonation_hits`). `HARDWARE_PRICE_MODE` row 14 keeps `ARMID_MINE_COST` 100 and `ARMID_MINE_COST_LIVE` 1,000. The Bible prints no Armid unit price. Cabal General Editor Three $4,000 is that TEDIT sample, the same dump as Genesis $80,000, and it is not a third constant. Ven GameA `Armid Mine=1,000 cr` is the live card. Small.
+
 ## Still Partial
 
-- **2.15 Attack a port.** Partial; confirmed samples Match-behind-flag. Ven GameA v3.34b on 2026-10-24 (`docs/playtests/twgs-live/gap215-port-attack-2026-10-24.md`). When `PORT_ATTACK_MODE` is live, class fallbacks are class 1 H'Catha def 46 / laser 337, class 4 Duriron Minor def 110 / laser 1419, class 6 Khancuhn Primus def 98 / laser 598, class 7 Balmer def 98 / laser 1121. DEF_ONLY fallbacks: class 2 def 55, class 3 def 86, class 5 def 59, with no laser. A captured port name uses that port's def (Peleus 86, Anaxagoras Primus sector 913 def 60). Non-Fed class 8 Vergil Minor def 99 is stored and not applied to engine class 8 (StarDock). Class 0 and class 9 stay BLOCKED. Lasers for classes 2, 3, 5, and non-Fed 8 are still open. `PORT_ATTACK_MODE` row 30 and `PORT_ATTACK_ALL_CLASSES_MODE` row 138 stay legacy. `runner._handle_port_attack`. Medium.
-- **4.8 Armid price.** Partial. Detonation is the stored half-count at 20 (`hardware.armid_detonation_hits`). The shop price is `HARDWARE_PRICE_MODE` row 14: stored `ARMID_MINE_COST` 100, live card `ARMID_MINE_COST_LIVE` 1,000. The unit price is sysop-set. Small.
+2.15 is listed here. 12.4 is the other counted Partial, under "Can't verify without the real game".
+
+- **2.15 Attack a port.** Partial; confirmed samples Match-behind-flag. Ven GameA v3.34b on 2026-10-24 (`docs/playtests/twgs-live/gap215-port-attack-2026-10-24.md`). When `PORT_ATTACK_MODE` is live, class fallbacks are class 1 H'Catha def 46 / laser 337, class 4 Duriron Minor def 110 / laser 1419, class 6 Khancuhn Primus def 98 / laser 598, class 7 Balmer def 98 / laser 1121. DEF_ONLY fallbacks: class 2 def 55, class 3 def 86, class 5 def 59, with no laser. A captured port name uses that port's def (Peleus 86, Anaxagoras Primus sector 913 def 60). Non-Fed class 8 Vergil Minor def 99 is stored and not applied to engine class 8 (StarDock). Class 0 and class 9 stay BLOCKED. Lasers for classes 2, 3, 5, and non-Fed 8 are still open. `PORT_DEFENSE_RATING` and `PORT_LASER_BARRAGE` hold those confirmed samples (#185), including classes 1, 2, 3, 4, 5, and 7 beside class 6. `PORT_ATTACK_MODE` row 30 and `PORT_ATTACK_ALL_CLASSES_MODE` row 138 stay legacy. `runner._handle_port_attack`. Medium.
 
 ## NOTE 164 matched
 
@@ -96,7 +101,7 @@ These ten were already what the game does, or they were already behind a switch.
 
 - **3.20 Federal commission and the ISS.** Match.
 - **4.9 Limpet removal.** Match.
-- **4.10 Photon missile.** Partial. Limpet attach is Match-behind-flag (`PHOTON_LIMPET_MODE`). The level 6 interdictor damp is Match-behind-flag (`PHOTON_INTERDICT_DAMP_MODE` row 234). Duration and the FedSpace photon card stay open.
+- **4.10 Photon missile.** Counted Match-behind-flag. Limpet attach is Match-behind-flag (`PHOTON_LIMPET_MODE`). The level 6 interdictor damp is Match-behind-flag (`PHOTON_INTERDICT_DAMP_MODE` row 234). The price is Match-behind-flag (`photon_missile_cost` on `HARDWARE_PRICE_MODE`). The FedSpace photon card is Match-behind-flag (`PHOTON_CLOAK_SETTINGS_MODE` row 230) and stays off. Duration is still not one number. Cabal `twgs.html` and the modern manual print 1 second. Gypsy prints 10 seconds. GameA TWSTATS prints `Photon Missile Duration=20 Sec`. `PHOTON_WAVE_DURATION` stays 1 day-tick. There is no realtime clock and no duration switch. A seconds value was not added.
 - **5.18 Photon interaction.** Match-behind-flag. `PHOTON_FOLLOW_DAMP_MODE`, `PHOTON_LIMPET_MODE`, and `PHOTON_INTERDICT_DAMP_MODE`.
 - **6.12 Planet destroy experience.** Match. +50 experience and −1 alignment.
 - **8.8 NPCs and player fighters.** Match.
