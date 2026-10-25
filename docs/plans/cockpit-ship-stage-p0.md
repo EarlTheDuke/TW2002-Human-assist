@@ -40,7 +40,7 @@ Product code starts only after Ben reacts to this pack. None of it is in this PR
 
 ### P1 — Hero meshes and 100:1 fighters
 
-Build the two spike hulls in [the render memo](cockpit-ship-stage-p0-render.md) to the bible, on the existing `buildHullFaces` / `projectFace` path. Roll the other 15 only after those two pass the bar.
+Build the two spike hulls in [the render memo](cockpit-ship-stage-p0-render.md) to the bible, on the existing `buildHullFaces` / `projectFace` path. Roll the other 15 only after those two pass the bar. Order and batch cuts for those 15: [fleet order](cockpit-ship-stage-p1b-fleet-order.md).
 
 Done when:
 
