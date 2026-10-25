@@ -25,6 +25,8 @@ The held three-quarter pose is yaw `0.82`, pitch `0.5`, which `shipPose` already
 
 Product for this wave waits until the four-hull cuts have passed and the earlier batches ahead in fleet order have passed. This sheet is the read-test checklist only. It is not the launch.
 
+Product stills scaffold: [batch 5 brick product](cockpit-ship-stage-p1b-batch5-brick-product.md) (#340, `75997134`). Stills directory: [p1b-batch5-brick](stills/p1b-batch5-brick/). The scaffold does not stamp Pass. It ships no PNGs. Measured cells stay TBD until product.
+
 Four-hull cuts, in [build order](cockpit-ship-stage-p1b-four-hull-build.md#build-order):
 
 1. Scout Marauder and Merchant Freighter ([cut 1 acceptance](cockpit-ship-stage-p1b-scout-freighter-acceptance.md)).
