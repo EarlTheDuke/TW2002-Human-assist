@@ -2,7 +2,8 @@
    Fleet-glass pass: our own lofts and plates. No copied ANSI, no traced cinema.
    P1 spike: merchant_cruiser and imperial_starship use richer stations and kit
    on this same face list.    P1b adds scout_marauder, merchant_freighter,
-   battleship, corporate_flagship, escape_pod, and tkhasi_orion on that
+   battleship, corporate_flagship, escape_pod, tkhasi_orion, cargotran,
+   colonial_transport, and taurean_mule on that
    same path. The other hulls stay fleet-glass-v1.
    Classic page: window.TW2KHullMeshes
    Module: import { buildHullFaces } from "/static/hull-meshes.mjs"
@@ -652,6 +653,132 @@
       bell(faces, -44, -4.4, sign * 11, metal, plume, 0.7);
     });
   }
+  // Accent band around a belly tank. Outer quads only, so the tank body
+  // stays the metal loft and the rim does not become a painted end cap.
+  function ringAt(faces, x, y, z, rad, rgb, thick) {
+    var segs = 10;
+    var i;
+    for (i = 0; i < segs; i++) {
+      var a0 = (i / segs) * Math.PI * 2;
+      var a1 = ((i + 1) / segs) * Math.PI * 2;
+      var c0 = Math.cos(a0);
+      var s0 = Math.sin(a0);
+      var c1 = Math.cos(a1);
+      var s1 = Math.sin(a1);
+      pushFace(faces, [
+        [x - thick, y + c0 * rad, z + s0 * rad],
+        [x + thick, y + c0 * rad, z + s0 * rad],
+        [x + thick, y + c1 * rad, z + s1 * rad],
+        [x - thick, y + c1 * rad, z + s1 * rad]
+      ], rgb, 1, false, [x, y, z], true);
+    }
+  }
+  // Bulk hauler. Long low box, longer than the Freighter and lower than the
+  // Colonial. A narrow girder runs most of the deck. Metal sides, yellow top
+  // edge. Two bells sit low in the tail, inside the beam, under the girder.
+  // The `pods` token does not grow shoulder pods or Freighter cheeks.
+  function cargotranSpike(faces, hull, metal, accent, glass, plume) {
+    var sections = [
+      [82, 2.5, 8.6],
+      [54, 3.2, 11.4],
+      [22, 3.6, 12.6],
+      [-8, 3.5, 12.2],
+      [-40, 3.1, 10.6],
+      [-70, 2.3, 8.0]
+    ];
+    loftAt(faces, sections, 0, 0, hull, 1, false, "box");
+    loftAt(faces, [
+      [64, 6.6, 1.55],
+      [34, 9.2, 1.75],
+      [2, 9.8, 1.85],
+      [-30, 9.2, 1.75],
+      [-62, 5.8, 1.5]
+    ], 8.6, 0, metal, 1, false, "box");
+    boxAt(faces, 0, 18.15, 0, 72, 0.7, 2.6, accent, 1, false, true);
+    loftAt(faces, [[48, 1.05, 1.55], [36, 1.65, 2.2], [26, 0.9, 1.25]], 4.15, 0, glass, 1, false, "round");
+    loftAt(faces, [[50, 0.42, 1.2], [32, 0.5, 1.45]], 3.9, 0, accent, 1, false, "round", true);
+    [-1, 1].forEach(function (sign) {
+      boxAt(faces, 4, -0.15, sign * 12.5, 108, 0.55, 0.42, accent, 1, false, true);
+    });
+    var win = [138, 118, 92];
+    var i;
+    for (i = 0; i < 3; i++) {
+      lamp(faces, 18 - i * 16, 0.2, 12.8, 1.5, 0.95, win, 1);
+      lamp(faces, 18 - i * 16, 0.2, -12.8, 1.5, 0.95, win, -1);
+    }
+    [-1, 1].forEach(function (sign) {
+      bell(faces, -74, -2.15, sign * 4.4, metal, plume, 0.82);
+    });
+  }
+  // Slow colonist. Tall box, high for its length, with a warm cabin-port row.
+  // Two round tanks hang under the belly. Their bodies stay metal. The rims
+  // and the stripe are green. Two smaller bells sit in the tail, inboard of
+  // the tanks and above them. No dish, no dorsal girder, no shoulder pods.
+  function colonialSpike(faces, hull, metal, accent, glass, plume) {
+    var sections = [
+      [36, 15.5, 10.2],
+      [16, 19.5, 12.6],
+      [-2, 21.5, 13.6],
+      [-18, 19.5, 12.6],
+      [-38, 14.5, 9.8]
+    ];
+    loftAt(faces, sections, 0, 0, hull, 1, false, "box");
+    [-1, 1].forEach(function (sign) {
+      loftAt(faces, [
+        [18, 4.2, 4.2],
+        [2, 6.6, 6.6],
+        [-14, 6.2, 6.2],
+        [-28, 3.8, 3.8]
+      ], -25.5, sign * 14.2, metal, 1, false, "round");
+      ringAt(faces, 6, -25.5, sign * 14.2, 7.15, accent, 0.7);
+      ringAt(faces, -16, -25.5, sign * 14.2, 6.7, accent, 0.65);
+    });
+    var win = [255, 228, 176];
+    var i;
+    for (i = 0; i < 6; i++) {
+      lamp(faces, 16 - i * 8, 2.2, 13.6, 2.7, 2.35, win, 1);
+      lamp(faces, 16 - i * 8, 2.2, -13.6, 2.7, 2.35, win, -1);
+    }
+    loftAt(faces, [[20, 1.9, 2.7], [8, 2.9, 4.0], [-2, 1.6, 2.3]], 15.2, 0, glass, 1, false, "round");
+    loftAt(faces, [[22, 0.7, 2.2], [6, 0.85, 2.8]], 14.6, 0, accent, 1, false, "round", true);
+    stripe(faces, 24, -22, 17.6, 2.3, accent);
+    [-1, 1].forEach(function (sign) {
+      bell(faces, -42, -6.5, sign * 5.2, metal, plume, 0.68);
+    });
+  }
+  // Beast of burden. Low box, one dark pack on the mid-back, two tan panniers
+  // at the rear corners. The hump stops short of the nose and the tail. Bells
+  // sit between the panniers. The flank stays quiet: no cabin-port row.
+  function muleSpike(faces, hull, metal, accent, glass, plume) {
+    var sections = [
+      [48, 2.2, 5.6],
+      [26, 3.4, 8.2],
+      [4, 3.8, 9.2],
+      [-18, 3.5, 8.6],
+      [-36, 2.9, 7.2],
+      [-52, 2.2, 5.6]
+    ];
+    loftAt(faces, sections, 0, 0, hull, 1, false, "box");
+    var pack = shade(metal, 0.62);
+    loftAt(faces, [
+      [20, 3.4, 5.2],
+      [4, 13.2, 7.4],
+      [-12, 3.2, 5.0]
+    ], 9.4, 0, pack, 1, false, "round");
+    [-1, 1].forEach(function (sign) {
+      loftAt(faces, [
+        [-24, 2.6, 3.2],
+        [-36, 4.2, 4.8],
+        [-48, 2.8, 3.4]
+      ], -2.2, sign * 13.6, accent, 1, false, "box", true);
+    });
+    loftAt(faces, [[32, 0.95, 1.3], [22, 1.45, 1.9], [14, 0.8, 1.1]], 4.15, 0, glass, 1, false, "round");
+    loftAt(faces, [[34, 0.36, 1.05], [18, 0.44, 1.25]], 3.9, 0, accent, 1, false, "round", true);
+    stripe(faces, 38, 22, 4.2, 0.95, accent);
+    [-1, 1].forEach(function (sign) {
+      bell(faces, -40, -2.0, sign * 3.6, metal, plume, 0.66);
+    });
+  }
   function spikeAccent(ship, spec) {
     if (spec && spec.accent) return parseHex(spec.accent);
     if (ship.class === "imperial_starship") return parseHex("#ffe9a0");
@@ -661,6 +788,9 @@
     if (ship.class === "corporate_flagship") return parseHex("#ff77ff");
     if (ship.class === "escape_pod") return parseHex("#55ffff");
     if (ship.class === "tkhasi_orion") return parseHex("#ff6d8a");
+    if (ship.class === "cargotran") return parseHex("#ffe566");
+    if (ship.class === "colonial_transport") return parseHex("#7dff7d");
+    if (ship.class === "taurean_mule") return parseHex("#d7b48a");
     return parseHex("#7aa2ff");
   }
   function buildSpikeFaces(ship, spec) {
@@ -678,13 +808,16 @@
     else if (ship.class === "corporate_flagship") flagshipSpike(faces, hull, metal, accent, glass, plume);
     else if (ship.class === "escape_pod") podSpike(faces, hull, metal, accent, glass, plume);
     else if (ship.class === "tkhasi_orion") orionSpike(faces, hull, metal, accent, glass, plume);
+    else if (ship.class === "cargotran") cargotranSpike(faces, hull, metal, accent, glass, plume);
+    else if (ship.class === "colonial_transport") colonialSpike(faces, hull, metal, accent, glass, plume);
+    else if (ship.class === "taurean_mule") muleSpike(faces, hull, metal, accent, glass, plume);
     else merchantSpike(faces, hull, metal, accent, glass, plume);
     return faces;
   }
   function buildHullFaces(sh, def) {
     var ship = sh || {};
     var spec = def || {};
-    if (ship.class === "merchant_cruiser" || ship.class === "imperial_starship" || ship.class === "scout_marauder" || ship.class === "merchant_freighter" || ship.class === "battleship" || ship.class === "corporate_flagship" || ship.class === "escape_pod" || ship.class === "tkhasi_orion") return buildSpikeFaces(ship, spec);
+    if (ship.class === "merchant_cruiser" || ship.class === "imperial_starship" || ship.class === "scout_marauder" || ship.class === "merchant_freighter" || ship.class === "battleship" || ship.class === "corporate_flagship" || ship.class === "escape_pod" || ship.class === "tkhasi_orion" || ship.class === "cargotran" || ship.class === "colonial_transport" || ship.class === "taurean_mule") return buildSpikeFaces(ship, spec);
     var sections = LOFT[ship.class] || LOFT.merchant_cruiser;
     var shape = SHAPE[ship.class] || "round";
     var accent = parseHex(spec.accent || "#7aa2ff");
