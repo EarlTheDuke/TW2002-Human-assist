@@ -65,7 +65,6 @@
   // Martech / EIS (Drew Markham) and the EIS wallpaper licence forbids derivatives.
   // These outlines are ours. Role comes from the public spec tables. The classic
   // silhouette of each hull is UNVERIFIED. Names already on the panel stay as they were.
-  const FIGHTER_EXACT_CAP = 200;
   const SHIPS = {
     escape_pod: { name: "Escape Pod", kind: "pod", len: 70, beam: 34, engines: 1, accent: "#55ffff", detail: "" },
     merchant_cruiser: { name: "Merchant Cruiser", kind: "arrow", len: 148, beam: 52, engines: 2, accent: "#7aa2ff", detail: "pods bridge" },
@@ -426,65 +425,15 @@
 
   function fighterPlan(n) {
     const count = Math.max(0, Math.floor(Number(n) || 0));
-    if (count <= FIGHTER_EXACT_CAP) return { fighters: count, triangles: count, scale: 1 };
-    const scale = Math.ceil(count / FIGHTER_EXACT_CAP);
-    return { fighters: count, triangles: Math.ceil(count / scale), scale: scale };
+    if (count < 1) return { fighters: 0, triangles: 0, scale: 1 };
+    return { fighters: count, triangles: Math.max(1, Math.ceil(count / 100)), scale: 100 };
   }
   // cockpit-ship-view-plan-v1, extended by ship-view-all-hulls-v1.
-  // Every hull we drew ourselves gets the picture. Up to the cap, one triangle
-  // is one fighter. Above it the same triangles pack into clusters and each
-  // cluster prints the fighters it stands for. No EIS or Markham art is used.
-  const CLUSTER_MAX = 4;
+  // Every hull we drew ourselves gets the picture. Markers are max(1, ceil(n/100))
+  // when n is at least 1, and each marker stands for 100 fighters. No corner
+  // clusters. No EIS or Markham art is used.
   function shipViewHull(cls) {
     return !!SHIPS[cls];
-  }
-  function fighterClusters(cls, plan) {
-    if (!shipViewHull(cls) || !plan || plan.scale <= 1 || plan.triangles < 1) return [];
-    const groups = Math.min(CLUSTER_MAX, plan.triangles);
-    const base = Math.floor(plan.triangles / groups);
-    let extra = plan.triangles % groups;
-    const lastTri = plan.fighters - plan.scale * (plan.triangles - 1);
-    const clusters = [];
-    let idx = 0;
-    for (let g = 0; g < groups; g++) {
-      const use = base + (extra > 0 ? 1 : 0);
-      if (extra > 0) extra -= 1;
-      let fighters = 0;
-      for (let i = 0; i < use; i++) {
-        fighters += idx === plan.triangles - 1 ? lastTri : plan.scale;
-        idx += 1;
-      }
-      clusters.push({ triangles: use, fighters: fighters });
-    }
-    return clusters;
-  }
-  function measureShipView() {
-    const ship = $("ship");
-    const svg = $("shipSvg");
-    if (!svg) return { held: true };
-    if (ship && ship.hidden) return { held: true, why: "hidden" };
-    const box = svg.getBoundingClientRect();
-    if (box.width < 8 || box.height < 8) return { held: true, why: "collapsed" };
-    const scale = Math.min(box.width / 400, box.height / 260) || 0.2;
-    let padX = 68;
-    let padY = 46;
-    let step = 4.4;
-    let font = 30;
-    if (scale < 0.34) {
-      padX = 78;
-      padY = 54;
-      step = 3.1;
-      font = Math.min(36, 12 / scale);
-    } else if (scale > 0.85) {
-      font = 18;
-    }
-    return { held: false, scale: scale, padX: padX, padY: padY, step: step, font: font };
-  }
-  function clusterAnchors(n, layout) {
-    const padX = layout && layout.padX ? layout.padX : 68;
-    const padY = layout && layout.padY ? layout.padY : 46;
-    const ring = [[padX, padY], [400 - padX, padY], [400 - padX, 260 - padY], [padX, 260 - padY]];
-    return ring.slice(0, n);
   }
   function bindShipPanel() {
     const ship = $("ship");
@@ -555,57 +504,24 @@
     near += '<g data-testid="star-flare" opacity="0.85"><line x1="78" y1="54" x2="78" y2="70" stroke="#f4fbff" stroke-width="0.6"/><line x1="70" y1="62" x2="86" y2="62" stroke="#f4fbff" stroke-width="0.6"/><circle cx="78" cy="62" r="1.5" fill="#ffffff"/></g>';
     return '<g data-testid="starfield-far" data-layer="far">' + far + '</g><g data-testid="starfield-near" data-layer="near">' + near + "</g>";
   }
+  const FIGHTER_DART = "M0,-3.4 L2.5,2.3 L0,0.55 L-2.5,2.3 Z";
   function fighterMarkPath(x, y, rot) {
-    return '<path class="fighter" data-testid="fighter-triangle" d="M0,-3.1 L2.35,2.45 L-2.35,2.45 Z" fill="#ff2a2a" stroke="#ff8888" stroke-width="0.4" transform="translate(' + x.toFixed(1) + " " + y.toFixed(1) + ") rotate(" + rot + ')"/>';
+    return '<path class="fighter" data-testid="fighter-triangle" d="' + FIGHTER_DART + '" fill="#ff2a2a" stroke="#ff8888" stroke-width="0.4" transform="translate(' + x.toFixed(1) + " " + y.toFixed(1) + ") rotate(" + rot + ')"/>';
   }
-  function fighterMarks(plan, cls) {
+  function fighterMarks(plan) {
     const triangles = plan ? plan.triangles : 0;
     if (!triangles) return "";
-    const clusters = fighterClusters(cls, plan);
     const cx = 200, cy = 124;
-    if (clusters.length) {
-      let html = '<g data-testid="fighter-clusters">';
-      const anchors = clusterAnchors(clusters.length);
-      clusters.forEach((cluster, index) => {
-        const ax = anchors[index][0];
-        const ay = anchors[index][1];
-        const dx = cx - ax;
-        const dy = cy - ay;
-        const len = Math.hypot(dx, dy) || 1;
-        const ux = dx / len;
-        const uy = dy / len;
-        const gx = ax + ux * 30;
-        const gy = ay + uy * 22;
-        const cols = Math.max(1, Math.ceil(Math.sqrt(cluster.triangles)));
-        const rows = Math.ceil(cluster.triangles / cols);
-        const rot = (Math.atan2(-uy, -ux) * 180 / Math.PI + 90).toFixed(1);
-        html += '<g data-testid="fighter-cluster" data-count="' + cluster.fighters + '" data-triangles="' + cluster.triangles + '">';
-        for (let i = 0; i < cluster.triangles; i++) {
-          const col = i % cols;
-          const row = Math.floor(i / cols);
-          const ox = (col - (cols - 1) / 2) * 4.4;
-          const oy = (row - (rows - 1) / 2) * 4.0;
-          const x = gx + (-uy) * ox + ux * oy;
-          const y = gy + ux * ox + uy * oy;
-          html += fighterMarkPath(x, y, rot);
-        }
-        const lx = Math.max(16, Math.min(384, ax));
-        const ly = Math.max(14, Math.min(246, ay));
-        html += '<text data-testid="fighter-cluster-count" x="' + lx.toFixed(1) + '" y="' + ly.toFixed(1) + '" text-anchor="middle" dominant-baseline="central">' + cluster.fighters + "</text>";
-        html += "</g>";
-      });
-      return html + "</g>";
-    }
     let html = "";
     let placed = 0;
     let ring = 0;
-    while (placed < triangles && ring < 6) {
-      const rx = Math.min(168, 126 + ring * 16);
-      const ry = Math.min(102, 80 + ring * 10);
-      const room = Math.max(12, Math.floor((2 * Math.PI * ((rx + ry) / 2)) / 6.4));
-      const use = ring >= 3 ? triangles - placed : Math.min(room, triangles - placed);
+    while (placed < triangles && ring < 8) {
+      const rx = Math.min(176, 132 + ring * 14);
+      const ry = Math.min(108, 86 + ring * 8);
+      const room = Math.max(12, Math.floor((2 * Math.PI * ((rx + ry) / 2)) / 8));
+      const use = Math.min(room, triangles - placed);
       for (let i = 0; i < use; i++) {
-        const a = -Math.PI / 2 + ((i + 0.5) / use) * Math.PI * 2;
+        const a = -Math.PI / 2 + ((i + 0.5) / use) * Math.PI * 2 + ring * 0.4;
         const x = cx + Math.cos(a) * rx;
         const y = cy + Math.sin(a) * ry;
         const rot = (a * 180 / Math.PI + 90).toFixed(1);
@@ -701,37 +617,32 @@
   // Layered SVG keeps the ship view under the 300 KB budget. The mesh is
   // window.TW2KHullMeshes (web/hull-meshes.js). Warp clips import the same
   // faces through /static/hull-meshes.mjs.
-  // No WebGL (the probe below fails) falls back to the NOTE 77 outline.
+  // The NOTE 77 outline is only for a missing mesh module. A failed WebGL probe is not a reason to drop the shaded hull.
   const SVGNS = "http://www.w3.org/2000/svg";
-  let shipGlKnown = null;
   let shipForceOutline = false;
   const shipScene = {
     key: "", mode: "", motion: "drift", fit: 1, hold: false, paused: false, damage: 0, raf: 0,
-    faces: [], polys: [], marks: [], shield: null, glow: null,
+    faces: [], polys: [], marks: [], slots: [], shield: null, glow: null,
     userYaw: null, userPitch: null, spin: 0, lastT: null, dragging: false, orbit: 0.85,
   };
   function shipSolidOn() {
     if (shipForceOutline) return false;
-    if (shipGlKnown != null) return shipGlKnown;
-    try {
-      const canvas = document.createElement("canvas");
-      const gl = canvas.getContext("webgl") || canvas.getContext("experimental-webgl");
-      shipGlKnown = !!gl;
-      if (gl) {
-        const lose = gl.getExtension("WEBGL_lose_context");
-        if (lose) lose.loseContext();
-      }
-    } catch (err) {
-      shipGlKnown = false;
-    }
-    return shipGlKnown;
+    const api = window.TW2KHullMeshes;
+    return !!(api && api.buildHullFaces && api.projectFace);
   }
   function shipMotion() {
     const reduce = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
     const phone = window.matchMedia && window.matchMedia("(max-width: 700px)").matches;
-    if (reduce) return "still";
+    const cu = document.body && document.body.classList.contains("cu-seat");
     if (phone) return "static";
+    if (reduce || cu) return "still";
     return "drift";
+  }
+  function shipFit(motion, markers, hull) {
+    if (motion === "static") return 0.72;
+    if (markers >= 80) return 0.76;
+    if (hull === "imperial_starship") return 0.84;
+    return 1.12;
   }
   function meshes() {
     const api = window.TW2KHullMeshes;
@@ -756,27 +667,10 @@
     const sp = Math.sin(pitch);
     return [x1, p[1] * cp - z1 * sp, p[1] * sp + z1 * cp];
   }
-  function fighterSlots(n, orbit) {
-    const slots = [];
-    let left = n;
-    let ring = 0;
-    while (left > 0 && ring < 6) {
-      const radius = 56 + ring * 12;
-      const room = Math.max(10, Math.floor((2 * Math.PI * radius) / 7.4));
-      const use = Math.min(room, left);
-      for (let i = 0; i < use; i++) {
-        const a = orbit * (1 + ring * 0.08) + ((i + 0.5) / use) * Math.PI * 2 + ring * 0.35;
-        slots.push({
-          x: Math.cos(a) * radius,
-          y: (ring % 2 ? 7 : -5) + Math.sin(a * 2) * 1.4,
-          z: Math.sin(a) * radius * 0.58,
-          a: a,
-        });
-      }
-      left -= use;
-      ring += 1;
-    }
-    return slots;
+  function fighterSlots(n, faces, fit) {
+    const api = window.TW2KHullMeshes;
+    if (!api || !api.escortSlots || !faces || !faces.length) return [];
+    return api.escortSlots(n, faces, fit, 0.82, 0.5);
   }
   function stopShipLoop() {
     if (shipScene.raf) cancelAnimationFrame(shipScene.raf);
@@ -889,74 +783,26 @@
     }
     const oy = 124;
     const ox = 200;
-    const clusters = shipScene.clusterNodes || [];
-    if (clusters.length) {
-      const layout = measureShipView();
-      const svg = $("shipSvg");
-      const panel = $("ship");
-      if (svg) svg.setAttribute("data-panel", panel && panel.hidden ? "hidden" : (layout.held ? "collapsed" : "shown"));
-      if (!layout.held) {
-        const fit = shipScene.fit;
-        const anchors = clusterAnchors(clusters.length, layout);
-        const step = layout.step || 4.4;
-        let markIndex = 0;
-        clusters.forEach((cluster, index) => {
-          const ax = anchors[index][0];
-          const ay = anchors[index][1];
-          const dx = ox - ax;
-          const dy = oy - ay;
-          const len = Math.hypot(dx, dy) || 1;
-          const ux = dx / len;
-          const uy = dy / len;
-          const gx = ax + ux * 30 * fit;
-          const gy = ay + uy * 22 * fit;
-          const cols = Math.max(1, Math.ceil(Math.sqrt(cluster.triangles)));
-          const rows = Math.ceil(cluster.triangles / cols);
-          const rot = (Math.atan2(-uy, -ux) * 180 / Math.PI + 90).toFixed(1);
-          for (let i = 0; i < cluster.triangles; i++) {
-            const col = i % cols;
-            const row = Math.floor(i / cols);
-            const stepX = step * fit;
-            const stepY = (step - 0.4) * fit;
-            const offX = (col - (cols - 1) / 2) * stepX;
-            const offY = (row - (rows - 1) / 2) * stepY;
-            const x = gx + (-uy) * offX + ux * offY;
-            const y = gy + ux * offX + uy * offY;
-            const mark = shipScene.marks[markIndex];
-            markIndex += 1;
-            if (!mark) continue;
-            front.appendChild(mark);
-            mark.setAttribute("transform", "translate(" + x.toFixed(1) + " " + y.toFixed(1) + ") rotate(" + rot + ") scale(" + (0.85 * fit).toFixed(2) + ")");
-          }
-          const lx = Math.max(16, Math.min(384, ax));
-          const ly = Math.max(14, Math.min(246, ay));
-          cluster.label.setAttribute("x", lx.toFixed(1));
-          cluster.label.setAttribute("y", ly.toFixed(1));
-          cluster.label.setAttribute("font-size", layout.font.toFixed(1));
-          cluster.label.setAttribute("stroke", "#140006");
-          cluster.label.setAttribute("stroke-width", (layout.font * 0.2).toFixed(1));
-          cluster.label.setAttribute("paint-order", "stroke");
-          cluster.label.setAttribute("fill", "#ffe8e8");
-        });
-      }
-      return;
-    }
-    const slots = fighterSlots(shipScene.marks.length, pose.orbit);
+    const fit = shipScene.fit;
+    const spin = canonical ? 0 : (pose.orbit - 0.85);
+    const cs = Math.cos(spin);
+    const sn = Math.sin(spin);
+    const slots = shipScene.slots || [];
     slots.forEach((slot, i) => {
-      const radius = Math.hypot(slot.x, slot.z / 0.58) || 1;
-      const here = rotPoint([slot.x * shipScene.fit, slot.y * shipScene.fit, slot.z * shipScene.fit], pose.yaw, pose.pitch);
-      const ahead = rotPoint([
-        Math.cos(slot.a + 0.22) * radius * shipScene.fit,
-        slot.y * shipScene.fit,
-        Math.sin(slot.a + 0.22) * radius * 0.58 * shipScene.fit,
-      ], pose.yaw, pose.pitch);
+      const mark = shipScene.marks[i];
+      if (!mark) return;
+      const x0 = slot.x * cs + slot.z * sn;
+      const z0 = -slot.x * sn + slot.z * cs;
+      const y0 = slot.y;
+      const rad = Math.hypot(x0, z0) || 1;
+      const here = rotPoint([x0 * fit, y0 * fit, z0 * fit], pose.yaw, pose.pitch);
+      const ahead = rotPoint([(x0 - z0 / rad * 8) * fit, y0 * fit, (z0 + x0 / rad * 8) * fit], pose.yaw, pose.pitch);
       const sHere = 900 / (430 - here[2]);
       const sAhead = 900 / (430 - ahead[2]);
       const x = ox + here[0] * sHere;
       const y = oy - here[1] * sHere;
       const x2 = ox + ahead[0] * sAhead;
       const y2 = oy - ahead[1] * sAhead;
-      const mark = shipScene.marks[i];
       (here[2] >= 0 ? front : back).appendChild(mark);
       const rot = Math.atan2(y2 - y, x2 - x) * 180 / Math.PI + 90;
       const scale = Math.max(0.55, Math.min(1.15, sHere / 2.15));
@@ -1013,10 +859,9 @@
     if (!svg) return;
     const solid = shipSolidOn();
     const motion = shipMotion();
-    const fit = motion === "static" ? 0.72 : 1.12;
+    const fit = shipFit(motion, plan.triangles, sh.class);
     const tw = !!(sh.transwarp && sh.transwarp.fitted);
     const glow = shipViewHull(sh.class);
-    const clusters = fighterClusters(sh.class, plan);
     const photons = Number(sh.photon_missiles || 0) > 0 ? 1 : 0;
     const scan = sh.scanner ? 1 : 0;
     const key = [sh.class || "", plan.fighters, plan.triangles, solid ? "s" : "o", tw ? 1 : 0, fit, motion, glow ? 1 : 0, photons, scan].join("|");
@@ -1031,16 +876,16 @@
     if (shipScene.key !== key) {
       shipScene.key = key;
       stopShipLoop();
-      shipScene.clusterNodes = [];
       if (!solid) {
         svg.innerHTML = '<g data-testid="starfield">' + starfield(glow) + "</g>"
           + '<g class="hull-float" data-testid="ship-hull">'
           + '<g data-testid="ship-body" data-model="outline" transform="translate(200 124)">' + shipBody(sh, def) + "</g>"
-          + fighterMarks(plan, sh.class)
+          + fighterMarks(plan)
           + "</g>";
         shipScene.faces = [];
         shipScene.polys = [];
         shipScene.marks = [];
+        shipScene.slots = [];
         shipScene.shield = null;
         shipScene.glow = null;
         shipScene.scars = null;
@@ -1093,32 +938,14 @@
           const path = document.createElementNS(SVGNS, "path");
           path.setAttribute("class", "fighter");
           path.setAttribute("data-testid", "fighter-triangle");
-          path.setAttribute("d", "M0,-3.1 L2.35,2.45 L-2.35,2.45 Z");
+          path.setAttribute("d", FIGHTER_DART);
           path.setAttribute("fill", "#ff2a2a");
           path.setAttribute("stroke", "#ff8888");
           path.setAttribute("stroke-width", "0.4");
           back.appendChild(path);
           shipScene.marks.push(path);
         }
-        if (clusters.length) {
-          const layer = document.createElementNS(SVGNS, "g");
-          layer.setAttribute("data-testid", "fighter-clusters");
-          svg.querySelector("[data-testid=ship-hull]").appendChild(layer);
-          clusters.forEach((cluster) => {
-            const g = document.createElementNS(SVGNS, "g");
-            g.setAttribute("data-testid", "fighter-cluster");
-            g.setAttribute("data-count", String(cluster.fighters));
-            g.setAttribute("data-triangles", String(cluster.triangles));
-            const label = document.createElementNS(SVGNS, "text");
-            label.setAttribute("data-testid", "fighter-cluster-count");
-            label.setAttribute("text-anchor", "middle");
-            label.setAttribute("dominant-baseline", "central");
-            label.textContent = String(cluster.fighters);
-            g.appendChild(label);
-            layer.appendChild(g);
-            shipScene.clusterNodes.push({ node: g, label: label, triangles: cluster.triangles, fighters: cluster.fighters });
-          });
-        }
+        shipScene.slots = fighterSlots(plan.triangles, shipScene.faces, fit);
       }
     }
     bindShipDrag();
@@ -1210,7 +1037,6 @@
     ensureShipViewCss();
     bindShipPanel();
     const plan = fighterPlan(sh.fighters);
-    const clusters = fighterClusters(sh.class, plan);
     const svg = $("shipSvg");
     if (!svg) return;
     svg.setAttribute("data-hull", sh.class || "ship");
@@ -1219,21 +1045,19 @@
     svg.setAttribute("data-triangles", String(plan.triangles));
     svg.setAttribute("data-scale", String(plan.scale));
     svg.setAttribute("data-prototype", shipViewHull(sh.class) ? "1" : "0");
-    svg.setAttribute("data-clusters", String(clusters.length));
+    svg.setAttribute("data-clusters", "0");
     svg.setAttribute("aria-label", def.name + ", " + fmt(plan.fighters) + " fighters");
     svg.setAttribute("data-meshes", (window.TW2KHullMeshes && window.TW2KHullMeshes.version) || "");
     svg.setAttribute("data-look", (window.TW2KHullMeshes && window.TW2KHullMeshes.look) || "");
-    svg.setAttribute("data-cluster-rule", "200 exact; above that scale=ceil(n/200), triangles=ceil(n/scale), <=4 corner clusters, counts sum to n");
+    svg.setAttribute("data-marker-rule", "n<1 none; else max(1, ceil(n/100)); each marker = 100 fighters");
     renderShipScene(sh, def, plan);
     ensureShipChrome(sh, def);
     const row = $("fighterRow");
-    row.title = "One red triangle is one fighter, up to 200. Above 200, scale = ceil(fighters / 200) and the picture draws ceil(fighters / scale) triangles in at most 4 corner clusters. Each cluster count is the fighters those triangles stand for. The counts add up to the bay.";
-    if (plan.scale > 1) {
-      const word = plan.scale === 1 ? "fighter" : "fighters";
-      row.innerHTML = '<span class="fighter-legend" data-testid="fighter-legend">each triangle = ' + plan.scale + " " + word + "</span>"
-        + '<span class="fighter-rule" data-testid="fighter-cluster-rule">Counts add to the bay.</span>';
+    row.title = "Each marker stands for 100 fighters. The stat line keeps the exact bay. A last marker may be a partial hundred.";
+    if (plan.triangles > 0) {
+      row.innerHTML = '<span class="fighter-legend" data-testid="fighter-legend">each marker = 100 fighters</span>';
     } else {
-      row.innerHTML = '<span class="fighter-rule" data-testid="fighter-cluster-rule">One red triangle is one fighter.</span>';
+      row.innerHTML = "";
     }
   }
 

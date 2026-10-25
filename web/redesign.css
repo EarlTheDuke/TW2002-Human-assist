@@ -57,6 +57,7 @@ select{background:#000;color:var(--c);border:1px solid var(--dc);font:inherit;ma
 @keyframes ship-float{0%,100%{transform:translateY(0)}50%{transform:translateY(-9px)}}
 @media (prefers-reduced-motion:reduce){#shipSvg .hull-float{animation:none}}
 @media (max-width:700px){#shipSvg .hull-float{animation:none}}
+body.cu-seat #shipSvg .hull-float{animation:none}
 #shipSvg.is-drag{cursor:grabbing}
 #fighterRow,#shipStats,#holds{flex:0 0 auto}
 #shipStats{padding:6px 10px;display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,11em),1fr));gap:2px 14px;font-size:13px}
