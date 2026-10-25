@@ -139,7 +139,7 @@ def _browser(width: int, height: int) -> None:
 
             _show(host, page, "scout_marauder", 40, 5000)
             assert page.locator("[data-testid=fighter-cluster]").count() == 0
-            assert page.locator("[data-testid=fighter-triangle]").count() == 40
+            assert page.locator("[data-testid=fighter-triangle]").count() == 1
             _stats(page, 40)
 
             _show(host, page, "imperial_starship", 2000, 5000, "ok")
@@ -189,7 +189,8 @@ def _browser(width: int, height: int) -> None:
             page.locator("[data-testid=layout-open]").click()
             page.locator("[data-testid=hide-ship]").click()
             page.wait_for_function("() => document.querySelector('#ship').hidden === true", timeout=10_000)
-            assert page.locator("[data-testid=fighter-cluster]").count() == 4
+            assert page.locator("[data-testid=fighter-cluster]").count() == 0
+            assert page.locator("[data-testid=fighter-triangle]").count() == 50
             page.locator("[data-testid=show-panel-ship]").click()
             page.wait_for_function(
                 """() => {
@@ -303,28 +304,28 @@ def _clusters_tidy(page, fighters: int) -> None:
     report = page.evaluate(
         """(fighters) => {
           const svg = document.querySelector('#shipSvg');
-          const ship = document.querySelector('#ship').getBoundingClientRect();
           const box = svg.getBoundingClientRect();
-          const nodes = [...svg.querySelectorAll('[data-testid=fighter-cluster]')];
-          const counts = nodes.map((el) => Number(el.getAttribute('data-count')));
-          const labels = [...svg.querySelectorAll('[data-testid=fighter-cluster-count]')].map((el) => el.getBoundingClientRect());
-          const inside = labels.every((r) => r.width > 2 && r.height > 2
-            && r.left >= box.left - 4 && r.right <= box.right + 4
-            && r.top >= box.top - 4 && r.bottom <= box.bottom + 4
-            && r.left >= ship.left - 4 && r.right <= ship.right + 4);
-          const centers = labels.map((r) => [(r.left + r.right) / 2, (r.top + r.bottom) / 2]);
-          let separated = centers.length >= 2;
-          for (let i = 0; i < centers.length; i++) {
-            for (let j = i + 1; j < centers.length; j++) {
-              if (Math.hypot(centers[i][0] - centers[j][0], centers[i][1] - centers[j][1]) < 10) separated = false;
-            }
-          }
+          const clusters = svg.querySelectorAll('[data-testid=fighter-cluster]').length;
+          const darts = [...svg.querySelectorAll('[data-testid=fighter-triangle]')];
+          const markers = fighters < 1 ? 0 : Math.max(1, Math.ceil(fighters / 100));
+          const legend = document.querySelector('[data-testid=fighter-legend]');
+          const legendText = legend ? legend.textContent.trim() : '';
+          const legendOk = markers > 0 ? legendText === 'each marker = 100 fighters' : !legend;
           const body = svg.querySelector('[data-testid=ship-body]').getBoundingClientRect();
+          let inside = true;
+          darts.forEach((el) => {
+            const r = el.getBoundingClientRect();
+            if (r.width < 0.2 || r.height < 0.2) return;
+            if (r.right < box.left - 2 || r.left > box.right + 2 || r.bottom < box.top - 2 || r.top > box.bottom + 2) inside = false;
+          });
+          const panel = document.querySelector('#ship');
           return {
-            ok: nodes.length === 4 && counts.reduce((a, b) => a + b, 0) === fighters
-              && inside && separated && body.width > 8 && body.height > 8
-              && !document.querySelector('#ship').hidden && svg.getAttribute('data-panel') !== 'hidden',
-            counts, inside, separated, panel: svg.getAttribute('data-panel'),
+            ok: clusters === 0 && darts.length === markers && legendOk && inside
+              && body.width > 4 && body.height > 4
+              && !panel.hidden && svg.getAttribute('data-panel') !== 'hidden'
+              && svg.getAttribute('data-clusters') === '0',
+            clusters, markers: darts.length, expect: markers, legendText, inside,
+            panel: svg.getAttribute('data-panel'),
             svg: {w: Math.round(box.width), h: Math.round(box.height)},
             body: {w: Math.round(body.width), h: Math.round(body.height)},
           };
