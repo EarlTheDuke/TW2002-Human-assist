@@ -2,6 +2,8 @@
 
 Parents: [P0 pack](cockpit-ship-stage-p0.md), [silhouette bible](cockpit-ship-stage-p0-silhouette-bible.md), [render decision](cockpit-ship-stage-p0-render.md), [four-hull wave](cockpit-ship-stage-p1b-next-hulls.md), [fleet order](cockpit-ship-stage-p1b-fleet-order.md).
 
+Stills for this sheet are listed in the [stills inventory](stills/README.md) (#344) under [p1b-batch1-escape-orion](stills/p1b-batch1-escape-orion/).
+
 Docs only. This sheet does not change `web/*`, the engine, or tests. Classic top-and-front ANSI for every hull stays **UNVERIFIED**. Do not open, trace, or approximate EIS prints, EIS wallpaper, or Drew Markham ANSI. Looks below are invented from the public role numbers on `POD_SPEC`, `SHIP_SPECS_TW2002`, and `SHIP_ROSTER_LIVE_TABLE` in `src/tw2k/engine/constants.py`, and from the one-paragraph pictures already in the bible. The pod's live row is `SHIP_ROSTER_LIVE_POD`, not a key on the live table. This sheet is the mesh contract for the two fleet-order batch-1 hulls that still have no contract after the four in [cockpit-ship-stage-p1b-next-hulls.md](cockpit-ship-stage-p1b-next-hulls.md), so a follow-on does not turn the stub fins into canards or the crescent into a second needle.
 
 ## Implement after the spike and the four-hull wave
