@@ -59,17 +59,23 @@ Missile Frigate, BattleShip, Havoc GunStar.
 
 Done when the shared bar holds for all three, and a covered-name reader separates BattleShip / Havoc (turrets on a wide wedge versus a split prow) at both sizes. The Frigate reads as a photon boat: two dorsal missiles larger than the canopy. The Imperial from the spike is re-shot so those missiles stay larger than its forward barrels. Cap markers: Frigate 50, BattleShip 100, Havoc 100.
 
+Product stills scaffold: [`cockpit-ship-stage-p1b-batch3-guns-product.md`](cockpit-ship-stage-p1b-batch3-guns-product.md) (#337, `d211b4e9`). Stills directory: [`stills/p1b-batch3-guns/`](stills/p1b-batch3-guns/). The scaffold does not stamp Pass. It does not change this batch's place or the gate above.
+
 ### Batch 4 — dish, X, and the other capital
 
 Star Master, Constellation, Corporate FlagShip.
 
 Done when the shared bar holds for all three, and a covered-name reader separates FlagShip / Imperial / Star Master (tall tower versus long castle versus a dish) at both sizes. The Constellation reads as an X of four nacelles, with no castle, no dish, and no prongs. Cap markers: Star Master 50, Constellation 50, FlagShip 200. The Imperial is re-shot beside the tower.
 
+Product stills scaffold: [`cockpit-ship-stage-p1b-batch4-dish-product.md`](cockpit-ship-stage-p1b-batch4-dish-product.md) (#339, `c01ebb2f`). Stills directory: [`stills/p1b-batch4-dish/`](stills/p1b-batch4-dish/). The scaffold does not stamp Pass. It does not change this batch's place or the gate above.
+
 ### Batch 5 — brick and hoops
 
 Tholian Sentinel, Interdictor Cruiser. Two hulls, on purpose. The Interdictor's full bay is 1,000 markers outside a hoop that is larger than the body. That measurement is the Cur. A third new silhouette in the same PR would hide a frame miss inside an art miss.
 
 Done when the shared bar holds for both, and a covered-name reader separates Tholian / Colonial (short plated brick versus tall cabin box) and Constellation / Interdictor (an X of engines versus two hoops) at both sizes. Colonial and Constellation are re-shot from their merged batches. Interdictor markers: 1,000 at 100,000 fighters, orbiting outside the hoops. Reuse the marker grouping the spike recorded for the throwaway 1,000-ring (one group moved by a transform, or one canvas layer for markers only). The count formula does not gain a silent cap. Record the drift frame time at 1,000 on this hull, the one whose hoops are real.
+
+Product stills scaffold: [`cockpit-ship-stage-p1b-batch5-brick-product.md`](cockpit-ship-stage-p1b-batch5-brick-product.md) (#340, `75997134`). Stills directory: [`stills/p1b-batch5-brick/`](stills/p1b-batch5-brick/). The scaffold does not stamp Pass. It does not change this batch's place or the gate above.
 
 ## Per hull
 
