@@ -2,6 +2,8 @@
 
 Read-test for the batch-2 hauler wave. Docs only. Tip surveyed: `feature/grokbot-player` @ `d575a9e6`.
 
+Stills for this sheet are listed in the [stills inventory](stills/README.md) (#344) under [p1b-batch2-haulers](stills/p1b-batch2-haulers/).
+
 Taken from these sheets, which this file does not replace:
 
 - [Batch 2 haulers](cockpit-ship-stage-p1b-batch2-haulers.md) — the mesh contract for this wave. Spine, belly tanks, saddle, accents, and the numbered checks live there.
