@@ -123,6 +123,8 @@ Reply with one of these three. Pass means every item on the bar above holds, inc
 
 Hold-WebGL stays closed. The [P1 pass](cockpit-ship-stage-p1-pass.md) closed it. This cut does not reopen it on its own.
 
+**Pass.** The BattleShip and Corporate FlagShip read-test passed on PR #268 (`b0e96881`), on the parent path of tip `feature/grokbot-player` @ `07b0919c`. Meshes, stills, and tests landed. Shared SVG path (`buildHullFaces` / `projectFace`). Markers are `max(1, ceil(n / 100))` when `n ≥ 1`. BattleShip is 226 faces. Corporate FlagShip is 210 faces. `web/hull-meshes.js` is 10,426 bytes gzipped (level 9), under 40 KB. Stills: `docs/plans/stills/p1b-battleship-flagship/`. Tests local 15. WebGL stays off. The other eleven hulls stay on `fleet-glass-v1`.
+
 ### Pass
 
 Both hulls pass the three-quarter and head-on reads, at ~140px and at the hero crop, at shields 0 and shields full. The FlagShip tower stays a tower beside the Imperial castle, and it stays flat `#ff77ff` with a fitted drive and at shields 0. The BattleShip barrels break the top edge and the ring clears them. Marker rows match the formula, and no marker box cuts the silhouette. CU-seat, reduced motion, and the phone still stay on the canonical still. The cumulative gzip size is under 40 KB, and the face counts are recorded. The fleet-glass pins for these two keys moved in that same change. Stay on the shared SVG (`buildHullFaces` / `projectFace`). WebGL stays the closed off-ramp. The other eleven wait.
