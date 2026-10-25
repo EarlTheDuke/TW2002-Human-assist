@@ -11,17 +11,16 @@ MESHES = ROOT / "web" / "hull-meshes.js"
 JS = ROOT / "web" / "redesign.js"
 CSS = ROOT / "web" / "redesign.css"
 
-# Point hashes of the fleet-glass hulls (detail "bridge", engines 2). The spike
-# must not move these. Merchant and Imperial are not in this table.
+# Point hashes of the hulls that stay on fleet-glass (detail "bridge", engines 2).
+# Merchant, Imperial, Scout, and Freighter are cut on the spike path and are
+# not in this table.
 FLEET_GLASS = {
     "escape_pod": ("119", "4bf27da8aa208997"),
-    "scout_marauder": ("125", "cd430d91fe77a4ae"),
     "missile_frigate": ("135", "eed600b7b1126d27"),
     "battleship": ("141", "0661d59578030a5d"),
     "corporate_flagship": ("125", "210dceed430f5b61"),
     "colonial_transport": ("153", "311e19b90923c6c4"),
     "cargotran": ("123", "ff5708682381d5f3"),
-    "merchant_freighter": ("153", "b8e92acdf27dee3e"),
     "havoc_gunstar": ("147", "a1abdd87ac67f243"),
     "star_master": ("127", "694a795927c02cbe"),
     "constellation": ("183", "f1a9a05ad8ba5fcc"),
@@ -177,7 +176,7 @@ def test_spike_hulls_keep_class_accent_when_shields_are_empty() -> None:
         assert br < 90 and br < bb + 20 and br <= bg + 15
 
 
-def test_other_fifteen_hulls_keep_fleet_glass_points() -> None:
+def test_fleet_glass_hulls_keep_their_points() -> None:
     report = _report()
     for hull, (faces, digest) in FLEET_GLASS.items():
         got = report["others"][hull]
