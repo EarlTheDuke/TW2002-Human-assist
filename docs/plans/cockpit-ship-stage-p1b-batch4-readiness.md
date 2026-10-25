@@ -1,5 +1,7 @@
 # P1b batch-4 readiness — Star Master and Constellation
 
+The stills inventory is [stills/README.md](stills/README.md) (#344), directory [p1b-batch4-dish](stills/p1b-batch4-dish/).
+
 Gate status only. Docs only. Branch tip: `feature/grokbot-player` @ `46529081` (#333). #333 landed the [batch-3 readiness](cockpit-ship-stage-p1b-batch3-readiness.md) note on parent `6df3b11c` (#332). #332 refreshed the four-hull tip to `a1f95e30`. #339 (`c01ebb2f`) opened the [batch 4 dish product](cockpit-ship-stage-p1b-batch4-dish-product.md) stills scaffold and the [p1b-batch4-dish](stills/p1b-batch4-dish/) directory. This note does not move the recorded tip. This note records the wait for the dish and the X. Meshes stay as this tip left them. This note does not stamp Pass.
 
 Sticky order stays P1 SVG, then P1b, then P2, then P3. Finder: [cockpit-ship-stage-INDEX.md](cockpit-ship-stage-INDEX.md). Standing queue: [COMMANDER_NEXT.md](COMMANDER_NEXT.md). Product order: [four-hull build](cockpit-ship-stage-p1b-four-hull-build.md) (#219). Fleet sequence: [fleet order](cockpit-ship-stage-p1b-fleet-order.md) (#196, `281680c5`).

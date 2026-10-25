@@ -1,5 +1,7 @@
 # P1b batch-3 readiness — Missile Frigate and Havoc GunStar
 
+The stills inventory is [stills/README.md](stills/README.md) (#344), directory [p1b-batch3-guns](stills/p1b-batch3-guns/).
+
 Gate status only. Docs only. Branch tip: `feature/grokbot-player` @ `6df3b11c` (#332). #332 refreshed the four-hull tip to `a1f95e30`. #337 (`d211b4e9`) opened the [batch 3 guns product](cockpit-ship-stage-p1b-batch3-guns-product.md) stills scaffold and the [p1b-batch3-guns](stills/p1b-batch3-guns/) directory. This note does not move the recorded tip. This note records that the batch-2 Pass cleared the gate. Missile Frigate and Havoc GunStar are the live product cut. Meshes stay as this tip left them. This note does not stamp Pass.
 
 Sticky order stays P1 SVG, then P1b, then P2, then P3. Finder: [cockpit-ship-stage-INDEX.md](cockpit-ship-stage-INDEX.md). Standing queue: [COMMANDER_NEXT.md](COMMANDER_NEXT.md). Product order: [four-hull build](cockpit-ship-stage-p1b-four-hull-build.md) (#219).
