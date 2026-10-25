@@ -3,7 +3,7 @@ Generated 2026-10-03 (PT) for Ben. Refreshed 2026-10-10 against origin tip `6296
 
 The tables in sections 1-14 started as the 2026-10-03 baseline. Where a later slice changed the code, section 15 is the status that counts. Live TWGS rows are section 16. Game 5 rows are section 17. The slice order for 73+ is section 18. The write-up with file:line cites is `docs/plans/gap-map-refresh-v1.md`. Line numbers in the new sections are from `62961c5`. The counts and the 15-step list below are the October 3 picture.
 
-The live grade of all 171 rows is `docs/plans/gap-map-refresh-v6.md`: 75 Match, 93 Match-behind-flag, 2 Partial, 0 Different, 0 Missing, 1 Ben-decision. Sections 1-14 were synced to that file where v6 says Match or Match-behind-flag. That sync is a cell update, and the October count table stays the 2026-10-03 grid. Section 23 lists the rows left with open PRs and the rows v6 still calls Partial, Different, or Ben-decision.
+The live grade of all 171 rows is `docs/plans/gap-map-refresh-v6.md`: 75 Match, 94 Match-behind-flag, 1 Partial, 0 Different, 0 Missing, 1 Ben-decision. Sections 1-14 were synced to that file where v6 says Match or Match-behind-flag. That sync is a cell update, and the October count table stays the 2026-10-03 grid. Section 23 lists the rows left with open PRs and the rows v6 still calls Partial, Different, or Ben-decision.
 
 ## Plain-words summary (15 lines)
 1. Trade Wars 2002 is a space game: you fly a ship, buy goods cheap at one space-port, sell them for more at another, build planets, and fight other players.
@@ -75,7 +75,7 @@ Later / lower value: port attack and building (2.15-2.16), Galactic Bank, Tavern
 | 14. Anything else notable | 0 | 1 | 2 | 3 | 6 |
 | **All** | **9** | **34** | **59** | **69** | **171** |
 
-Those 9 / 34 / 59 / 69 figures are the 2026-10-03 grid. The live totals are in `docs/plans/gap-map-refresh-v6.md` (75 Match, 93 Match-behind-flag, 2 Partial, 0 Different, 0 Missing, 1 Ben-decision).
+Those 9 / 34 / 59 / 69 figures are the 2026-10-03 grid. The live totals are in `docs/plans/gap-map-refresh-v6.md` (75 Match, 94 Match-behind-flag, 1 Partial, 0 Different, 0 Missing, 1 Ben-decision).
 
 Source tags across rows: CONFIRMED 128, SOURCE-CONFLICT 19, UNVERIFIED 24 (a row counts as the worst tag it carries).
 
@@ -347,7 +347,7 @@ Row 1.6 Class L colonist evidence: Sat Grok L3 (`82578bfe`) hit false class-cap 
 | 12.1 Turns per day | Classic Big Bang: 250 turns/day (cabal glossary); sample live game 750; Cabal income table assumes a 1000-turn game. [cabal glossary.html, Gypsy_Big_Dummies_Guide.html, cabal corps.html] SOURCE-CONFLICT | K.STARTING_TURNS_PER_DAY 1000 (cli --turns-per-day overrides). | Match | S / Low |
 | 12.2 Turn recovery | v3 gives back spent turns every hour (pro-rated), not only at midnight. [EIS GeneralUpdated.html, REV v3.00] CONFIRMED | `TURN_REGEN_MODE` row 5. Turns can come back across 24 hours. `LIVE_PACE_MODE` row 6 goes with it. `constants.turn_regen_live`. | Match-behind-flag | S / Low (suits a turn-based match; a human decision) |
 | 12.3 Real-time movement and attacks | v3 ships move and attack at a speed set by ship size; fast ships escape slow ones. [EIS GeneralUpdated.html] CONFIRMED | R12 A. Ships spend turns. The day may roll on the clock. Planets produce when the day changes. `PLANET_REALTIME_PROD_MODE` stays off. | Match | L / Low (deliberate) |
-| 12.4 Nightly Extern | Port regen, planet production, bust clearing, FedSpace clean-up, tows, corp/player timeouts, Class 0 price change, dead players return. [cabal glossary.html, EIS GeneralUpdated.html] CONFIRMED | tick_day runs the nightly jobs that are already built. `INACTIVE_USER_MODE` (NOTE 151) deletes a disconnected human after 30 quiet wall-clock days, and only in a game generated with the switch already on. A connected seat and an AI cockpit seat stay. `INACTIVITY_TIMEOUT_MODE` sleeps a quiet lobby game after 14,400 seconds. Both stay off. | Partial | M / Med |
+| 12.4 Nightly Extern | Port regen, planet production, bust clearing, FedSpace clean-up, tows, corp/player timeouts, Class 0 price change, dead players return. [cabal glossary.html, EIS GeneralUpdated.html] CONFIRMED | The printed Extern and midnight jobs run from `runner.tick_day`. Collisions and Class 0 / Class 9 rebuilds stay `PLANET_COLLISION_MODE` and `SPECIAL_PORT_DEFENCE_MODE`. `INACTIVE_USER_MODE` and `INACTIVITY_TIMEOUT_MODE` stay off. MSL citadels stay `CLASS0_EXTERN_PLANET_RULE` keep. NavHaz outside FedSpace stays the MBBS 3 percent. No new switch. | Match-behind-flag | M / Med |
 | 12.5 Game end | No built-in win; sysop sets duration or tournament rules; scores are exp/alignment ranks. [Bible, EIS TradeWars.html] CONFIRMED (UNVERIFIED if any other end exists) | `EXP_SCORE_MODE` ranks a day-cap finish by experience. The day cap, the last player standing, the 100,000,000 credit bar, and a creator end have no printed v3.11 number, so they stay. The end text is the GAME OVER panel. | Match-behind-flag | S / Low (deliberate; keep) |
 | 12.6 Tournament mode | Kill/pod thresholds with lockout and max times blown up. [TWGS_v2_Revision_History.html] CONFIRMED | The v3.11 sample prints Tournament Mode Off and Maximum times blown up Unlimited. `TIMES_BLOWN_MODE` (NOTE 164, row 202) says so on the legacy destroy line when elimination is off, and stays off. `DEATH_DELAY_MODE` is the timeout. A later lockout was not added. | Match-behind-flag | S / Low |
 | 12.7 Daily stats screens | Real-time game stats (V screen): ports, planets, traders, aliens, fighters and mines in use. [Gypsy_Big_Dummies_Guide.html, EIS GeneralUpdated.html] CONFIRMED | `DAILY_STATS_MODE` row 47. The daily stats screen is coded and off. `observation.build_observation`. | Match-behind-flag | S / Low |
@@ -501,7 +501,7 @@ Row 6.3 is Match-behind-flag. The printed colonist maximums and stock caps were 
 
 ## 23. October table sync to v6
 
-`docs/plans/gap-map-refresh-v6.md` is the live grade at this tip: 75 Match, 93 Match-behind-flag, 2 Partial, 0 Different, 0 Missing, 1 Ben-decision. Sections 1-14 had their Status and Ours cells rewritten where v6 says Match or Match-behind-flag and the October cell was still Missing, Different, or Partial. Cites name the switch and the helper. No engine switch was added. The 9 / 34 / 59 / 69 count table stays the 2026-10-03 grid.
+`docs/plans/gap-map-refresh-v6.md` is the live grade at this tip: 75 Match, 94 Match-behind-flag, 1 Partial, 0 Different, 0 Missing, 1 Ben-decision. Sections 1-14 had their Status and Ours cells rewritten where v6 says Match or Match-behind-flag and the October cell was still Missing, Different, or Partial. Cites name the switch and the helper. No engine switch was added. The 9 / 34 / 59 / 69 count table stays the 2026-10-03 grid.
 
 `docs/reference/tw2002/GAP_MAP.md` received the same Status and Ours text on the rows this pass changed. It has no sections 15-22.
 
@@ -529,7 +529,7 @@ Rows left with the open PR that already rewrites the cell:
 | 11.7 | This file is now Match-behind-flag (`UG_NAME_MODE`, `tavern.handle_rename`). The reference twin keeps the NOTE 129 100-credit deal; declining pays nothing. |
 | 11.8 | This file is now Match (`TAVERN_MODE`, `constants.tavern_on`). The reference twin stays Building because #155 and #160 rewrite the Tri-Cron note on that copy. |
 | 12.3 | R12 A grades Match. Ships spend turns. `PLANET_REALTIME_PROD_MODE` stays off. |
-| 12.4 | v6 stays Partial. Leftover nightly jobs have no named switch. |
+| 12.4 | Match-behind-flag. Printed Extern and midnight jobs are in `runner.tick_day`. Collisions, rebuilds, inactive deletion, and the lobby timeout stay on existing switches. |
 | 14.1 | #152 rewrites the computer-menu cell. |
 
 Also left as they stood: 1.5 (Ben-decision, StarDock sector), 2.15 (v6 Partial, port attack ratings). 4.8 is counted once as Match-behind-flag: detonation is Match (stored half-count at 20) and the shop unit price is `HARDWARE_PRICE_MODE` row 14 (stored 100, live card 1,000). The cabal $4,000 TEDIT sample is not a third price. 1.6 is Match (R1 A, Terra 100,000). 4.1 is Match (`GENESIS_TORPEDO_COST` 25,000). 6.3 is Match-behind-flag (#183 handbook curve), not a Ben-decision. 7.4 stays "Match; shot order Match-behind-flag" here and Match on the reference twin. 4.10 stays Partial here for duration. Cabal and the modern manual print 1 second, Gypsy prints 10, and GameA prints 20 Sec. `PHOTON_WAVE_DURATION` stays 1 day-tick. No duration switch was added. The FedSpace card is already `PHOTON_CLOAK_SETTINGS_MODE` row 230.
