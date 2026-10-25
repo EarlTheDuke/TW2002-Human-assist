@@ -2,6 +2,8 @@
 
 Read-test for cut 2. Docs only. Tip surveyed: `feature/grokbot-player` @ `22c8a144`.
 
+Stills for this sheet are listed in the [stills inventory](stills/README.md) (#344) under [p1b-battleship-flagship](stills/p1b-battleship-flagship/).
+
 Taken from these sheets, which this file does not replace:
 
 - [Four-hull build](cockpit-ship-stage-p1b-four-hull-build.md) — product order. Cut 1 is Scout Marauder and Merchant Freighter. This sheet is cut 2.

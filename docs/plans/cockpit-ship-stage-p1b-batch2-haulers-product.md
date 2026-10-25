@@ -2,6 +2,8 @@
 
 Parent: [batch 2 haulers](cockpit-ship-stage-p1b-batch2-haulers.md). Same path as the [P1 spike](cockpit-ship-stage-p1-spike.md) and the cuts already on `feature/grokbot-player`: `buildHullFaces` / `projectFace` in `web/hull-meshes.js`. No three.js. WebGL stays off. This sheet records the measured faces. It does not stamp Pass.
 
+Stills for this sheet are listed in the [stills inventory](stills/README.md) (#344) under [p1b-batch2-haulers](stills/p1b-batch2-haulers/).
+
 CargoTran (`cargotran`), Colonial Transport (`colonial_transport`), and Taurean Mule (`taurean_mule`) leave `fleet-glass-v1` on this wave. Merchant Cruiser, Imperial StarShip, Scout Marauder, Merchant Freighter, BattleShip, Corporate FlagShip, Escape Pod, and T'Khasi Orion stay on the faces they already had. The other six hulls stay on `fleet-glass-v1`.
 
 Panel names stay `CargoTran`, `Colonial Transport`, and `Taurean Mule`. Accents are the panel `SHIPS` row. The `detail` string on all three stays `pods`. That token does not grow shoulder pods or Freighter cheeks: the face list is the same for `pods`, `bridge`, and an empty detail. Section token stays `box`. Marker counts use `max(1, ceil(n / 100))` when `n ≥ 1`. CargoTran cap 400 is 4 markers. Colonial cap 200 is 2. Taurean Mule cap 300 is 3. A partial last hundred has no numeral. The legend stays `each marker = 100 fighters`.
