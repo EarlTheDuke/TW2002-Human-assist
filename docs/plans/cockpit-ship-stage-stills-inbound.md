@@ -1,6 +1,6 @@
 # Cockpit ship-stage stills — inbound map
 
-Docs only. This sheet lists which planning files on `feature/grokbot-player` @ `5549cc94` (#357) already point at the [stills inventory](stills/README.md) (#344). It does not stamp Pass. It adds no PNG. It leaves every other sheet as this tip left it.
+Docs only. This sheet lists which planning files on `feature/grokbot-player` @ `2107f2a8` (#358) already point at the [stills inventory](stills/README.md) (#344). It does not stamp Pass. It adds no PNG. It leaves every other sheet as this tip left it.
 
 The inventory table has eight directories. The new row is [p1-merchant-imperial](stills/p1-merchant-imperial/) (#357): Merchant Cruiser and Imperial StarShip. That row is a TBD scaffold. It holds a placeholder README and no PNG.
 
@@ -14,8 +14,8 @@ Scan rule: a hit is the literal string `stills/README.md` under `docs/plans/`. A
 
 ## P1
 
-- [P1 acceptance](cockpit-ship-stage-p1-acceptance.md) — dedicated link.
-- [P1 spike](cockpit-ship-stage-p1-spike.md) — dedicated link. The linked sentence still says the inventory lists no directory for the Merchant Cruiser or the Imperial StarShip, and no P1 stills. The inventory row for [p1-merchant-imperial](stills/p1-merchant-imperial/) is on this tip (#357).
+- [P1 acceptance](cockpit-ship-stage-p1-acceptance.md) — dedicated link, directory [p1-merchant-imperial](stills/p1-merchant-imperial/) (#358). TBD scaffold, no PNG.
+- [P1 spike](cockpit-ship-stage-p1-spike.md) — dedicated link to the same directory (#358). TBD scaffold, no PNG.
 - [p1-merchant-imperial README](stills/p1-merchant-imperial/README.md) — points at the index with a relative link (`../README.md`). The file does not contain the literal string `stills/README.md`. Placeholder README, no PNG.
 
 ## P1b
@@ -69,7 +69,7 @@ These sheets contain no `stills/README.md` string. This map leaves them as they 
 - Acceptance: [batch 3](cockpit-ship-stage-p1b-batch3-acceptance.md), [batch 4](cockpit-ship-stage-p1b-batch4-acceptance.md), [batch 5](cockpit-ship-stage-p1b-batch5-acceptance.md). Each already links its stills directory and its product scaffold. Batch 1 and batch 2 acceptance link the inventory.
 - Contracts: [batch 3 guns](cockpit-ship-stage-p1b-batch3.md), [batch 4 dish and X](cockpit-ship-stage-p1b-batch4.md), [batch 5 brick and hoops](cockpit-ship-stage-p1b-batch5.md). Each already links its stills directory. The batch-2 contract and the next-hulls contract link the inventory.
 - Readiness: [batch 1 readiness](cockpit-ship-stage-p1b-batch1-readiness.md). Batch 3, 4, and 5 readiness link the inventory. [P2 readiness](cockpit-ship-stage-p2-readiness.md) names measured stills sheets and does not name the inventory. The P2 wire's only hits are the tip-history paragraph above.
-- P1: [P1 pass](cockpit-ship-stage-p1-pass.md). P1 acceptance and the P1 spike link the inventory. The new directory is `p1-merchant-imperial`.
+- P1: [P1 pass](cockpit-ship-stage-p1-pass.md). P1 acceptance and the P1 spike link the inventory and name `p1-merchant-imperial` (#358). The pass sheet does not.
 - P0: [FX state machine](cockpit-ship-stage-p0-fx.md). The P0 pack, the render decision, and the silhouette bible link the inventory.
 
 Also scanned, and left off this list: [fighter marker math](cockpit-ship-stage-marker-math.md) records the 100:1 count and names no stills directory.
