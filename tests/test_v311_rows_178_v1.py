@@ -4,7 +4,7 @@
 day cap, so the profile does not turn the switch on. Setting the switch
 itself to v311 still drops the instant credits win. Legacy keeps the 100M win.
 5.7 and 11.11 are docs reclassifications. 12.3 is R12 A (turns stay). 12.4
-stays Partial.
+is Match-behind-flag on the printed Extern list. No new switch.
 """
 from __future__ import annotations
 

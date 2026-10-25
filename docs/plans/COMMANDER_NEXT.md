@@ -6,7 +6,7 @@ Report Page: https://cursor.com/canvas/store-edda9433-2d33-4b62-8d22-af10c2ff389
 
 Playtest wrap: `docs/playtests/multibot-2026-10-24-sat-grok-l3/README.md`
 
-Tip: `feature/grokbot-player` @ `45620d23` (Point COMMANDER_NEXT at the R1–R14 tip). That tip already contains #186 (R1–R14), #180, the handbook curve (#183), the port-attack samples (#185), attack turns row 228 (#164), ship capacity row 229 (#163), the photon-cloak card row 230 (#161), Tri-Cron row 231 (#160), Grimy tips row 232 (#155), StarDock doors row 233 (#153), the interdictor damp row 234 (#171), the limpet and rename capture (#154), the full TWSTATS capture (#157), the October Missing-cell close (#173), and the leftover grades (#181). `SELF_DESTRUCT_PENALTY_MODE` is row 235. GAP 4.8 detonation is Match. The shop unit price is Match-behind-flag on `HARDWARE_PRICE_MODE`. No third Armid price was added.
+Tip: `feature/grokbot-player` @ `08e2f9ec` (Grade GAP 12.4 nightly Extern as Match-behind-flag). That tip already contains #187 (GAP 4.8), #186 (R1–R14), #180, the handbook curve (#183), the port-attack samples (#185), attack turns row 228 (#164), ship capacity row 229 (#163), the photon-cloak card row 230 (#161), Tri-Cron row 231 (#160), Grimy tips row 232 (#155), StarDock doors row 233 (#153), the interdictor damp row 234 (#171), the limpet and rename capture (#154), the full TWSTATS capture (#157), the October Missing-cell close (#173), and the leftover grades (#181). `SELF_DESTRUCT_PENALTY_MODE` is row 235. GAP 4.8 detonation is Match. The shop unit price is Match-behind-flag on `HARDWARE_PRICE_MODE`. No third Armid price was added. GAP 12.4 is Match-behind-flag. No new switch. `INACTIVE_USER_MODE` and `INACTIVITY_TIMEOUT_MODE` stay off.
 
 ## Standing queue
 
@@ -17,7 +17,8 @@ Tip: `feature/grokbot-player` @ `45620d23` (Point COMMANDER_NEXT at the R1–R14
 5. DONE. GAP 2.15 stays Partial. The confirmed Ven GameA samples are Match-behind-flag. #185 wired them into `PORT_DEFENSE_RATING` and `PORT_LASER_BARRAGE` for classes 1–7 (lasers on 1, 4, 6, and 7). Do not regress.
 6. DONE. R1–R14 from `docs/plans/V311_RULINGS_FOR_BEN.md` are adopted. Grades are in `docs/plans/gap-map-refresh-v6.md`.
 7. DONE. GAP 4.8 detonation is Match. Shop unit price is Match-behind-flag on `HARDWARE_PRICE_MODE` (stored 100, live card 1,000). No third price.
-8. The merge stack is cleared. Drafts #25, #28, #37, #82, #99, and #103 stay draft and out of merge order.
+8. DONE. GAP 12.4 is Match-behind-flag (`08e2f9ec`). The printed Extern and midnight jobs already run from `runner.tick_day`. Collisions, Class 0 and Class 9 rebuilds, inactive deletion, and the lobby timeout stay on switches that already exist. No new switch. Do not regress `INACTIVE_USER_MODE` or `INACTIVITY_TIMEOUT_MODE`.
+9. The merge stack is cleared. Drafts #25, #28, #37, #82, #99, and #103 stay draft and out of merge order.
 
 ## Blockers
 
