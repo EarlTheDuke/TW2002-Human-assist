@@ -4,10 +4,17 @@ The displayed list gains the Libram Universitatus. B is not on that list.
 It asks the singles-bar question. U is the Underground door, already built,
 and it is not on the list either.
 
-The library takes no credits. An archive answers with its menu label and an
-empty document list. The singles bar, if you go in, prints the capture's
-exit lines and does not take credits. The visit that moved a balance from
-140 to 93 named no item and printed no price, so that charge stays deferred.
+The library takes no credits. A and B answer with the capture header and one
+empty line. C, Miscellaneous Documents, is the ship-spec key: S3 and Iago put
+the Ferrengi glimpse on the older ``+`` library, and neither source names an
+A/B/C key, so the listing sits on C. It names each Ferrengi hull that a living
+ship in this game already carries, with the odds and fighters from the
+FERRSPEC table (the Bible chart while FERRENGI_ODDS_MODE is on). No ANSI and
+no Alien Derelict text. Leonard Adolph's Battle Cruiser / Dreadnaught .DAT
+note is only the meaning of "in use" (present on a living ship), not a picture
+and not a count of file slots. The singles bar, if you go in, prints the
+capture's exit lines and does not take credits. The visit that moved a balance
+from 140 to 93 named no item and printed no price, so that charge stays deferred.
 """
 
 from __future__ import annotations
@@ -35,6 +42,10 @@ ARCHIVES: tuple[tuple[str, str], ...] = (
     ("C", "Miscellaneous Documents"),
     ("Q", "To Leave"),
 )
+
+# S3's ``+`` library and Iago's "which ships are currently being used" do not
+# name A, B, or C. A and B stay empty. C is the miscellaneous / ship-spec key.
+FERRSPEC_KEY = "C"
 
 HIDDEN_KEYS = ("B", "U")
 
@@ -71,6 +82,64 @@ def archive_lines() -> list[str]:
 
 def archive_rows() -> list[dict[str, str]]:
     return [{"key": key, "label": label, "line": _line(key, label)} for key, label in ARCHIVES]
+
+
+def ferrengi_hulls_in_use(universe: Universe) -> list[str]:
+    """Hull keys a living Ferrengi in this game already carries, table order.
+
+    A dead record is not in use. An empty or unknown hull is not a FERRSPEC type.
+    The three catalog names are not listed just because the table exists.
+    """
+    seen: set[str] = set()
+    for ferr in universe.ferrengi.values():
+        if not getattr(ferr, "alive", True):
+            continue
+        hull = str(getattr(ferr, "hull", "") or "")
+        if hull in K.FERRENGI_HULL_SPECS:
+            seen.add(hull)
+    return [hull for hull in K.FERRENGI_HULL_SPECS if hull in seen]
+
+
+def ferrengi_hull_lines(hull: str) -> list[str]:
+    """Plain chart lines for one hull. Numbers come from the stored tables."""
+    spec = K.FERRENGI_HULL_SPECS[hull]
+    odds = K.ferrengi_odds_for_hull(hull)
+    per_attack = K.ferrengi_fighters_per_attack(hull)
+    return [
+        str(spec["label"]),
+        f"Odds {odds:.1f}",
+        f"Fighters {int(spec['max_fighters'])}",
+        f"Fighters per attack {int(per_attack)}",
+        f"Shields {int(spec['max_shields'])}",
+        f"Holds {int(spec['holds'])}",
+        f"Turns to warp {int(spec['tpw'])}",
+        f"Mines {int(spec['max_mines'])}",
+        f"Photons {int(spec['photons'])}",
+        f"Density {int(spec['density'])}",
+    ]
+
+
+def archive_document_lines(universe: Universe, key: str) -> list[str]:
+    """What that archive prints.
+
+    A and B are the capture header and one empty line. C adds one block per
+    hull in use. Q leaves and prints nothing.
+    """
+    labels = {letter: label for letter, label in ARCHIVES}
+    if key == "Q" or key not in labels:
+        return []
+    header = _line(key, labels[key])
+    if key != FERRSPEC_KEY:
+        return [header, ""]
+    hulls = ferrengi_hulls_in_use(universe)
+    if not hulls:
+        return [header, ""]
+    lines = [header, ""]
+    for index, hull in enumerate(hulls):
+        if index:
+            lines.append("")
+        lines.extend(ferrengi_hull_lines(hull))
+    return lines
 
 
 def _at_dock(universe: Universe, player_id: str) -> tuple[bool, str | None]:
@@ -130,18 +199,22 @@ def handle_library(universe: Universe, pid: str, action: Action) -> ActionResult
     if key not in labels:
         return ActionResult(ok=False, error="archive is A, B, C, or Q")
     player = universe.players[pid]
+    lines = archive_document_lines(universe, key)
+    payload: dict = {
+        "_witnesses": [pid],
+        "archive": key,
+        "label": labels[key],
+        "lines": lines,
+        "charge": 0,
+    }
+    if key == FERRSPEC_KEY:
+        payload["hulls"] = ferrengi_hulls_in_use(universe)
     universe.emit(
         EventKind.LIBRARY,
         actor_id=pid,
         sector_id=player.sector_id,
-        payload={
-            "_witnesses": [pid],
-            "archive": key,
-            "label": labels[key],
-            "lines": [],
-            "charge": 0,
-        },
-        summary=labels[key],
+        payload=payload,
+        summary="\n".join(lines) if lines else labels[key],
     )
     return ActionResult(ok=True, turns_spent=0)
 
