@@ -2,6 +2,8 @@
 
 Parent: [next hulls](cockpit-ship-stage-p1b-next-hulls.md). Same path as the [P1 spike](cockpit-ship-stage-p1-spike.md) and the [Scout and Freighter cut](cockpit-ship-stage-p1b-scout-freighter.md): `buildHullFaces` / `projectFace` in `web/hull-meshes.js`. No three.js. WebGL stays off.
 
+The stills inventory is [stills/README.md](stills/README.md) (#344), directory [p1b-battleship-flagship](stills/p1b-battleship-flagship/).
+
 BattleShip (`battleship`) and Corporate FlagShip (`corporate_flagship`) leave `fleet-glass-v1` on this cut. Scout Marauder, Merchant Freighter, Merchant Cruiser, and Imperial StarShip stay on the faces they already had. The other hulls stay on `fleet-glass-v1`.
 
 Accents and engine counts are the panel `SHIPS` row. Marker counts use `max(1, ceil(n / 100))` when `n ≥ 1`. BattleShip cap 10,000 is 100 markers on both rosters. FlagShip cap 20,000 is 200. A partial last hundred has no numeral. The legend stays `each marker = 100 fighters`.

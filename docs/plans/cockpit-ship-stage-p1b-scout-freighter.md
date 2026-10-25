@@ -2,6 +2,8 @@
 
 Parent: [next hulls](cockpit-ship-stage-p1b-next-hulls.md). Same path as the [P1 spike](cockpit-ship-stage-p1-spike.md): `buildHullFaces` / `projectFace` in `web/hull-meshes.js`. No three.js. WebGL stays off.
 
+The stills inventory is [stills/README.md](stills/README.md) (#344), directory [p1b-scout-freighter](stills/p1b-scout-freighter/).
+
 This cut is the first two hulls of the four-hull wave. BattleShip and Corporate FlagShip stay on `fleet-glass-v1`, with the rest of the fleet.
 
 Accents and engine counts are the panel `SHIPS` row. Marker counts use `max(1, ceil(n / 100))` when `n ≥ 1`. Scout base cap 150 is 2 markers; the live cap 250 is 3. Freighter cap 300 is 3 on both rosters. A partial last hundred has no numeral. The legend stays `each marker = 100 fighters`.
