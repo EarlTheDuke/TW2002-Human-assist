@@ -3,7 +3,8 @@
    P1 spike: merchant_cruiser and imperial_starship use richer stations and kit
    on this same face list.    P1b adds scout_marauder, merchant_freighter,
    battleship, corporate_flagship, escape_pod, tkhasi_orion, cargotran,
-   colonial_transport, taurean_mule, missile_frigate, and havoc_gunstar
+   colonial_transport, taurean_mule, missile_frigate, havoc_gunstar,
+   star_master, and constellation
    on that same path. The other hulls stay fleet-glass-v1.
    Classic page: window.TW2KHullMeshes
    Module: import { buildHullFaces } from "/static/hull-meshes.mjs"
@@ -856,6 +857,118 @@
       bell(faces, -48, -5.2, z, metal, plume, 0.74);
     });
   }
+  // Tube along a to b. Rings stand on the axis so a swept nacelle stays round.
+  function spar(faces, a, b, r0, r1, rgb, accent) {
+    var dir = vnorm(vsub(b, a));
+    var up = Math.abs(dir[1]) < 0.85 ? [0, 1, 0] : [1, 0, 0];
+    var side = vnorm(vcross(dir, up));
+    var lift = vnorm(vcross(side, dir));
+    var steps = 4;
+    var n = 6;
+    var rings = [];
+    var s, k, t, c, rad, ring, ang, cs, sn, i, k2, ref;
+    for (s = 0; s < steps; s++) {
+      t = s / (steps - 1);
+      c = [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t, a[2] + (b[2] - a[2]) * t];
+      rad = r0 + (r1 - r0) * t;
+      ring = [];
+      for (k = 0; k < n; k++) {
+        ang = (k + 0.5) * Math.PI * 2 / n;
+        cs = Math.cos(ang) * rad;
+        sn = Math.sin(ang) * rad;
+        ring.push([
+          c[0] + side[0] * cs + lift[0] * sn,
+          c[1] + side[1] * cs + lift[1] * sn,
+          c[2] + side[2] * cs + lift[2] * sn
+        ]);
+      }
+      rings.push({ c: c, ring: ring });
+    }
+    for (i = 0; i < steps - 1; i++) {
+      ref = [
+        (rings[i].c[0] + rings[i + 1].c[0]) / 2,
+        (rings[i].c[1] + rings[i + 1].c[1]) / 2,
+        (rings[i].c[2] + rings[i + 1].c[2]) / 2
+      ];
+      for (k = 0; k < n; k++) {
+        k2 = (k + 1) % n;
+        pushFace(faces, [rings[i].ring[k], rings[i].ring[k2], rings[i + 1].ring[k2], rings[i + 1].ring[k]], rgb, 1, false, ref, accent);
+      }
+    }
+    pushFace(faces, rings[0].ring, rgb, 1, false, rings[1].c, accent);
+    pushFace(faces, rings[steps - 1].ring, rgb, 1, false, rings[steps - 2].c, accent);
+  }
+  // Modest round arrow. One dark mast, one plate wider than the beam, so the
+  // top view is a circle on a stick. The plate and the stripe are the accent.
+  // The plate is the hull: a scanner does not grow a second mast. Two bells
+  // sit low in the tail, inside the beam, under the dish line.
+  function starMasterSpike(faces, hull, metal, accent, glass, plume) {
+    var sections = [
+      [28, 2.0, 3.2],
+      [14, 3.1, 4.8],
+      [0, 3.6, 5.6],
+      [-12, 3.2, 5.0],
+      [-24, 2.4, 3.8],
+      [-34, 1.6, 2.6]
+    ];
+    loftAt(faces, sections, 0, 0, hull, 1, false, "round");
+    // Two stacked sticks, same 1.6 cross-section, so the mast reads as one
+    // column from the fuselage up to the plate. The seam is not a step.
+    boxAt(faces, 0, 8.9, 0, 1.6, 11.4, 1.6, metal, 1, false);
+    boxAt(faces, 0, 20.69, 0, 1.6, 12.18, 1.6, metal, 1, false);
+    // Sixteen-sided plate, radius 22, thin in y. Wider than the mid beam, and
+    // the same span in x and z, so the top view is a circle on the mast.
+    var n = 16;
+    var rad = 22;
+    var y = 27.2;
+    var thick = 0.42;
+    var top = [];
+    var bot = [];
+    var i, a, k, cs, sn;
+    for (i = 0; i < n; i++) {
+      a = i * Math.PI * 2 / n;
+      cs = Math.cos(a) * rad;
+      sn = Math.sin(a) * rad;
+      top.push([cs, y + thick, sn]);
+      bot.push([cs, y - thick, sn]);
+    }
+    pushFace(faces, top, accent, 1, false, [0, y - 4, 0], true);
+    pushFace(faces, bot.slice().reverse(), accent, 1, false, [0, y + 4, 0], true);
+    for (i = 0; i < n; i++) {
+      k = (i + 1) % n;
+      pushFace(faces, [top[i], top[k], bot[k], bot[i]], accent, 1, false, [0, y, 0], true);
+    }
+    loftAt(faces, [[18, 0.9, 1.25], [8, 1.35, 1.8], [0, 0.85, 1.15]], 4.35, 0, glass, 1, false, "round");
+    loftAt(faces, [[20, 0.34, 1.05], [6, 0.42, 1.3]], 4.1, 0, accent, 1, false, "round", true);
+    stripe(faces, 16, -20, 4.15, 0.9, accent);
+    [-1, 1].forEach(function (sign) {
+      bell(faces, -36, -2.6, sign * 3.1, metal, plume, 0.46);
+    });
+  }
+  // Slim round body. Four nacelles sweep out in an X and trail past the tail.
+  // The arms and the stripe are the accent. The fuselage stays dark. Mouths
+  // sit on the arms, inboard of the tips, so the X is the larger cross. A
+  // density scanner does not grow a plate. The nacelles token does not add bells.
+  function constellationSpike(faces, hull, metal, accent, glass, plume) {
+    var sections = [
+      [42, 2.2, 3.4],
+      [24, 3.0, 4.6],
+      [6, 3.4, 5.2],
+      [-10, 3.2, 4.8],
+      [-26, 2.4, 3.8],
+      [-40, 1.6, 2.6]
+    ];
+    loftAt(faces, sections, 0, 0, hull, 1, false, "round");
+    [[1, 1], [1, -1], [-1, 1], [-1, -1]].forEach(function (s) {
+      var root = [6, s[0] * 4.4, s[1] * 6.4];
+      var tip = [-58, s[0] * 18, s[1] * 19];
+      spar(faces, root, tip, 1.7, 2.5, accent, true);
+      bell(faces, -33.7, s[0] * 12.8, s[1] * 14.2, metal, plume, 0.4);
+    });
+    loftAt(faces, [[28, 0.95, 1.25], [16, 1.4, 1.8], [6, 0.85, 1.15]], 4.15, 0, glass, 1, false, "round");
+    loftAt(faces, [[30, 0.36, 1.05], [14, 0.44, 1.3]], 3.9, 0, accent, 1, false, "round", true);
+    stripe(faces, 24, -22, 3.85, 0.85, accent);
+  }
   function spikeAccent(ship, spec) {
     if (spec && spec.accent) return parseHex(spec.accent);
     if (ship.class === "imperial_starship") return parseHex("#ffe9a0");
@@ -870,6 +983,8 @@
     if (ship.class === "taurean_mule") return parseHex("#d7b48a");
     if (ship.class === "missile_frigate") return parseHex("#ffb15a");
     if (ship.class === "havoc_gunstar") return parseHex("#ff8844");
+    if (ship.class === "star_master") return parseHex("#9ad7ff");
+    if (ship.class === "constellation") return parseHex("#d0d6ff");
     return parseHex("#7aa2ff");
   }
   function buildSpikeFaces(ship, spec) {
@@ -892,13 +1007,15 @@
     else if (ship.class === "taurean_mule") muleSpike(faces, hull, metal, accent, glass, plume);
     else if (ship.class === "missile_frigate") frigateSpike(faces, hull, metal, accent, glass, plume);
     else if (ship.class === "havoc_gunstar") havocSpike(faces, hull, metal, accent, glass, plume);
+    else if (ship.class === "star_master") starMasterSpike(faces, hull, metal, accent, glass, plume);
+    else if (ship.class === "constellation") constellationSpike(faces, hull, metal, accent, glass, plume);
     else merchantSpike(faces, hull, metal, accent, glass, plume);
     return faces;
   }
   function buildHullFaces(sh, def) {
     var ship = sh || {};
     var spec = def || {};
-    if (ship.class === "merchant_cruiser" || ship.class === "imperial_starship" || ship.class === "scout_marauder" || ship.class === "merchant_freighter" || ship.class === "battleship" || ship.class === "corporate_flagship" || ship.class === "escape_pod" || ship.class === "tkhasi_orion" || ship.class === "cargotran" || ship.class === "colonial_transport" || ship.class === "taurean_mule" || ship.class === "missile_frigate" || ship.class === "havoc_gunstar") return buildSpikeFaces(ship, spec);
+    if (ship.class === "merchant_cruiser" || ship.class === "imperial_starship" || ship.class === "scout_marauder" || ship.class === "merchant_freighter" || ship.class === "battleship" || ship.class === "corporate_flagship" || ship.class === "escape_pod" || ship.class === "tkhasi_orion" || ship.class === "cargotran" || ship.class === "colonial_transport" || ship.class === "taurean_mule" || ship.class === "missile_frigate" || ship.class === "havoc_gunstar" || ship.class === "star_master" || ship.class === "constellation") return buildSpikeFaces(ship, spec);
     var sections = LOFT[ship.class] || LOFT.merchant_cruiser;
     var shape = SHAPE[ship.class] || "round";
     var accent = parseHex(spec.accent || "#7aa2ff");
@@ -1191,6 +1308,12 @@
           cy = Math.cos(a);
           sy = Math.sin(a);
           p = [sy * rad, cy * ct * rad, cy * st * rad];
+          // Leave the aft keel tube and the mast tube empty. A marker on the
+          // aft axis reads as sitting in the crook of an X. A marker on the
+          // vertical axis, under the plate line, reads as ringing the mast.
+          // The next sample on the same shell takes the slot.
+          if (p[0] > -60 && p[0] < 8 && Math.hypot(p[1], p[2]) < 14) continue;
+          if (p[1] < 26 && Math.hypot(p[0], p[2]) < 20) continue;
           q = projectWorld(p, camY, camP, scale);
           box = [q[0] - halfW, q[1] - halfH, q[0] + halfW, q[1] + halfH];
           guard = pass < seps.length - 1;

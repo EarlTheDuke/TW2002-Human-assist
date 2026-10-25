@@ -14,11 +14,11 @@ CSS = ROOT / "web" / "redesign.css"
 # Point hashes of the hulls that stay on fleet-glass (detail "bridge", engines 2).
 # Merchant, Imperial, Scout, Freighter, BattleShip, Corporate FlagShip,
 # Escape Pod, T'Khasi Orion, CargoTran, Colonial Transport, Taurean Mule,
-# Missile Frigate, and Havoc GunStar are cut on the spike path and are not in
-# this table. The gun pins live in test_cockpit_ship_stage_p1b_batch3_guns.py.
+# Missile Frigate, Havoc GunStar, Star Master, and Constellation are cut on
+# the spike path and are not in this table. Gun pins live in
+# test_cockpit_ship_stage_p1b_batch3_guns.py. Dish and X pins live in
+# test_cockpit_ship_stage_p1b_batch4_dish.py.
 FLEET_GLASS = {
-    "star_master": ("127", "694a795927c02cbe"),
-    "constellation": ("183", "f1a9a05ad8ba5fcc"),
     "tholian_sentinel": ("135", "92b22194c83653fb"),
     "interdictor_cruiser": ("189", "d3f56821c8a71966"),
 }
