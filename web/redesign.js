@@ -290,9 +290,11 @@
       rows.push(ev);
     });
     rows.sort((a, b) => (b.seq || 0) - (a.seq || 0));
+    const feed = window.TW2KCommsFeed;
+    const visible = feed ? feed.activityFeed(rows) : rows;
     const box = $("log");
     box.innerHTML = "";
-    rows.slice(0, 40).forEach((ev) => {
+    visible.slice(0, 40).forEach((ev) => {
       const line = plainEvent(ev);
       if (!line) return;
       const d = document.createElement("div");
@@ -6834,16 +6836,20 @@
     const on = Array.isArray(rows);
     if (form) form.hidden = !on;
     box.replaceChildren();
-    if (!on) return;
+    const feed = window.TW2KCommsFeed;
+    const shown = feed
+      ? feed.commsLines(rows, streamLog.concat((S && S.recent_events) || []), S && S.self_id)
+      : (on ? rows : []);
+    if (!on && !shown.length) return;
     const head = document.createElement("div");
     head.className = "dim";
     head.dataset.testid = "turn-log-head";
     head.textContent = state.awaiting ? "At the start of your turn" : "Messages";
     box.appendChild(head);
-    rows.forEach((row) => {
+    shown.forEach((row) => {
       const line = document.createElement("div");
       line.dataset.kind = String((row && row.kind) || "");
-      line.textContent = String((row && row.line) || "");
+      line.textContent = feed ? feed.lineOf(row) : String((row && row.line) || "");
       box.appendChild(line);
     });
     const meta = (S && S.comms) || {};
