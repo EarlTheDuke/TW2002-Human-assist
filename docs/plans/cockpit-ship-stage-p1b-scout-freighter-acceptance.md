@@ -2,6 +2,8 @@
 
 Read-test for the product cut. Docs only. Tip surveyed: `feature/grokbot-player` @ `3a688977`.
 
+Stills for this sheet are listed in the [stills inventory](stills/README.md) (#344) under [p1b-scout-freighter](stills/p1b-scout-freighter/).
+
 Taken from these sheets, which this file does not replace:
 
 - [P1 acceptance](cockpit-ship-stage-p1-acceptance.md) — the Pass / Fail / Hold-WebGL shape this cut mirrors.
