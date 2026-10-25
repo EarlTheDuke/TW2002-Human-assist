@@ -4,9 +4,9 @@ Parent: [P0 pack](cockpit-ship-stage-p0.md). Looks: [silhouette bible](cockpit-s
 
 The stills inventory is [stills/README.md](stills/README.md) (#344).
 
-Planning only. Surveyed `feature/grokbot-player` @ `8a31f30` (#194). Refreshed onto `0dd332dd` (#385). #382 (`436bfc47`) refreshed the ship-stage tip sheets onto #381. #383 (`2c097f6a`) records the batch-4 readiness tip at #382. #384 records P2 readiness onto #383. P2 stays gated. #385 (`0dd332dd`) refreshes the stills inbound map through #384. It adds no PNG and does not stamp Pass. This sheet does not change the engine, the cockpit, the meshes, or the warp clips. This sheet does not stamp Pass.
+Planning only. Surveyed `feature/grokbot-player` @ `8a31f30` (#194). Refreshed onto `2907e80b` (#390). #390 stamps the batch-4 dish Pass on product #387 (`3114c994`). Star Master and Constellation cleared that read. Batch 5 is unblocked for product sequencing. The brick product has not started. P2 stays closed. #390 does not open the wire. This sheet does not change the engine, the cockpit, the meshes, or the warp clips. This sheet does not start the brick product.
 
-Batch 3 guns, Missile Frigate and Havoc GunStar, are Landed+Pass. Product #363 (`5ebec08f`). Pass #370 (`223dacfa`). Those two left `fleet-glass-v1`. Batch 4, Star Master and Constellation, is the live product cut, in flight. On this tip those two meshes stay `fleet-glass-v1`. The [stills inventory](stills/README.md) (#380, `5c719360`) records [p1b-batch4-dish](stills/p1b-batch4-dish/) as product in flight, not measured. No PNG. Pass is not stamped. [Batch-4 readiness](cockpit-ship-stage-p1b-batch4-readiness.md) (#383, `2c097f6a`) records tip #382 (`436bfc47`). Batch 5, Tholian Sentinel and Interdictor Cruiser, waits behind the dish Pass. The brick product has not started. P2 stays gated.
+Batch 3 guns, Missile Frigate and Havoc GunStar, are Landed+Pass. Product #363 (`5ebec08f`). Pass #370 (`223dacfa`). Those two left `fleet-glass-v1`. Batch 4, Star Master and Constellation, landed on the SVG path in #387 (`3114c994`). Those two left `fleet-glass-v1`. Star Master is 183 faces. Constellation is 311 faces. Pass is #390 (`2907e80b`) on [batch 4 acceptance](cockpit-ship-stage-p1b-batch4-acceptance.md). #387 leaves Corporate FlagShip at 210 faces, Imperial StarShip at 311, BattleShip at 226, and Havoc GunStar at 261. The [stills inventory](stills/README.md) (#388, `1ee63b98`) records [p1b-batch4-dish](stills/p1b-batch4-dish/) as product landed and measured. Batch 5, Tholian Sentinel and Interdictor Cruiser, is unblocked for product sequencing. Both stay on `fleet-glass-v1` until their own product PR. The brick product has not started. P2 FX, the `#viewport` retirement, and P3 layout stay behind the batch-5 Pass. The P2 wire gate stays closed until Commander opens it.
 
 Merchant Cruiser and Imperial StarShip are the P1 spike. They are not in the 15. Stills directory: [`stills/p1-merchant-imperial/`](stills/p1-merchant-imperial/). TBD scaffold. No PNG. The scaffold does not stamp Pass. The roster below is the other player `ShipClass` values in `src/tw2k/engine/models.py`, in the order a product Cur should take them. Role numbers are `SHIP_SPECS_TW2002` and `POD_SPEC` in `src/tw2k/engine/constants.py`. Marker count is the sticky formula: `n < 1 → 0`, else `max(1, ceil(n / 100))`. Accent hexes are the `SHIPS` entries in `web/redesign.js`, already recorded in the bible. The picture follows the job, not the live-roster grant. The only fighter cap that moves a marker count is the Scout (base 150 → 2 markers, live 250 → 3).
 
@@ -18,7 +18,7 @@ Do not start P1b product code until the P1 spike PR is merged. That spike builds
 
 Stay on the shared SVG path unless that spike failed the bar. A fleet batch does not open three.js or raw WebGL. If the spike missed the bar, stop. The off-ramp in the render memo is the next decision. It still consumes `buildHullFaces`, it does not add a second hull file, and it does not get a head start by meshing the next trader.
 
-One batch at a time, in the order below. Every batch edits `web/hull-meshes.js`, and the 40 KB gzip budget is cumulative. The next batch rebases onto the merged one. Ferrengi hulls stay out. No engine field, no new event, no viewport removal, no layout split. Batch 3 has landed and passed. The live cut is batch 4. Batch 5 waits behind the dish Pass. P2 stays gated.
+One batch at a time, in the order below. Every batch edits `web/hull-meshes.js`, and the 40 KB gzip budget is cumulative. The next batch rebases onto the merged one. Ferrengi hulls stay out. No engine field, no new event, no viewport removal, no layout split. Batch 3 has landed and passed. Batch 4 has landed and passed. Batch 5 product sequencing is open. The brick product has not started. P2 and P3 stay behind the batch-5 Pass. The P2 wire stays closed until Commander opens it.
 
 ## Why this group order
 
@@ -71,7 +71,7 @@ Star Master, Constellation, Corporate FlagShip.
 
 Done when the shared bar holds for all three, and a covered-name reader separates FlagShip / Imperial / Star Master (tall tower versus long castle versus a dish) at both sizes. The Constellation reads as an X of four nacelles, with no castle, no dish, and no prongs. Cap markers: Star Master 50, Constellation 50, FlagShip 200. The Imperial is re-shot beside the tower.
 
-Star Master and Constellation are the live product cut, in flight. On this tip those two meshes stay `fleet-glass-v1` until the product PR lands. The [stills inventory](stills/README.md) (#380, `5c719360`) records [`stills/p1b-batch4-dish/`](stills/p1b-batch4-dish/) as product in flight, not measured. No PNG. Pass is not stamped. [Batch-4 readiness](cockpit-ship-stage-p1b-batch4-readiness.md) (#383, `2c097f6a`) records tip #382 (`436bfc47`). Product sheet: [`cockpit-ship-stage-p1b-batch4-dish-product.md`](cockpit-ship-stage-p1b-batch4-dish-product.md) (#339, `c01ebb2f`). It does not change this batch's place or the gate above. The Corporate FlagShip stays the cut-2 mesh. This cut re-shots that tower.
+Star Master and Constellation landed in #387 (`3114c994`) on the SVG path (`buildHullFaces` / `projectFace`). Those two left `fleet-glass-v1`. Star Master is 183 faces. Constellation is 311 faces. Corporate FlagShip stays 210 faces, Imperial StarShip stays 311, BattleShip stays 226, and Havoc GunStar stays 261. #387 re-shots the tower, the castle, the wedge, and the prongs. It does not recut those faces. The [stills inventory](stills/README.md) (#388, `1ee63b98`) records [`stills/p1b-batch4-dish/`](stills/p1b-batch4-dish/) as product landed and measured. Pass is #390 (`2907e80b`) on [batch 4 acceptance](cockpit-ship-stage-p1b-batch4-acceptance.md). Product sheet: [`cockpit-ship-stage-p1b-batch4-dish-product.md`](cockpit-ship-stage-p1b-batch4-dish-product.md) (#387, `3114c994`). It does not change this batch's place or the gate above. The Corporate FlagShip stays the cut-2 mesh. This cut re-shots that tower.
 
 ### Batch 5 — brick and hoops
 
@@ -79,7 +79,7 @@ Tholian Sentinel, Interdictor Cruiser. Two hulls, on purpose. The Interdictor's 
 
 Done when the shared bar holds for both, and a covered-name reader separates Tholian / Colonial (short plated brick versus tall cabin box) and Constellation / Interdictor (an X of engines versus two hoops) at both sizes. Colonial and Constellation are re-shot from their merged batches. Interdictor markers: 1,000 at 100,000 fighters, orbiting outside the hoops. Reuse the marker grouping the spike recorded for the throwaway 1,000-ring (one group moved by a transform, or one canvas layer for markers only). The count formula does not gain a silent cap. Record the drift frame time at 1,000 on this hull, the one whose hoops are real.
 
-Tholian Sentinel and Interdictor Cruiser wait behind the dish Pass. The brick product has not started. On this tip both meshes stay `fleet-glass-v1`. Product stills scaffold: [`cockpit-ship-stage-p1b-batch5-brick-product.md`](cockpit-ship-stage-p1b-batch5-brick-product.md) (#340, `75997134`). Stills directory: [`stills/p1b-batch5-brick/`](stills/p1b-batch5-brick/). The scaffold does not stamp Pass. It does not change this batch's place or the gate above.
+Tholian Sentinel and Interdictor Cruiser are unblocked for product sequencing. The dish Pass is the gate that wave was waiting on. The brick product has not started. On this tip both meshes stay `fleet-glass-v1` until their own product PR. #387 (`3114c994`) did not cut them. #390 (`2907e80b`) opens the sequence and does not start the brick. Product stills scaffold: [`cockpit-ship-stage-p1b-batch5-brick-product.md`](cockpit-ship-stage-p1b-batch5-brick-product.md) (#340, `75997134`). Stills directory: [`stills/p1b-batch5-brick/`](stills/p1b-batch5-brick/). The scaffold does not stamp Pass. It does not change this batch's place or the gate above.
 
 ## Per hull
 
@@ -151,7 +151,7 @@ AABB: a long slim body, ordinary in plan. The missiles set the top of the volume
 
 ### 9. BattleShip — mid — batch 3
 
-Bible: [`battleship — BattleShip`](cockpit-ship-stage-p0-silhouette-bible.md#battleship--battleship). Accent `#c5c8ff`. Section hex. Kit `turrets`.
+Bible: [`battleship — BattleShip`](cockpit-ship-stage-p0-silhouette-bible.md#battleship--battleship). Accent `#c5c8ff`. Section hex. Kit `turrets`. #387 (`3114c994`) re-shots this wedge and leaves the face count at 226.
 
 Read, name covered: a gun platform. A wide hex wedge, short for its beam, two turrets whose barrels break the top edge from the side and from above. Broader than the Merchant and shorter than the Imperial. The turrets are the job.
 
@@ -159,7 +159,7 @@ AABB: unusual. Beam and turret height drive the sphere more than length. Today's
 
 ### 10. Havoc GunStar — mid — batch 3
 
-Bible: [`havoc_gunstar — Havoc GunStar`](cockpit-ship-stage-p0-silhouette-bible.md#havoc_gunstar--havoc-gunstar). Accent `#ff8844`. Section hex. Kit `prongs`.
+Bible: [`havoc_gunstar — Havoc GunStar`](cockpit-ship-stage-p0-silhouette-bible.md#havoc_gunstar--havoc-gunstar). Accent `#ff8844`. Section hex. Kit `prongs`. #387 (`3114c994`) re-shots these prongs and leaves the face count at 261.
 
 Read, name covered: a shield tank and gunship. Short body, split prow. Two prongs run ahead of the nose and are the silhouette from the side, the top, and head-on (two bright tips with a gap). No turret pair.
 
@@ -167,7 +167,7 @@ AABB: unusual. The nose of the volume is the prong tips, past the loft nose. Tod
 
 ### 11. Star Master — mid — batch 4
 
-Bible: [`star_master — Star Master`](cockpit-ship-stage-p0-silhouette-bible.md#star_master--star-master). Accent `#9ad7ff`. Kit `mast` and `dish`.
+Bible: [`star_master — Star Master`](cockpit-ship-stage-p0-silhouette-bible.md#star_master--star-master). Accent `#9ad7ff`. Kit `mast` and `dish`. Landed in #387 (`3114c994`) on the SVG path. 183 faces. Left `fleet-glass-v1`. Pass is #390 (`2907e80b`).
 
 Read, name covered: a mid combat hull whose whole job is a dish. Modest arrow, a mast, a dish wider than the beam. The top view is a circle on a stick. That circle is a plate, not a hoop around the body.
 
@@ -175,7 +175,7 @@ AABB: unusual. The plate, not the fuselage beam, sets the top radius. Markers or
 
 ### 12. Constellation — mid — batch 4
 
-Bible: [`constellation — Constellation`](cockpit-ship-stage-p0-silhouette-bible.md#constellation--constellation). Accent `#d0d6ff`. Kit `quad`. Panel name stays Constellation.
+Bible: [`constellation — Constellation`](cockpit-ship-stage-p0-silhouette-bible.md#constellation--constellation). Accent `#d0d6ff`. Kit `quad`. Panel name stays Constellation. Landed in #387 (`3114c994`) on the SVG path. 311 faces. Left `fleet-glass-v1`. Pass is #390 (`2907e80b`).
 
 Read, name covered: a mid combat hull with four nacelles in an X. Head-on is that X and little else. No castle, no dish, no prongs.
 
@@ -183,7 +183,7 @@ AABB: unusual. The X, not the fuselage, sets y and z, and the nacelles trail pas
 
 ### 13. Corporate FlagShip — capital — batch 4
 
-Bible: [`corporate_flagship — Corporate FlagShip`](cockpit-ship-stage-p0-silhouette-bible.md#corporate_flagship--corporate-flagship). Accent `#ff77ff`. Kit `tower`. TransWarp, when fitted, is magenta in the engines only. The tower stays the magenta accent, not a second glow source.
+Bible: [`corporate_flagship — Corporate FlagShip`](cockpit-ship-stage-p0-silhouette-bible.md#corporate_flagship--corporate-flagship). Accent `#ff77ff`. Kit `tower`. TransWarp, when fitted, is magenta in the engines only. The tower stays the magenta accent, not a second glow source. #387 (`3114c994`) re-shots this tower and leaves the face count at 210.
 
 Read, name covered: a corp capital. A liner with a tower amidships taller than the hull is deep. The tower is a stepped command block. Head-on it is a rectangle on the centerline, with no square of engine bells and no hoop.
 
@@ -191,7 +191,7 @@ AABB: unusual. The tower sets the height. Today's upper tower box tops out near 
 
 ### 14. Tholian Sentinel — specialty — batch 5
 
-Bible: [`tholian_sentinel — Tholian Sentinel`](cockpit-ship-stage-p0-silhouette-bible.md#tholian_sentinel--tholian-sentinel). Accent `#62f0c8`. Section box. Kit `armor`.
+Bible: [`tholian_sentinel — Tholian Sentinel`](cockpit-ship-stage-p0-silhouette-bible.md#tholian_sentinel--tholian-sentinel). Accent `#62f0c8`. Section box. Kit `armor`. Stays on `fleet-glass-v1`. Product sequencing is open. The brick product has not started.
 
 Read, name covered: a fortress. The shortest, bluntest brick. Armor slabs on both flanks make the head-on view nearly square. The nose is a stub. Nothing on the outline suggests speed. No belly tanks and no cabin row as the main shape.
 
@@ -199,7 +199,7 @@ AABB: unusual. Short, and square once the slabs are on. Today's `LOFT` sz reache
 
 ### 15. Interdictor Cruiser — specialty — batch 5
 
-Bible: [`interdictor_cruiser — Interdictor Cruiser`](cockpit-ship-stage-p0-silhouette-bible.md#interdictor_cruiser--interdictor-cruiser). Accent `#ff5cab`. Kit `hoop`.
+Bible: [`interdictor_cruiser — Interdictor Cruiser`](cockpit-ship-stage-p0-silhouette-bible.md#interdictor_cruiser--interdictor-cruiser). Accent `#ff5cab`. Kit `hoop`. Stays on `fleet-glass-v1`. Product sequencing is open. The brick product has not started.
 
 Read, name covered: the barge. A heavy body inside two hoops. The hoops are larger than the hull and are the first shape in every camera. Head-on is a ring with a body in the hole. The Star Master's dish stays a plate on a mast.
 
@@ -207,6 +207,6 @@ AABB: unusual, and it is the one hull already measured. The render memo records 
 
 ## What this sheet does not decide
 
-P2 FX wiring and the removal of `#viewport`. P3's layout split. A new engine field. Any Ferrengi picture. Copying or tracing EIS, Markham, or ANSI ship art. P2 stays gated. #384 (`1ff9bef6`) records that readiness onto #383. The guns Pass does not open the wire.
+P2 FX wiring and the removal of `#viewport`. P3's layout split. A new engine field. Any Ferrengi picture. Copying or tracing EIS, Markham, or ANSI ship art. Sticky order stays batch 5, then P2, then P3. The dish Pass does not open the wire. The guns Pass does not open the wire. The P2 wire gate stays closed until Commander opens it. #390 (`2907e80b`) does not open the wire and does not open the layout. This sheet does not start the brick product.
 
 The spike's pass list (gzip budget, legend wording, reduced-motion still, CU still) stays in force for every batch above. Where this sheet names a different pair or a different cap count, that pair and that count are the ones the batch has to show.
