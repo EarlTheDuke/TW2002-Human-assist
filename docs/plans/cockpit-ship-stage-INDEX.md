@@ -1,6 +1,6 @@
 # Cockpit ship stage — sheet index
 
-Finder for the ship-stage planning pack. Docs only. Tip: `feature/grokbot-player` @ `62766208`. COMMANDER_NEXT just landed through #243 (#245). #247 moved the tip to `f7176883`. #248 refreshed P2 readiness onto that tip (Scout Pass #244, Cut 1 Pass #246, BattleShip+FlagShip still in flight).
+Finder for the ship-stage planning pack. Docs only. Tip: `feature/grokbot-player` @ `b95e4219`. COMMANDER_NEXT just landed through #243 (#245). #249 moved the tip to `62766208`. #250 refreshed the P3 layout tip (P3 still gated behind P1b cut-2 + remaining P1b + P2).
 
 ## Product order
 
@@ -50,7 +50,7 @@ P1 is the spike named in the P0 pack and the render memo. Open the sheet below t
 
 ## P3
 
-- [P3 layout](cockpit-ship-stage-p3-layout.md) — Product checklist for ship about 55–60% on the left, the nav map about 35% on the right, and dropping the 140px `#shipSvg` cap.
+- [P3 layout](cockpit-ship-stage-p3-layout.md) — Product checklist for ship about 55–60% on the left, the nav map about 35% on the right, and dropping the 140px `#shipSvg` cap. Refreshed onto `62766208` (#250).
 
 ## COMMS
 
