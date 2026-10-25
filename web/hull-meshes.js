@@ -3,8 +3,8 @@
    P1 spike: merchant_cruiser and imperial_starship use richer stations and kit
    on this same face list.    P1b adds scout_marauder, merchant_freighter,
    battleship, corporate_flagship, escape_pod, tkhasi_orion, cargotran,
-   colonial_transport, and taurean_mule on that
-   same path. The other hulls stay fleet-glass-v1.
+   colonial_transport, taurean_mule, missile_frigate, and havoc_gunstar
+   on that same path. The other hulls stay fleet-glass-v1.
    Classic page: window.TW2KHullMeshes
    Module: import { buildHullFaces } from "/static/hull-meshes.mjs"
 */
@@ -779,6 +779,83 @@
       bell(faces, -40, -2.0, sign * 3.6, metal, plume, 0.66);
     });
   }
+  // Photon boat. Long slim round spine, shorter than the Imperial and slimmer
+  // than the BattleShip. Two dorsal missiles sit on thin rails, noses forward
+  // and proud of the one nose. Each body is larger than the canopy. Bodies,
+  // rail edges, and the stripe are the amber accent. Noses are a hotter amber.
+  // Two bells sit low in the tail, inside the beam, under the missile line.
+  // A photon count does not add a third body. The rails token is this kit.
+  function frigateSpike(faces, hull, metal, accent, glass, plume) {
+    var sections = [
+      [118, 2.4, 3.6],
+      [96, 3.8, 5.8],
+      [70, 5.0, 7.6],
+      [40, 5.6, 8.4],
+      [8, 5.2, 7.8],
+      [-22, 4.4, 6.6],
+      [-50, 3.2, 5.0],
+      [-74, 2.2, 3.4]
+    ];
+    loftAt(faces, sections, 0, 0, hull, 1, false, "round");
+    var hotter = [255, Math.min(96, Math.round(accent[1] * 0.42)), Math.min(28, Math.round(accent[2] * 0.2))];
+    var yM = 11.4;
+    [-1, 1].forEach(function (sign) {
+      var z = sign * 7.6;
+      loftAt(faces, [
+        [78, 2.7, 2.7],
+        [54, 3.5, 3.5],
+        [28, 3.6, 3.6],
+        [4, 2.9, 2.9]
+      ], yM, z, accent, 1, false, "round", true);
+      loftAt(faces, [
+        [94, 0.45, 0.45],
+        [86, 1.55, 1.55],
+        [78, 2.55, 2.55]
+      ], yM, z, hotter, 1, false, "round", true);
+      boxAt(faces, 40, 7.15, z, 78, 1.15, 9.4, metal, 1, false);
+      boxAt(faces, 40, 7.86, z, 74, 0.32, 8.6, accent, 1, false, true);
+    });
+    loftAt(faces, [[108, 1.15, 1.55], [98, 1.7, 2.15], [88, 1.05, 1.35]], 4.55, 0, glass, 1, false, "round");
+    loftAt(faces, [[110, 0.42, 1.15], [94, 0.5, 1.4]], 4.25, 0, accent, 1, false, "round", true);
+    stripe(faces, 84, -46, 5.7, 1.15, accent);
+    [-1, 1].forEach(function (sign) {
+      bell(faces, -78, -3.4, sign * 3.4, metal, plume, 0.72);
+    });
+  }
+  // Shield tank and gunship. Short hex body. Two prongs run ahead of the loft
+  // nose: dark shafts, flat orange tips, empty gap. Three bells sit in a low
+  // row inside the hex, behind the prong line. The guns token does not grow
+  // cheek barrels, and a holo scanner does not grow a mast. Canopy stays
+  // shorter than the prongs.
+  function havocSpike(faces, hull, metal, accent, glass, plume) {
+    var sections = [
+      [30, 5.2, 8.2],
+      [10, 6.6, 11.0],
+      [-8, 7.2, 12.4],
+      [-26, 6.0, 10.2],
+      [-44, 4.0, 7.0]
+    ];
+    loftAt(faces, sections, 0, 0, hull, 1, false, "hex");
+    [-1, 1].forEach(function (sign) {
+      var z = sign * 7.4;
+      loftAt(faces, [
+        [40, 1.7, 1.7],
+        [28, 2.15, 2.15],
+        [14, 1.85, 1.85]
+      ], 1.1, z, metal, 1, false, "round");
+      loftAt(faces, [
+        [58, 0.7, 0.7],
+        [50, 1.45, 1.45],
+        [42, 1.85, 1.85]
+      ], 1.1, z, accent, 1, false, "round", true);
+    });
+    loftAt(faces, [[6, 1.15, 1.5], [-4, 1.7, 2.15], [-14, 1.05, 1.35]], 6.4, 0, glass, 1, false, "round");
+    loftAt(faces, [[8, 0.4, 1.15], [-8, 0.48, 1.35]], 6.05, 0, accent, 1, false, "round", true);
+    stripe(faces, 12, -30, 5.6, 1.35, accent);
+    [-6.4, 0, 6.4].forEach(function (z) {
+      bell(faces, -48, -5.2, z, metal, plume, 0.74);
+    });
+  }
   function spikeAccent(ship, spec) {
     if (spec && spec.accent) return parseHex(spec.accent);
     if (ship.class === "imperial_starship") return parseHex("#ffe9a0");
@@ -791,6 +868,8 @@
     if (ship.class === "cargotran") return parseHex("#ffe566");
     if (ship.class === "colonial_transport") return parseHex("#7dff7d");
     if (ship.class === "taurean_mule") return parseHex("#d7b48a");
+    if (ship.class === "missile_frigate") return parseHex("#ffb15a");
+    if (ship.class === "havoc_gunstar") return parseHex("#ff8844");
     return parseHex("#7aa2ff");
   }
   function buildSpikeFaces(ship, spec) {
@@ -811,13 +890,15 @@
     else if (ship.class === "cargotran") cargotranSpike(faces, hull, metal, accent, glass, plume);
     else if (ship.class === "colonial_transport") colonialSpike(faces, hull, metal, accent, glass, plume);
     else if (ship.class === "taurean_mule") muleSpike(faces, hull, metal, accent, glass, plume);
+    else if (ship.class === "missile_frigate") frigateSpike(faces, hull, metal, accent, glass, plume);
+    else if (ship.class === "havoc_gunstar") havocSpike(faces, hull, metal, accent, glass, plume);
     else merchantSpike(faces, hull, metal, accent, glass, plume);
     return faces;
   }
   function buildHullFaces(sh, def) {
     var ship = sh || {};
     var spec = def || {};
-    if (ship.class === "merchant_cruiser" || ship.class === "imperial_starship" || ship.class === "scout_marauder" || ship.class === "merchant_freighter" || ship.class === "battleship" || ship.class === "corporate_flagship" || ship.class === "escape_pod" || ship.class === "tkhasi_orion" || ship.class === "cargotran" || ship.class === "colonial_transport" || ship.class === "taurean_mule") return buildSpikeFaces(ship, spec);
+    if (ship.class === "merchant_cruiser" || ship.class === "imperial_starship" || ship.class === "scout_marauder" || ship.class === "merchant_freighter" || ship.class === "battleship" || ship.class === "corporate_flagship" || ship.class === "escape_pod" || ship.class === "tkhasi_orion" || ship.class === "cargotran" || ship.class === "colonial_transport" || ship.class === "taurean_mule" || ship.class === "missile_frigate" || ship.class === "havoc_gunstar") return buildSpikeFaces(ship, spec);
     var sections = LOFT[ship.class] || LOFT.merchant_cruiser;
     var shape = SHAPE[ship.class] || "round";
     var accent = parseHex(spec.accent || "#7aa2ff");
