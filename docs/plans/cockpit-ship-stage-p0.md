@@ -2,6 +2,8 @@
 
 Planning only. This pack does not change the engine, the redesign cockpit, the hull meshes, or the warp clips. Tip surveyed: `feature/grokbot-player` @ `ec4bc50` (`List in-use Ferrengi hulls on Libram key C`).
 
+The stills inventory is [stills/README.md](stills/README.md) (#344).
+
 Ben can override any recommended default in the decision list at the bottom. The fighter-count rule is the one default this pack treats as already decided.
 
 ## Sheets

@@ -2,6 +2,8 @@
 
 Parents: [P0 pack](cockpit-ship-stage-p0.md), [silhouette bible](cockpit-ship-stage-p0-silhouette-bible.md), [render decision](cockpit-ship-stage-p0-render.md).
 
+The stills inventory is [stills/README.md](stills/README.md) (#344).
+
 Docs only. This sheet does not change `web/*`, the engine, or tests. Classic top-and-front ANSI for every hull stays **UNVERIFIED**. Do not open, trace, or approximate EIS prints, EIS wallpaper, or Drew Markham ANSI. Looks below are invented from the public role numbers on `SHIP_SPECS_TW2002` and `SHIP_ROSTER_LIVE_TABLE` in `src/tw2k/engine/constants.py`. The one-paragraph picture in the bible still stands. This sheet is the mesh contract for the next four, so a follow-on does not invent a keel, a tower, or a turret while cutting faces.
 
 ## Implement after P1 merges
