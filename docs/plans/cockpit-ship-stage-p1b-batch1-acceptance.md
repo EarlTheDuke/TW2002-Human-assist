@@ -145,6 +145,8 @@ Reply with one of these three. Pass means every item on the bar above holds, inc
 
 Hold-WebGL stays closed. The [P1 pass](cockpit-ship-stage-p1-pass.md) closed it. This cut does not reopen it on its own.
 
+**Pass.** The Escape Pod and T'Khasi Orion read-test passed on PR #293 (`186aaf85`), on the parent path of tip `feature/grokbot-player` @ `4ff82acd`. Meshes, stills, and tests landed. Shared SVG path (`buildHullFaces` / `projectFace`). Markers are `max(1, ceil(n / 100))` when `n ≥ 1`. Escape Pod is 98 faces, 1 marker at cap 50. T'Khasi Orion is 167 faces, 8 markers at cap 750. `web/hull-meshes.js` is 11,346 bytes gzipped (level 9), under 40 KB. Stills: `docs/plans/stills/p1b-batch1-escape-orion/`. Tests local 20. WebGL stays off. The other nine hulls stay on `fleet-glass-v1`.
+
 ### Pass
 
 Both hulls pass the three-quarter and head-on reads, at ~140px and at the hero crop, at shields 0 and shields full. The Escape Pod reads as the lifeboat: stub fins, and a round port that is still `#55ffff` at shields 0. The T'Khasi reads as the crescent: plate edges that are still `#ff6d8a` at shields 0. They stay apart from each other and from the Scout re-shot. Marker rows match the formula, including the pod at 1 and the T'Khasi at 8, and no marker box cuts the silhouette. CU-seat, reduced motion, and the phone still stay on the canonical still. The cumulative gzip size is under 40 KB, and the face counts are recorded. The fleet-glass pins for these two keys moved in that same change. Stay on the shared SVG (`buildHullFaces` / `projectFace`). WebGL stays the closed off-ramp. The other nine wait.
