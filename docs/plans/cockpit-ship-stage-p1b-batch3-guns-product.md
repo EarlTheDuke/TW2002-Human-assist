@@ -2,6 +2,8 @@
 
 Parent: [batch 3 guns](cockpit-ship-stage-p1b-batch3.md). Read-test: [batch 3 acceptance](cockpit-ship-stage-p1b-batch3-acceptance.md). Gate: [batch 3 readiness](cockpit-ship-stage-p1b-batch3-readiness.md) (#333). Stills directory: [p1b-batch3-guns](stills/p1b-batch3-guns/). Same path as the [P1 spike](cockpit-ship-stage-p1-spike.md) and the cuts already on `feature/grokbot-player`: `buildHullFaces` / `projectFace` in `web/hull-meshes.js`. No three.js. WebGL stays off.
 
+[Batch 3 acceptance](cockpit-ship-stage-p1b-batch3-acceptance.md) already points here (#343). The stills index is [stills/README.md](stills/README.md) (#344). This scaffold does not stamp Pass. It ships no PNGs. TBD cells await product.
+
 This sheet is the product stills skeleton for Missile Frigate (`missile_frigate`) and Havoc GunStar (`havoc_gunstar`). It follows the shape of the [hauler stills](cockpit-ship-stage-p1b-batch2-haulers-product.md). It does not stamp Pass. It does not record a face count, a raw byte size, or a gzip size. Every measured cell below is **TBD / awaiting product**. The in-flight product wave fills those cells and drops the PNGs into `docs/plans/stills/p1b-batch3-guns/`. This scaffold ships no PNG. It does not invent a pixel size for a frame that has not been shot.
 
 Opened on `feature/grokbot-player` @ `d07d7492` (#336). This note does not move that tip.
