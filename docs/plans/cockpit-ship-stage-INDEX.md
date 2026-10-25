@@ -1,6 +1,6 @@
 # Cockpit ship stage — sheet index
 
-Finder for the ship-stage planning pack. Docs only. Tip: `feature/grokbot-player` @ `f057cac7`. COMMANDER_NEXT just landed through #242 (#239).
+Finder for the ship-stage planning pack. Docs only. Tip: `feature/grokbot-player` @ `f7176883`. COMMANDER_NEXT just landed through #243 (#245). Four-hull Cut 1 Pass (#246).
 
 ## Product order
 
