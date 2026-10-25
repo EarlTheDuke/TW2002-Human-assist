@@ -2,6 +2,8 @@
 
 Read-test for the batch-1 remainder, the cut after the four-hull wave. Docs only. Tip surveyed: `feature/grokbot-player` @ `36c271a5`.
 
+Stills for this sheet are listed in the [stills inventory](stills/README.md) (#344) under [p1b-batch1-escape-orion](stills/p1b-batch1-escape-orion/).
+
 Taken from these sheets, which this file does not replace:
 
 - [Batch 1 remainder](cockpit-ship-stage-p1b-batch1-remainder.md) — the mesh contract (#216) for [Escape Pod](cockpit-ship-stage-p1b-batch1-remainder.md#escape-pod--escape_pod) and [T'Khasi Orion](cockpit-ship-stage-p1b-batch1-remainder.md#tkhasi-orion--tkhasi_orion). The Scout re-shot is [on that sheet](cockpit-ship-stage-p1b-batch1-remainder.md#scout-marauder--re-shot-not-a-new-mesh).
