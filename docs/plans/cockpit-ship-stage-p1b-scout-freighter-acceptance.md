@@ -1,6 +1,6 @@
 # P1b acceptance — Scout Marauder and Merchant Freighter
 
-Read-test for the in-flight product cut. Docs only. Tip surveyed: `feature/grokbot-player` @ `3a688977`.
+Read-test for the product cut. Docs only. Tip surveyed: `feature/grokbot-player` @ `3a688977`.
 
 Taken from these sheets, which this file does not replace:
 
@@ -117,6 +117,8 @@ Leave alone. Use these lists as written:
 Reply with one of these three. Pass means every item in this sheet holds. Hold-WebGL means one of the same three off-ramp conditions on the [P1 acceptance](cockpit-ship-stage-p1-acceptance.md) is true for this cut. Any other miss is Fail.
 
 The P1 pass left Hold-WebGL closed. Reopening it takes one of the three off-ramps below.
+
+**Pass.** The Scout Marauder and Merchant Freighter read-test passed on PR #238 (`54051577`), on the parent path of tip `feature/grokbot-player` @ `0ab0084f`. Meshes, stills, and tests landed. WebGL stays off. `web/hull-meshes.js` is 9,933 bytes gzipped (level 9). BattleShip, Corporate FlagShip, and the other hulls stay on `fleet-glass-v1`.
 
 ### Pass
 
