@@ -1,183 +1,191 @@
 # P1b — Tholian Sentinel and Interdictor Cruiser
 
-Parent: [batch 5 brick and hoops](cockpit-ship-stage-p1b-batch5.md). Read-test: [batch 5 acceptance](cockpit-ship-stage-p1b-batch5-acceptance.md). Gate: [batch 5 readiness](cockpit-ship-stage-p1b-batch5-readiness.md) (#335). Stills directory: [p1b-batch5-brick](stills/p1b-batch5-brick/). Same path as the [P1 spike](cockpit-ship-stage-p1-spike.md) and the cuts already on `feature/grokbot-player`: `buildHullFaces` / `projectFace` in `web/hull-meshes.js`. No three.js. WebGL stays off.
+Parent: [batch 5 brick and hoops](cockpit-ship-stage-p1b-batch5.md). Read-test: [batch 5 acceptance](cockpit-ship-stage-p1b-batch5-acceptance.md). Gate: [batch 5 readiness](cockpit-ship-stage-p1b-batch5-readiness.md) (#335). Stills directory: [p1b-batch5-brick](stills/p1b-batch5-brick/). The stills index is [stills/README.md](stills/README.md). Same path as the [P1 spike](cockpit-ship-stage-p1-spike.md) and the cuts already on `feature/grokbot-player`: `buildHullFaces` / `projectFace` in `web/hull-meshes.js`. No three.js. WebGL stays off. This sheet records the measured faces. It does not stamp Pass.
 
-[Batch 5 acceptance](cockpit-ship-stage-p1b-batch5-acceptance.md) already points here (#343). The stills index is [stills/README.md](stills/README.md) (#344). This scaffold does not stamp Pass. It ships no PNGs. TBD cells await product.
+Tholian Sentinel (`tholian_sentinel`) and Interdictor Cruiser (`interdictor_cruiser`) leave the glass loft on this wave. Merchant Cruiser, Imperial StarShip, Scout Marauder, Merchant Freighter, BattleShip, Corporate FlagShip, Escape Pod, T'Khasi Orion, CargoTran, Colonial Transport, Taurean Mule, Missile Frigate, Havoc GunStar, Star Master, and Constellation stay on the faces they already had. The Colonial is re-shot beside the Sentinel. The Constellation is re-shot beside the Interdictor. Those two meshes are not recut. The module look string stays `fleet-glass-v1`.
 
-This sheet is the product stills skeleton for Tholian Sentinel (`tholian_sentinel`) and Interdictor Cruiser (`interdictor_cruiser`). It follows the shape of the [hauler stills](cockpit-ship-stage-p1b-batch2-haulers-product.md). It does not stamp Pass. It does not record a face count, a raw byte size, or a gzip size. Every measured cell below is **TBD / awaiting product**. A later product Cur fills those cells and drops the PNGs into `docs/plans/stills/p1b-batch5-brick/` after batch 3 (Missile Frigate and Havoc GunStar) and batch 4 (Star Master and Constellation) have passed. Until those Pass stamps, both hulls stay on `fleet-glass-v1`. This scaffold ships no PNG. It does not invent a pixel size for a frame that has not been shot.
-
-Opened on `feature/grokbot-player` @ `e3250783` (#338). This note does not move that tip.
-
-Tholian Sentinel and Interdictor Cruiser are the two new meshes. The Colonial Transport stays the hauler mesh. This wave re-shots it beside the Sentinel. The Constellation stays the batch-4 mesh. This wave re-shots it beside the Interdictor. Merchant Cruiser, Imperial StarShip, Scout Marauder, Merchant Freighter, BattleShip, Corporate FlagShip, Escape Pod, T'Khasi Orion, CargoTran, Taurean Mule, Missile Frigate, Havoc GunStar, and Star Master stay on the faces they already had. The other hulls stay on `fleet-glass-v1`.
-
-Panel names stay `Tholian Sentinel` and `Interdictor Cruiser`. `SHIP_SPECS_TW2002` spells both `display_name` values the same way. The mesh keeps those names. Section token stays `box` on the Sentinel and on the Interdictor. This wave adds no fourth section. The hoops are kit, not a section. Kit is `armor` on the Sentinel and `hoop` on the Interdictor. `SHIPS` sets Sentinel `detail` to `"bridge"` and Interdictor `detail` to `"ring bridge"`. The `bridge` token is the shared canopy. On the Interdictor the `ring` token is not a second kit. Build order inside the later product PR is Tholian Sentinel, then Interdictor Cruiser.
-
-Marker counts use `max(1, ceil(n / 100))` when `n ≥ 1`. Tholian Sentinel cap 2,500 is 25 markers on both rosters. Interdictor Cruiser cap 100,000 is 1,000 markers on both rosters. Bay 50 is one marker, a partial hundred, and that dart gets no numeral. Bay 100 is still one marker. The hundred is exact, and the dart still gets no numeral. A partial last hundred has no numeral. The legend stays `each marker = 100 fighters`. Those counts are the contract formula. Placement, overlap, and clip counts in the tables below are awaiting product.
-
-Contract accent is `#62f0c8` on the Sentinel slab faces and the stripe. The fuselage between the slabs stays dark metal. Contract accent is `#ff5cab` on both Interdictor hoop rims and the stripe. The holes stay open and the body stays dark metal. The Colonial re-shot keeps `#7dff7d` on the stripe and the tank rims. The Constellation re-shot keeps `#d0d6ff` on the nacelles and the stripe. Measured RGB averages are awaiting product.
-
-Neither hull is on `SHIP_TW_CHART_RANGE`. The pass pose is idle cyan-white cones. A fitted TransWarp drive (`ship.transwarp.fitted`) turns that cone magenta and nothing else. A drive recolor is the inherited rule, and it is not a signature of this wave. This scaffold does not reserve a TransWarp still for either hull.
+Panel names stay `Tholian Sentinel` and `Interdictor Cruiser`. Section token stays `box` on both. Kit is `armor` on the Sentinel and `hoop` on the Interdictor. The hoops are kit, not a section. `detail` stays `"bridge"` on the Sentinel and `"ring bridge"` on the Interdictor. Those tokens do not change the face list. A holo scanner, `photon_missiles` 10, and an engine-count swap hash the same points. Marker counts use `max(1, ceil(n / 100))` when `n ≥ 1`. The Sentinel cap of 2,500 is 25 markers. The Interdictor cap of 100,000 is 1,000 markers. A partial last hundred has no numeral. The legend stays `each marker = 100 fighters`.
 
 ## Faces and size
 
-Fill this table from the mesh the product Cur lands. Leave a cell TBD when that wave did not measure it.
-
 | Hull | Faces | Accent faces | Bounding radius | Span (x × y × z) |
 | --- | --- | --- | --- | --- |
-| Tholian Sentinel | TBD | TBD | TBD | TBD |
-| Interdictor Cruiser | TBD | TBD | TBD | TBD |
+| Tholian Sentinel | 169 | 23 | 31.5 | 47.0 × 30.6 × 30.6 |
+| Interdictor Cruiser | 341 | 123 | 113.9 | 57.2 × 224.0 × 218.4 |
 
-`web/hull-meshes.js` raw size is **TBD / awaiting product**. Gzip (level 9) is **TBD / awaiting product**. Budget is 40 KB gzipped. The cumulative file after this wave still has to sit under that budget. This scaffold does not record either byte count.
+`web/hull-meshes.js` is 64,749 bytes raw. Gzip level 9 is **16,343 bytes** from Node `zlib.gzipSync` (the call in `tests/test_cockpit_ship_stage_p1.py`) and **16,284 bytes** from Python `gzip.compress` (the call in `tests/test_cockpit_ship_stage_p1b_batch5_brick.py`). Budget is 40 KB gzipped.
 
-The Sentinel reads as a fortress: the shortest, bluntest brick, armor slabs on both flanks, a head-on view nearly square, a stub nose. The Interdictor reads as the barge: a heavy body inside two hoops, the hoops larger than the hull and the first shape in every camera, head-on a ring with a body in the hole. Measured spans and radii wait on the product Cur. Prior-wave face counts stay on the sheets that measured them. This table does not copy those figures. Fleet order's ~108 on today's Interdictor glass is a floor in the contract, not a radius this sheet records.
+The Sentinel is the fortress. Length 47.0 is shorter than the Colonial (89.7), the Escape Pod (70.8), and the Merchant Freighter (97.9). Height and beam are the same 30.6, so the head-on world box is square. Head-on at fit `1` the vertices land in (162.2, 86.1)–(233.4, 158.7), 71.1 × 72.6 px. Two armor slabs sit on the flanks. A stub box is the nose. Two bells sit at `y = -6.6`, `z = ±3.2`, inside the slab line (outer `y` and `z` ±15.3). Point hash `7650706109f94fb1`. Accent faces are not emissive.
 
-Panel fit stays the inherited rule: phone static `0.72`, 80 or more markers `0.76`, Imperial `0.84`, other hulls `1.12`. The Sentinel cap is 25 markers. The Interdictor cap is 1,000. The product Cur records the fit each still actually used. This scaffold does not choose a new fit.
+The Interdictor is the barge. Length 57.2 stays inside both hoops. The hoops set the span: 224.0 × 218.4 against a body cylinder of 11.6 on the non-accent, non-emissive faces. Each hoop is a 14-gon, inner radius 68, outer radius 112, thickness 2.6, centered at `x = 8` and `x = -18`. The hole is empty. Bounding radius 113.9 is past the old glass floor of ~108. A 14-gon reaches 112 on `y` and 109.2 on `z`. Four bells sit on one row at `y = -3.8`, `z = ±2.3` and `±6.9`, inside the inner radius and not on an X. Point hash `c3d45f327a3c6564`. Accent faces are not emissive.
+
+Colonial stays 251 faces, hash `7f83c52861a478ef`, span 89.7 × 53.8 × 42.0, radius 54.3. Constellation stays 311 faces, hash `787b41d482d6501a`, span 100.7 × 40.9 × 42.3, radius 64.0. The earlier pins for Merchant 217, Imperial 311, Scout 201, Freighter 251, BattleShip 226, FlagShip 210, Escape Pod 98, Orion 167, CargoTran 212, Mule 209, Missile Frigate 283, Havoc 261, and Star Master 183 did not move. This table does not replace those sheets.
+
+Panel fit for every other hull stays the inherited rule: phone static `0.72`, 80 or more markers `0.76`, Imperial `0.84`, otherwise `1.12`. The Interdictor is the exception in `shipFit`. Radius 113.9 at fit `0.76` lands in the box (60.6, -52.9)–(358.2, 299.7). That height is 352.7 px against a 260 px frame, so the ring and the 1,000-marker cloud clip. Fit `0.72` and fit `1.12` clip the same way. Fit `0.4` keeps the ring inside the frame: three-quarter (124.2, 32.4)–(278.0, 217.0), head-on (106.3, 28.5)–(290.4, 216.6), side (107.0, 29.3)–(292.7, 219.2). `shipFit` returns `0.4` for `interdictor_cruiser` on every motion, including the phone. The Sentinel stills use `1.12`, phone `0.72`, head-on `1`, side `1.15`. At yaw `0.82` pitch `0.5` and fit `1.12` the Sentinel vertices land in (143.3, 78.0)–(233.8, 182.2).
 
 ## Stills
 
-Canonical pose is yaw `0.82`, pitch `0.5`. Head-on is clip camera `headon`. Side is clip camera `side`. The hauler stills sheet records those clip cameras as head-on yaw `-1.35` pitch `0.2`, and side yaw `1.35` pitch `0.18`. Match that pose. Shields full draw the bubble. Shields empty drop the bubble, draw the scar strokes, and run damage `1` through `projectFace`. Accent faces skip that wash. No name plate is drawn.
+Canonical pose is yaw `0.82`, pitch `0.5`. Head-on is yaw `-1.35`, pitch `0.2`. Side is yaw `1.35`, pitch `0.18`. Shields full draw the bubble. Shields empty drop the bubble, draw the scar strokes, and run damage `1` through `projectFace`. Accent faces skip that wash. No name plate is drawn.
 
-`#shipSvg` shows this viewBox at `max-height: 140px`. The hero crop is the same viewBox at about 55% of the deck. Phone, `prefers-reduced-motion`, and `body.cu-seat` hold this pose and do not loop. The phone still uses fit `0.72`. On the Interdictor those stills draw the 1,000 count. Exact pixel width and height of each PNG are **TBD / awaiting product**.
+`#shipSvg` shows this viewBox at `max-height: 140px`. The 140px singles are 215×140. The canonical singles are 400×260. The hero singles are 677×440. Pair frames are two cells side by side: 430×140 and 1354×440. Phone, `prefers-reduced-motion`, and `body.cu-seat` hold the canonical three-quarter pose and do not loop. The Sentinel phone still is 400×260 at fit `0.72`. The Interdictor phone still is the same 400×260 frame at fit `0.4`, because `0.72` crops the ring. This wave does not edit `web/redesign.css`.
 
-Each row is a file the product Cur adds under `docs/plans/stills/p1b-batch5-brick/`. Status stays `awaiting product` until that PNG exists. This scaffold does not embed an image for a file that is not in the tree.
+Marker counts on these frames: Sentinel 25, Interdictor 1,000, Colonial 2, Constellation 50. Neither new hull is on `SHIP_TW_CHART_RANGE`. Pass pose is idle cyan-white cones. A fitted drive recolours the cones only, and this wave does not reserve a TransWarp still.
 
-### Tholian Sentinel
+Tholian Sentinel, shields full, 25 markers, 140px. Short blunt brick, mint slabs on both flanks:
 
-| File | Shot | Status |
+![Tholian Sentinel at 140px, shields full](stills/p1b-batch5-brick/ts-3q-full-140.png)
+
+Tholian Sentinel, shields empty, 140px. The slabs and the stripe stay `#62f0c8`. Scars draw. The bubble is gone:
+
+![Tholian Sentinel at 140px, shields empty](stills/p1b-batch5-brick/ts-3q-empty-140.png)
+
+Interdictor Cruiser, shields full, 1,000 markers outside the hoops, 140px. The hoops are the first shape:
+
+![Interdictor Cruiser at 140px, shields full](stills/p1b-batch5-brick/ic-3q-full-140.png)
+
+Interdictor Cruiser, shields empty, 140px. The rims and the stripe stay `#ff5cab`. The hole stays empty:
+
+![Interdictor Cruiser at 140px, shields empty](stills/p1b-batch5-brick/ic-3q-empty-140.png)
+
+Sentinel three-quarter, head-on, and side. Head-on is nearly square. The slabs are the sides. The nose is a stub. Two mouths sit low, inside the square:
+
+![Tholian Sentinel three-quarter, shields full](stills/p1b-batch5-brick/ts-3q-full.png)
+
+![Tholian Sentinel head-on](stills/p1b-batch5-brick/ts-head.png)
+
+![Tholian Sentinel side](stills/p1b-batch5-brick/ts-side.png)
+
+Interdictor three-quarter, head-on, and side. Head-on is a ring with a body in the hole. The side camera shows two hoops larger than the body, and four mouths on a low row inside them:
+
+![Interdictor Cruiser three-quarter, shields full](stills/p1b-batch5-brick/ic-3q-full.png)
+
+![Interdictor Cruiser head-on](stills/p1b-batch5-brick/ic-head.png)
+
+![Interdictor Cruiser side](stills/p1b-batch5-brick/ic-side.png)
+
+Hero crops, shields full. The brick stays short. The hoops stay the first shape, with the hole empty:
+
+![Tholian Sentinel hero](stills/p1b-batch5-brick/ts-3q-full-hero.png)
+
+![Interdictor Cruiser hero](stills/p1b-batch5-brick/ic-3q-full-hero.png)
+
+A brick beside the Colonial hauler, 140px. The Sentinel is the square. The Colonial keeps the cabin row and the belly tanks:
+
+![Tholian Sentinel and Colonial Transport, 140px](stills/p1b-batch5-brick/pair-ts-col-3q-140.png)
+
+![Tholian Sentinel and Colonial Transport, head-on](stills/p1b-batch5-brick/pair-ts-col-head-140.png)
+
+A hoop beside the Constellation X, 140px. Head-on is a ring with a body in the hole, next to an X of four nacelles:
+
+![Interdictor Cruiser and Constellation, 140px](stills/p1b-batch5-brick/pair-ic-con-3q-140.png)
+
+![Interdictor Cruiser and Constellation, head-on](stills/p1b-batch5-brick/pair-ic-con-head-140.png)
+
+Every file under `docs/plans/stills/p1b-batch5-brick/` is shot. Singles are 215×140, 400×260, or 677×440. Pairs are 430×140 or 1354×440.
+
+| File | Pixels | Shot |
 | --- | --- | --- |
-| `ts-3q-full-140.png` | Three-quarter, shields full, 25 markers, ~140px. Slabs break both flanks | awaiting product |
-| `ts-3q-empty-140.png` | Three-quarter, shields 0, 25 markers, ~140px. Slabs and stripe still `#62f0c8` | awaiting product |
-| `ts-3q-full.png` | Three-quarter, shields full, 25 markers | awaiting product |
-| `ts-3q-empty.png` | Three-quarter, shields 0, 25 markers | awaiting product |
-| `ts-head.png` | Head-on, shields full. Nearly square. Slabs are the sides. Stub nose. Two mouths low, inside the square | awaiting product |
-| `ts-head-empty.png` | Head-on, shields 0. Slab faces and stripe still `#62f0c8` | awaiting product |
-| `ts-side.png` | Side clip. Short blunt brick. Slabs on both flanks. No belly tanks. No cabin row as the main shape | awaiting product |
-| `ts-3q-full-hero.png` | Hero crop, shields full, 25 markers | awaiting product |
-| `ts-3q-empty-hero.png` | Hero crop, shields 0, 25 markers | awaiting product |
-| `ts-phone.png` | Phone fit `0.72`, same pose, cap bay | awaiting product |
-
-### Interdictor Cruiser
-
-| File | Shot | Status |
-| --- | --- | --- |
-| `ic-3q-full-140.png` | Three-quarter, shields full, 1,000 markers outside the hoops, ~140px | awaiting product |
-| `ic-3q-empty-140.png` | Three-quarter, shields 0, 1,000 markers, ~140px. Rims and stripe still `#ff5cab` | awaiting product |
-| `ic-3q-full.png` | Three-quarter, shields full, 1,000 markers outside the hoops | awaiting product |
-| `ic-3q-empty.png` | Three-quarter, shields 0, 1,000 markers outside the hoops | awaiting product |
-| `ic-head.png` | Head-on, shields full. A ring with a body in the hole. Rims `#ff5cab`. The hole is empty | awaiting product |
-| `ic-head-empty.png` | Head-on, shields 0. Rims and stripe still `#ff5cab`. Hole still empty | awaiting product |
-| `ic-side.png` | Side clip. Two hoops larger than the body, first shape. Four mouths on the body, inside the hoops | awaiting product |
-| `ic-3q-full-hero.png` | Hero crop, shields full, 1,000 markers outside the hoops | awaiting product |
-| `ic-3q-empty-hero.png` | Hero crop, shields 0, 1,000 markers outside the hoops | awaiting product |
-| `ic-phone.png` | Phone fit `0.72`, same pose, 1,000 darts, no loop | awaiting product |
+| `ts-3q-full-140.png`, `ts-3q-empty-140.png` | 215×140 | Shields full, shields 0, 25 markers, fit `1.12` |
+| `ts-3q-full.png`, `ts-3q-empty.png`, `ts-head.png`, `ts-head-empty.png`, `ts-side.png` | 400×260 | Three-quarter fit `1.12`, head-on fit `1`, side fit `1.15` |
+| `ts-phone.png` | 400×260 | Phone fit `0.72`, 25 markers |
+| `ts-3q-full-hero.png`, `ts-3q-empty-hero.png` | 677×440 | Hero, shields full and shields 0 |
+| `ic-3q-full-140.png`, `ic-3q-empty-140.png` | 215×140 | Shields full, shields 0, 1,000 markers, fit `0.4` |
+| `ic-3q-full.png`, `ic-3q-empty.png`, `ic-head.png`, `ic-head-empty.png`, `ic-side.png`, `ic-phone.png` | 400×260 | Three-quarter, head-on, side, and phone, all at fit `0.4` |
+| `ic-3q-full-hero.png`, `ic-3q-empty-hero.png` | 677×440 | Hero, shields full and shields 0, fit `0.4` |
+| `pair-ts-col-*` | 430×140, hero 1354×440 | Brick beside the hauler, 25 markers and 2 markers |
+| `pair-ic-con-*` | 430×140, hero 1354×440 | Hoops beside the X, 1,000 markers and 50 markers |
 
 ## Brick and hoops tells
 
-Cover the name plate. The product Cur writes the read from the stills above, at ~140px and at the hero crop, shields 0 and shields full, three-quarter and head-on. This scaffold does not claim a read. A part that only exists in one of those views is not a signature.
+Cover the name plate. These reads hold on the stills above, at 140px and at the hero crop, shields 0 and shields full.
 
-| Tell | Contract | Stills read |
-| --- | --- | --- |
-| Sentinel brick | Short blunt brick. Armor slabs on both flanks. Head-on nearly square, slabs as the sides of that square. Stub nose. Two mouths low, inside the square, inside the slab line. `#62f0c8` on the slab faces and the stripe. Fuselage between the slabs stays dark metal. | TBD |
-| Sentinel misses | A full mint body fails. A full red body fails. Canards fail. A wedge nose fails. Belly tanks and a cabin row as the main shape fail. A hoop around the brick fails. | TBD |
-| Interdictor hoops | Two hoops larger than the body, first shape from the side, from above, and head-on. Head-on is a ring with a body in the hole. The hole is empty. Both rims `#ff5cab`. Body stays dark metal. Four mouths on the body, inside the ring. | TBD |
-| Interdictor misses | A full pink body fails. A full red body fails. A filled disc fails. An X of nacelles fails. A marker in the hole fails. A marker on the skin fails. | TBD |
-| Markers | Sentinel cap is 25 darts outside the slabs. Interdictor cap is 1,000 darts outside the hoops. Bay 50 is one dart. Bay 100 is still one dart. | TBD |
+| Tell | Where it reads |
+| --- | --- |
+| Short blunt brick. Armor slabs on both flanks. Head-on nearly square, 71.1 × 72.6 px. Stub nose | `ts-3q-full.png`, `ts-head.png`, `ts-side.png`, hero and 140px |
+| Two engines sit low, inside the square and inside the slab line | `ts-head.png`, `ts-side.png`. Mouths at `y = -6.6`, `z = ±3.2`, slab outer ±15.3 |
+| Slab faces and stripe stay `#62f0c8` at shields 0. The fuselage stays dark metal | `ts-3q-empty.png`, `ts-head-empty.png`. Accent average `[81, 198, 165]` at damage 0 and 1 |
+| Markers sit outside the slabs. None sit in the brick | Cap 25. Placed 25, under / overlap / clipped 0 |
+| Two hoops larger than the body, first shape from the side and head-on. Head-on is a ring with a body in the hole. The hole is empty | `ic-3q-full.png`, `ic-head.png`, `ic-side.png`, hero and 140px. Outer radius 112, radius 113.9 |
+| Four mouths sit on one low row on the body, inside the hoops. They are not an X | `ic-side.png`. Mouths at `y = -3.8`, `z = ±2.3` and `±6.9`, inside inner radius 68 |
+| Both rims and the stripe stay `#ff5cab` at shields 0. The body stays dark metal. The hole stays empty | `ic-3q-empty.png`, `ic-head-empty.png`. Accent average `[198, 71, 133]` |
+| Markers sit outside the hoops. None sit in the hole. None sit on the skin | Cap 1,000. Placed 1,000, under / overlap / clipped / hole 0. Minimum cylinder past the outer rim |
+| A square brick versus a tall hauler with belly tanks | `pair-ts-col-3q-140.png`, `pair-ts-col-head-140.png`, `pair-ts-col-side-140.png` |
+| A ring versus an X of four nacelles | `pair-ic-con-3q-140.png`, `pair-ic-con-head-140.png`, `pair-ic-con-side-140.png` |
+
+A full mint body, a full pink body, a full red body, a filled disc, canards, a wedge nose, and an X of nacelles on the Interdictor are not what these stills show.
 
 ## Colonial and Constellation re-shots
 
-Reads of meshes that have already landed. This wave does not recut them. Pair frames go in the same stills directory. Each file is awaiting product. Name plate covered. Repeat at ~140px and at the hero crop, shields full and shields 0.
+Reads of meshes that have already landed. This wave does not recut them. Colonial Transport beside the Sentinel keeps `#7dff7d` on the stripe and the tank rims, including at shields 0. The cap is 2 markers. Accent average `[102, 208, 102]` at damage 0 and 1. Body at damage 1 is `[39, 51, 64]`. Face count stays 251.
 
-Colonial Transport beside the Sentinel. The flank still reads as a tall box, high for its length, with a cabin row. Two belly tanks still break the underside. Accent stays `#7dff7d` on the stripe and the tank rims, including at shields 0. The cap is 2 markers. The slabs stay on the Sentinel.
+Constellation beside the Interdictor keeps `#d0d6ff` on the nacelles and the stripe, including at shields 0. The cap is 50 markers. Accent average `[168, 173, 206]` at damage 0 and 1. Body at damage 1 is `[41, 51, 65]`. Face count stays 311. Head-on stays an X. The Interdictor cell in the pair still shows 1,000 darts outside the hoops.
 
-| File | Shot | Status |
+| File | Pixels | Shot |
 | --- | --- | --- |
-| `pair-ts-col-3q-140.png` | Sentinel and Colonial, three-quarter, shields full, ~140px. Sentinel at 25 markers. Colonial at 2 | awaiting product |
-| `pair-ts-col-3q-empty-140.png` | Same pair, shields 0. Colonial rims still `#7dff7d`. Sentinel slabs still `#62f0c8` | awaiting product |
-| `pair-ts-col-head-140.png` | Same pair, head-on, shields full | awaiting product |
-| `pair-ts-col-side-140.png` | Same pair, side clip, shields full | awaiting product |
-| `pair-ts-col-3q-hero.png` | Same pair, hero crop, shields full | awaiting product |
-
-Constellation beside the Interdictor. Head-on is an X of four nacelles, and little else. The nacelles trail past the tail. Accent stays `#d0d6ff` on the nacelles and the stripe, including at shields 0. The cap is 50 markers. The hoops stay on the Interdictor. The Interdictor frame in the pair still shows 1,000 darts outside the hoops.
-
-| File | Shot | Status |
-| --- | --- | --- |
-| `pair-ic-con-3q-140.png` | Interdictor and Constellation, three-quarter, shields full, ~140px. Interdictor at 1,000 markers. Constellation at 50 | awaiting product |
-| `pair-ic-con-3q-empty-140.png` | Same pair, shields 0. Constellation nacelles still `#d0d6ff`. Interdictor rims still `#ff5cab` | awaiting product |
-| `pair-ic-con-head-140.png` | Same pair, head-on, shields full. X versus a ring with a body in the hole | awaiting product |
-| `pair-ic-con-side-140.png` | Same pair, side clip, shields full | awaiting product |
-| `pair-ic-con-3q-hero.png` | Same pair, hero crop, shields full | awaiting product |
-
-Face counts for the Colonial and the Constellation are not remeasured here. The product Cur confirms the earlier pins did not move, then leaves those counts on the sheets that recorded them. This table does not invent a replacement count.
-
-The [wave read](cockpit-ship-stage-p1b-batch5.md#wave-read-test) names more pairs. This scaffold reserves re-shot frames for the Colonial beside the Sentinel, and for the Constellation beside the Interdictor.
+| `pair-ts-col-3q-140.png`, `pair-ts-col-3q-empty-140.png`, `pair-ts-col-head-140.png`, `pair-ts-col-side-140.png` | 430×140 | Shields full and shields 0, three-quarter, head-on, side |
+| `pair-ts-col-3q-hero.png` | 1354×440 | Hero, shields full |
+| `pair-ic-con-3q-140.png`, `pair-ic-con-3q-empty-140.png`, `pair-ic-con-head-140.png`, `pair-ic-con-side-140.png` | 430×140 | Shields full and shields 0, three-quarter, head-on, side |
+| `pair-ic-con-3q-hero.png` | 1354×440 | Hero, shields full |
 
 ## Markers
 
-`escortSlots` at the canonical pose, the phone fit, head-on, and the side clip. Every placed slot is outside the bounding sphere, kit included. Screen boxes do not hit the silhouette and do not clip the 400×260 frame. **Placed** and **Under / overlap / clipped** are awaiting product. The marker column is the contract formula, not a placement measurement.
+`escortSlots` places shells outside the bounding sphere, kit included. Screen boxes do not hit the silhouette and do not clip the 400×260 frame. On the Interdictor, a marker whose `hypot(y, z)` falls inside the hoop cylinder (outer 112, plus a margin of 3) is skipped and the next sample on that shell takes the slot. Counts of 800 or more on that hoop use a tighter shell (`sep` 2.0 / 1.6 / 0, ring step 2.4) so 1,000 darts stay near the rim and inside the frame at fit `0.4`. Other hulls keep the shells they already had. The count stays `max(1, ceil(n / 100))`. There is no silent cap.
 
-Bay 50 and bay 100 are the shared rows on both new hulls. Bay 50 is one dart, a partial hundred, with no numeral. Bay 100 is still one dart. `ceil(100 / 100)` is 1. No numeral. Bays 1–49 and 51–99 match bay 50.
-
-Tholian Sentinel. Cap 2,500 is 25 markers. The slabs set the beam. A length-only radius leaves markers in the slab silhouette. Fighters per attack stay 800. The checklist uses the bay.
-
-| Case | Markers (formula) | Placed | Under / overlap / clipped |
+| Case | Markers | Placed | Under / overlap / clipped |
 | --- | --- | --- | --- |
-| Bay 0 | 0 | TBD | TBD |
-| Bay 50 | 1 | TBD | TBD |
-| Bay 100 | 1 | TBD | TBD |
-| Bay 101–200 | 2 | TBD | TBD |
-| Bay 2,400 | 24 | TBD | TBD |
-| Bay 2,401–2,499 | 25 | TBD | TBD |
-| Bay 2,500 (cap, both rosters) | 25 | TBD | TBD |
+| Sentinel, bay 0 | 0 | 0 | 0 / 0 / 0 |
+| Sentinel, bay 1–100 (bay 50 and bay 100) | 1 | 1 | 0 / 0 / 0 |
+| Sentinel, bay 101–200 | 2 | 2 | 0 / 0 / 0 |
+| Sentinel, bay 2,400 | 24 | 24 | 0 / 0 / 0 |
+| Sentinel, bay 2,401–2,500 | 25 | 25 | 0 / 0 / 0 |
+| Interdictor, bay 0 | 0 | 0 | 0 / 0 / 0 |
+| Interdictor, bay 1–100 | 1 | 1 | 0 / 0 / 0 |
+| Interdictor, bay 101–200 | 2 | 2 | 0 / 0 / 0 |
+| Interdictor, bay 50,000 | 500 | 500 | 0 / 0 / 0, hole 0 |
+| Interdictor, bay 99,900 | 999 | 999 | 0 / 0 / 0, hole 0 |
+| Interdictor, bay 99,901–100,000 | 1,000 | 1,000 | 0 / 0 / 0, hole 0 |
+| Colonial re-shot, bay 200 | 2 | 2 | prior pin, mesh not recut |
+| Constellation re-shot, bay 5,000 | 50 | 50 | prior pin, mesh not recut |
 
-Interdictor Cruiser. Cap 100,000 is 1,000 markers. The hoops set the radius, after they have grown until they are the first shape. A marker in the hole fails. A marker on the skin fails. Fighters per attack stay 15,000. The checklist uses the bay. 50,000 is the Imperial cap and draws 500. This bay does not stop there.
-
-| Case | Markers (formula) | Placed | Under / overlap / clipped |
-| --- | --- | --- | --- |
-| Bay 0 | 0 | TBD | TBD |
-| Bay 50 | 1 | TBD | TBD |
-| Bay 100 | 1 | TBD | TBD |
-| Bay 101–200 | 2 | TBD | TBD |
-| Bay 50,000 | 500 | TBD | TBD |
-| Bay 99,900 | 999 | TBD | TBD |
-| Bay 99,901–99,999 | 1,000 | TBD | TBD |
-| Bay 100,000 (cap, both rosters) | 1,000 | TBD | TBD |
-
-Colonial and Constellation re-shots. Caps stay 2 and 50 on the merged hulls. Placement on this wave's pair frames is awaiting product. This sheet does not publish a new radius.
-
-| Case | Markers (formula) | Placed | Under / overlap / clipped |
-| --- | --- | --- | --- |
-| Colonial, bay 200 (re-shot) | 2 | TBD | TBD |
-| Constellation, bay 5,000 (re-shot) | 50 | TBD | TBD |
-
-Checked poses, once the product Cur runs: canonical yaw `0.82` pitch `0.5`, phone fit `0.72`, head-on, and the side clip. Clearance counts at those poses are TBD.
+Sentinel clearance is fit `1.12`, phone `0.72`, head-on fit `1`, and side fit `1.15`, for counts 0, 1, 2, 24, and 25. Interdictor clearance is fit `0.4` on those four cameras, for counts 0, 1, 2, 500, 999, and 1,000. No numeral is drawn on a dart.
 
 ## Frame time
 
-Node bench, same shape as the hauler sheet: one `drawShipFrame`-shaped update, project every face, build the point string, project each marker. Nine samples after four warmups. Median / max. Slot bake is the cost when the bay changes, not part of the frame. Every time below is **TBD / awaiting product**. The bar stays 16 ms. A miss of that bar is the acceptance off-ramp. This scaffold does not record a sample.
+Node 22.23.4 on this VM. One `drawShipFrame`-shaped update: project every face, build the point string, and project each marker. Nine samples after four warmups. Median / max. Slot bake is one sample, the cost when the bay changes, not part of the frame. The bar is the JS frame, 16 ms.
 
 | Frame | Fit | Markers | Bake | JS frame |
 | --- | --- | --- | --- | --- |
-| Tholian Sentinel, canonical | 1.12 | 25 | TBD | TBD |
-| Interdictor Cruiser, canonical | 1.12 | 1,000 | TBD | TBD |
-| Interdictor Cruiser, drift | 0.76 | 1,000 | TBD | TBD |
-| Imperial, drift-shaped | 0.76 | 500 | TBD | TBD |
-| Imperial, static-shaped | 0.72 | 1,000 | TBD | TBD |
+| Tholian Sentinel, canonical | 1.12 | 25 | 2.15 ms | 0.22 / 0.46 ms |
+| Interdictor Cruiser, shipped pose | 0.4 | 1,000 | 8.56 ms | 0.69 / 1.34 ms |
+| Interdictor Cruiser, fit `0.76` (clips; not a still) | 0.76 | 1,000 | 17.08 ms | 0.55 / 0.74 ms |
+| Interdictor Cruiser, fit `1.12` (clips; not a still) | 1.12 | 1,000 | 9.45 ms | 0.55 / 0.94 ms |
+| Imperial, drift-shaped | 0.76 | 500 | 1.71 ms | 0.45 / 0.65 ms |
+| Imperial, static-shaped | 0.72 | 1,000 | 2.68 ms | 0.52 / 0.64 ms |
 
-The Interdictor drift row is this wave's 1,000 on the real hoops. The 500-marker and 1,000-marker Imperial rows are the inherited P1 bar, re-run on the file this wave ships. They are not a new Imperial mesh, and they are not a pass of the Interdictor. When 1,000 separate SVG paths miss the frame, the fix is the spike's grouping: one group moved by a transform, or one canvas layer for markers only. The count stays `ceil(n / 100)`.
+The shipped Interdictor frame is the drift measurement for this wave: 1,000 markers at fit `0.4`, 0.69 / 1.34 ms. Fit `0.76` and fit `1.12` also project under 16 ms, and both leave the ring outside the 400×260 frame, so they are not the still and not the panel fit. The bake at fit `0.76` is the wider shell walking off the frame before the count fills. It is not the frame update. All six JS frames sit under 16 ms, so the markers stay individual SVG paths. The count stays `ceil(n / 100)`. The Imperial rows are the inherited P1 bar on the file this wave ships. The Imperial mesh is not recut.
 
-## Shields 0 and shields full
+## Shields 0
 
-Accent fill, averaged over the same cameras at damage 0 and damage 1, is awaiting product. Contract colours below are the pass colours. They are not a sampled RGB.
+Accent fill, averaged over the same five cameras at damage 0 and damage 1, did not move. A fitted TransWarp drive did not move it either. Idle cones are cyan-white. A fitted drive turns the cones magenta and leaves the accent where it was. Neither new hull is on `SHIP_TW_CHART_RANGE`. The pass pose is the idle cones.
 
-Empty shields leave scars and a missing bubble. The class accent stays. A full red body fails. A full mint body on the Sentinel fails. A full pink body on the Interdictor fails. A filled disc on the Interdictor fails.
+| Hull | Accent at damage 0 and 1 | Body at damage 1 | Idle plume | Fitted TransWarp plume |
+| --- | --- | --- | --- | --- |
+| Tholian Sentinel | `[81, 198, 165]` on the slab faces and the stripe | `[42, 54, 66]` | `[246, 255, 255]` | `[255, 211, 255]` |
+| Interdictor Cruiser | `[198, 71, 133]` on both rims and the stripe | `[42, 49, 63]` | `[247, 255, 255]` | `[255, 212, 255]` |
+| Colonial Transport (re-shot) | `[102, 208, 102]` `#7dff7d` | `[39, 51, 64]` | `[248, 255, 246]` | `[255, 220, 246]` |
+| Constellation (re-shot) | `[168, 173, 206]` `#d0d6ff` | `[41, 51, 65]` | `[247, 255, 255]` | `[255, 212, 255]` |
 
-| Hull | Shields | Drive | Contract accent | Accent RGB | Body RGB | Idle plume | Fitted plume |
-| --- | --- | --- | --- | --- | --- | --- | --- |
-| Tholian Sentinel | full | idle | `#62f0c8` slab faces and stripe. Fuselage dark metal | TBD | TBD | TBD | TBD |
-| Tholian Sentinel | 0 | idle | Same `#62f0c8`. Bubble absent | TBD | TBD | TBD | TBD |
-| Interdictor Cruiser | full | idle | `#ff5cab` both rims and stripe. Holes open. Body dark metal | TBD | TBD | TBD | TBD |
-| Interdictor Cruiser | 0 | idle | Same `#ff5cab`. Bubble absent. Hole empty | TBD | TBD | TBD | TBD |
-| Colonial Transport (re-shot) | 0 and full | idle | `#7dff7d` stripe and tank rims | TBD | TBD | TBD | TBD |
-| Constellation (re-shot) | 0 and full | idle | `#d0d6ff` nacelles and stripe | TBD | TBD | TBD | TBD |
+The fitted drive recolours the cones. The slabs, the rims, and the stripes stay flat metal (`accent` set, `emissive` clear). Scars draw. The bubble is absent at zero shields. The body stays dark blue-grey. A full body painted `#62f0c8` or `#ff5cab` is not what these averages show. The Interdictor hole stays open at shields 0.
 
-The product Cur replaces each TBD with the measured average, or leaves the cell TBD if that camera was not sampled. Flat metal on the accent faces stays `accent` set and `emissive` clear. The pass pose is idle cyan-white cones. A fitted drive recolours the cones only, and this scaffold does not reserve a still for that recolor. Colonial green stays on the Colonial. Constellation `#d0d6ff` stays on the nacelles. Gold is the Imperial's accent. Magenta on a tower is the FlagShip. Neither colour appears on these rims.
+## Checklist notes
+
+Recorded against the batch-5 contract. This sheet does not stamp Pass.
+
+- Both hulls are on `buildHullFaces` / `projectFace`. `sentinelSpike` and `interdictorSpike` return before the glass loft. No `three` import and no WebGL context in `web/hull-meshes.js`.
+- The Sentinel reads as a short square brick with mint slabs, a stub nose, and two low engines inside the slabs. The Interdictor reads as two pink hoops larger than the body, a body in an empty hole, and four mouths on a low row.
+- Colonial stays 251 faces. Constellation stays 311 faces. The other prior face counts listed above stay on their pins. The re-shots are the pair stills.
+- Shields empty keeps `#62f0c8` on the slabs and `#ff5cab` on the rims.
+- Marker formula, the 25-marker cap, the 1,000-marker cap, and the empty hoop hole are pinned in `tests/test_cockpit_ship_stage_p1b_batch5_brick.py`. `fleet-glass-v1` rows for these two hulls moved out of `FLEET_GLASS`. Pins for hulls this wave does not cut stay.
+- Gzip 16,343 bytes (Node) and 16,284 bytes (Python), both under 40 KB. The shipped frame rows above sit under 16 ms.
+- Phone, reduced motion, and `body.cu-seat` are the canonical three-quarter still. The Interdictor still draws 1,000 darts at fit `0.4`. No separate loop.
+- `shipFit` returns `0.4` for the Interdictor so the live panel matches the still. Other hulls keep `0.72` / `0.76` / `0.84` / `1.12`. No engine change, no new action, no new event field.

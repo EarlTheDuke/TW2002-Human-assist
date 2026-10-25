@@ -4,7 +4,7 @@
    on this same face list.    P1b adds scout_marauder, merchant_freighter,
    battleship, corporate_flagship, escape_pod, tkhasi_orion, cargotran,
    colonial_transport, taurean_mule, missile_frigate, havoc_gunstar,
-   star_master, and constellation
+   star_master, constellation, tholian_sentinel, and interdictor_cruiser
    on that same path. The other hulls stay fleet-glass-v1.
    Classic page: window.TW2KHullMeshes
    Module: import { buildHullFaces } from "/static/hull-meshes.mjs"
@@ -969,6 +969,102 @@
     loftAt(faces, [[30, 0.36, 1.05], [14, 0.44, 1.3]], 3.9, 0, accent, 1, false, "round", true);
     stripe(faces, 24, -22, 3.85, 0.85, accent);
   }
+  // Open washer. Both faces and both rims take the accent, so a shield wash
+  // cannot repaint the hoop. The hole stays empty. No end cap.
+  function hoopAt(faces, x, radIn, radOut, segs, rgb, thick) {
+    var i, a0, a1, c0, s0, c1, s1;
+    for (i = 0; i < segs; i++) {
+      a0 = (i / segs) * Math.PI * 2;
+      a1 = ((i + 1) / segs) * Math.PI * 2;
+      c0 = Math.cos(a0);
+      s0 = Math.sin(a0);
+      c1 = Math.cos(a1);
+      s1 = Math.sin(a1);
+      pushFace(faces, [
+        [x + thick, c0 * radIn, s0 * radIn],
+        [x + thick, c0 * radOut, s0 * radOut],
+        [x + thick, c1 * radOut, s1 * radOut],
+        [x + thick, c1 * radIn, s1 * radIn]
+      ], rgb, 1, false, [x, 0, 0], true);
+      pushFace(faces, [
+        [x - thick, c0 * radIn, s0 * radIn],
+        [x - thick, c1 * radIn, s1 * radIn],
+        [x - thick, c1 * radOut, s1 * radOut],
+        [x - thick, c0 * radOut, s0 * radOut]
+      ], rgb, 1, false, [x, 0, 0], true);
+      pushFace(faces, [
+        [x + thick, c0 * radOut, s0 * radOut],
+        [x - thick, c0 * radOut, s0 * radOut],
+        [x - thick, c1 * radOut, s1 * radOut],
+        [x + thick, c1 * radOut, s1 * radOut]
+      ], rgb, 1, false, [x, 0, 0], true);
+      pushFace(faces, [
+        [x - thick, c0 * radIn, s0 * radIn],
+        [x + thick, c0 * radIn, s0 * radIn],
+        [x + thick, c1 * radIn, s1 * radIn],
+        [x - thick, c1 * radIn, s1 * radIn]
+      ], rgb, 1, false, [x, 0, 0], true);
+    }
+  }
+  // Fortress. The shortest blunt brick. Armor slabs sit outside the loft and
+  // make the head-on view nearly square. Slab faces and the stripe are mint.
+  // The fuselage between the slabs stays dark metal. The nose is a stub.
+  // Two bells sit low in the tail, inside the slab line. No tanks, no cabin
+  // row, no hoop.
+  function sentinelSpike(faces, hull, metal, accent, glass, plume) {
+    var sections = [
+      [11, 7.6, 5.8],
+      [2, 9.2, 6.8],
+      [-6, 9.6, 7.0],
+      [-14, 8.4, 6.2],
+      [-20, 6.6, 5.0]
+    ];
+    loftAt(faces, sections, 0, 0, hull, 1, false, "box");
+    [-1, 1].forEach(function (sign) {
+      boxAt(faces, -6, 0, sign * 12.15, 20, 30.6, 6.3, accent, 1, false, true);
+    });
+    boxAt(faces, 13.2, 0.15, 0, 6.4, 8.6, 6.8, shade(metal, 0.86), 1, false);
+    var win = glass;
+    var i;
+    for (i = 0; i < 3; i++) {
+      lamp(faces, 6.4 - i * 2.6, 1.05, 6.9, 0.95, 0.62, win, 1);
+      lamp(faces, 6.4 - i * 2.6, 1.05, -6.9, 0.95, 0.62, win, -1);
+    }
+    loftAt(faces, [[4, 1.05, 1.45], [-2, 1.55, 2.05], [-8, 0.95, 1.3]], 8.7, 0, glass, 1, false, "round");
+    loftAt(faces, [[5, 0.34, 0.95], [-1, 0.4, 1.15]], 8.25, 0, accent, 1, false, "round", true);
+    stripe(faces, 6, -12, 10.15, 0.95, accent);
+    [-1, 1].forEach(function (sign) {
+      bell(faces, -22, -6.6, sign * 3.2, metal, plume, 0.5);
+    });
+  }
+  // Barge. A heavy box inside two hoops. The hoops are larger than the body
+  // and set the sphere, past the old glass radius. Both rims are the accent.
+  // The hole stays open. Four bells sit in a low row on the body, inside the
+  // rings, not in an X. No nose collar, no third hoop, no plate.
+  function interdictorSpike(faces, hull, metal, accent, glass, plume) {
+    var sections = [
+      [22, 6.2, 8.0],
+      [6, 8.0, 10.4],
+      [-8, 8.6, 11.2],
+      [-20, 7.2, 9.4],
+      [-30, 5.2, 6.8]
+    ];
+    loftAt(faces, sections, 0, 0, hull, 1, false, "box");
+    hoopAt(faces, 8, 68, 112, 14, accent, 2.6);
+    hoopAt(faces, -18, 68, 112, 14, accent, 2.6);
+    var win = glass;
+    var i;
+    for (i = 0; i < 3; i++) {
+      lamp(faces, 4 - i * 6, 0.6, 11.0, 1.15, 0.72, win, 1);
+      lamp(faces, 4 - i * 6, 0.6, -11.0, 1.15, 0.72, win, -1);
+    }
+    loftAt(faces, [[12, 1.15, 1.55], [2, 1.7, 2.2], [-6, 1.05, 1.4]], 8.2, 0, glass, 1, false, "round");
+    loftAt(faces, [[13, 0.38, 1.05], [1, 0.46, 1.3]], 7.75, 0, accent, 1, false, "round", true);
+    stripe(faces, 14, -16, 9.05, 1.05, accent);
+    [-1.5, -0.5, 0.5, 1.5].forEach(function (slot) {
+      bell(faces, -28, -3.8, slot * 4.6, metal, plume, 0.42);
+    });
+  }
   function spikeAccent(ship, spec) {
     if (spec && spec.accent) return parseHex(spec.accent);
     if (ship.class === "imperial_starship") return parseHex("#ffe9a0");
@@ -985,6 +1081,8 @@
     if (ship.class === "havoc_gunstar") return parseHex("#ff8844");
     if (ship.class === "star_master") return parseHex("#9ad7ff");
     if (ship.class === "constellation") return parseHex("#d0d6ff");
+    if (ship.class === "tholian_sentinel") return parseHex("#62f0c8");
+    if (ship.class === "interdictor_cruiser") return parseHex("#ff5cab");
     return parseHex("#7aa2ff");
   }
   function buildSpikeFaces(ship, spec) {
@@ -1009,13 +1107,15 @@
     else if (ship.class === "havoc_gunstar") havocSpike(faces, hull, metal, accent, glass, plume);
     else if (ship.class === "star_master") starMasterSpike(faces, hull, metal, accent, glass, plume);
     else if (ship.class === "constellation") constellationSpike(faces, hull, metal, accent, glass, plume);
+    else if (ship.class === "tholian_sentinel") sentinelSpike(faces, hull, metal, accent, glass, plume);
+    else if (ship.class === "interdictor_cruiser") interdictorSpike(faces, hull, metal, accent, glass, plume);
     else merchantSpike(faces, hull, metal, accent, glass, plume);
     return faces;
   }
   function buildHullFaces(sh, def) {
     var ship = sh || {};
     var spec = def || {};
-    if (ship.class === "merchant_cruiser" || ship.class === "imperial_starship" || ship.class === "scout_marauder" || ship.class === "merchant_freighter" || ship.class === "battleship" || ship.class === "corporate_flagship" || ship.class === "escape_pod" || ship.class === "tkhasi_orion" || ship.class === "cargotran" || ship.class === "colonial_transport" || ship.class === "taurean_mule" || ship.class === "missile_frigate" || ship.class === "havoc_gunstar" || ship.class === "star_master" || ship.class === "constellation") return buildSpikeFaces(ship, spec);
+    if (ship.class === "merchant_cruiser" || ship.class === "imperial_starship" || ship.class === "scout_marauder" || ship.class === "merchant_freighter" || ship.class === "battleship" || ship.class === "corporate_flagship" || ship.class === "escape_pod" || ship.class === "tkhasi_orion" || ship.class === "cargotran" || ship.class === "colonial_transport" || ship.class === "taurean_mule" || ship.class === "missile_frigate" || ship.class === "havoc_gunstar" || ship.class === "star_master" || ship.class === "constellation" || ship.class === "tholian_sentinel" || ship.class === "interdictor_cruiser") return buildSpikeFaces(ship, spec);
     var sections = LOFT[ship.class] || LOFT.merchant_cruiser;
     var shape = SHAPE[ship.class] || "round";
     var accent = parseHex(spec.accent || "#7aa2ff");
@@ -1288,17 +1388,37 @@
     var camY = yaw == null ? 0.82 : yaw;
     var camP = pitch == null ? 0.5 : pitch;
     var Rb = hullRadius(faces);
+    var cyl = 0;
+    var fi, fk, fp, cyz;
+    for (fi = 0; fi < faces.length; fi++) {
+      for (fk = 0; fk < faces[fi].pts.length; fk++) {
+        fp = faces[fi].pts[fk];
+        cyz = Math.hypot(fp[1], fp[2]);
+        if (cyz > cyl) cyl = cyz;
+      }
+    }
+    // A hoop wider than any other kit leaves a hole on the axis. A marker
+    // inside that cylinder reads as sitting in the hole. The next sample
+    // on the same shell takes the slot. Narrower hulls skip this test.
+    var hoopHole = cyl > 80;
     var mask = silhouetteMask(faces, camY, camP, scale);
     var halfW = 3.1;
     var halfH = 4.0;
     var seps = count >= 800 ? [3.1, 2.2, 0] : count >= 80 ? [4.8, 3.4, 2.2, 0] : [12, 8, 5];
+    // A thousand darts around a hoop need shells that stay near the rim.
+    // The wider step used on other hulls walks off the 400x260 frame before
+    // the count is filled. Narrower hulls keep the old shells.
+    if (hoopHole && count >= 800) seps = [2.0, 1.6, 0];
     var slots = [];
     var near = {};
     var pass, sep, ring, rad, tilt, room, i, a, ct, st, cy, sy, p, q, box, guard;
+    var ringMax = hoopHole && count >= 800 ? 40 : 22;
+    var ringGap = hoopHole && count >= 800 ? 7 : 10;
+    var ringStep = hoopHole && count >= 800 ? 2.4 : 5.5;
     for (pass = 0; pass < seps.length && slots.length < count; pass++) {
       sep = seps[pass];
-      for (ring = 0; ring < 22 && slots.length < count; ring++) {
-        rad = Rb + 10 + ring * 5.5;
+      for (ring = 0; ring < ringMax && slots.length < count; ring++) {
+        rad = Rb + ringGap + ring * ringStep;
         tilt = (ring * 0.71) % Math.PI;
         room = Math.max(20, Math.floor((2 * Math.PI * rad) / (sep > 0 ? sep + 2.2 : 3.2)));
         ct = Math.cos(tilt);
@@ -1314,6 +1434,7 @@
           // The next sample on the same shell takes the slot.
           if (p[0] > -60 && p[0] < 8 && Math.hypot(p[1], p[2]) < 14) continue;
           if (p[1] < 26 && Math.hypot(p[0], p[2]) < 20) continue;
+          if (hoopHole && Math.hypot(p[1], p[2]) < cyl + 3) continue;
           q = projectWorld(p, camY, camP, scale);
           box = [q[0] - halfW, q[1] - halfH, q[0] + halfW, q[1] + halfH];
           guard = pass < seps.length - 1;
