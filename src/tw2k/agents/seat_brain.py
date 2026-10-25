@@ -529,8 +529,19 @@ class View:
         return int((p.get("max_by") or {}).get(key) or 0)
 
     @property
+    def dock(self) -> int:
+        """StarDock sector. Sector 1 unless this observation names another."""
+        raw = self.sector.get("stardock_sector") if isinstance(self.sector, dict) else None
+        if raw is None:
+            return STARDOCK
+        try:
+            return int(raw)
+        except (TypeError, ValueError):
+            return STARDOCK
+
+    @property
     def stardock_known(self) -> bool:
-        return self.here == STARDOCK or STARDOCK in self.known_ids
+        return self.here == self.dock or self.dock in self.known_ids
 
     def planet(self, pid: int | None) -> dict[str, Any] | None:
         return next((p for p in self.owned if p.get("id") == pid), None)
@@ -1038,7 +1049,7 @@ class SeatBrain:
         """In an escape pod: trade it at StarDock (it buys a Scout outright), else fly there."""
         if v.ship_class != "escape_pod" or v.landed is not None:
             return None
-        if v.here == STARDOCK:
+        if v.here == v.dock:
             if not v.ok("buy_ship"):
                 return None
             choices = v.choices("buy_ship", "ship_class")
@@ -1059,7 +1070,7 @@ class SeatBrain:
                 if key in choices and v.credits - cost >= keep:
                     return self._act("buy_ship", {"ship_class": key}, f"trade the escape pod for a {key} ({cost} cr net)")
             return None
-        plot = self._plot(v, STARDOCK, "escape pod - autopilot to StarDock to trade it in")
+        plot = self._plot(v, v.dock, "escape pod - autopilot to StarDock to trade it in")
         if plot is None or self._banned_why(plot, v):
             return None
         return self._avoid_held(v, plot, Intent())[0]  # not back through fighters it fled today
@@ -1070,11 +1081,11 @@ class SeatBrain:
             return None
         if int(v.obs.get("deaths") or 0) <= 0 or v.landed is not None:
             return None
-        if v.here != STARDOCK:
+        if v.here != v.dock:
             balance = int(v.obs.get("bank_balance") or 0)
             if int(v.credits) >= 2_000 or balance < 1:
                 return None
-            plot = self._plot(v, STARDOCK, "free scout - autopilot to StarDock to rebuy")
+            plot = self._plot(v, v.dock, "free scout - autopilot to StarDock to rebuy")
             if plot is None or self._banned_why(plot, v):
                 return None
             return self._avoid_held(v, plot, Intent())[0]
@@ -1394,7 +1405,22 @@ class SeatBrain:
         return genesis_slow or self.pressure is not None
 
     def _at_stardock(self, v: View):
-        if v.here != STARDOCK or self._hauling_organics(v):
+        at_dock = int(v.here or -1) == int(v.dock)
+        at_terra = int(v.here or -1) == int(STARDOCK)
+        if self._hauling_organics(v) or not (at_dock or at_terra):
+            return None
+        if at_terra and not at_dock:
+            back = self._return_colonists_to_terra(v)
+            if back is not None:
+                return back, Intent("acquire")
+            reserve = self._citadel_reserve(v)
+            need = self._colonists_needed(v)
+            if v.worlds() and need > 0 and self._buildable_elsewhere(v) is None and v.cargo_free > 0:
+                loaded = self._load_colonists(
+                    v, need, reserve, f"load colonists for the ferry ({need} still needed)",
+                )
+                if loaded is not None:
+                    return loaded, Intent("colonize", self.mem.home_sector)
             return None
         back = self._return_colonists_to_terra(v)
         if back is not None:
@@ -1485,14 +1511,14 @@ class SeatBrain:
             return None
         # QC class0-terra-v1: the defence trip may end at Alpha Centauri / Rylos, where
         # _at_stardock never runs - buy here or the seat ping-pongs back to the port forever.
-        if v.here != STARDOCK and self._at_equip_port(v):
+        if v.here != v.dock and self._at_equip_port(v):
             defense = self._buy_defense(v)
             if defense is not None:
                 return defense, Intent("acquire")
         if self._needs_dock_defense(v):
             dock = self._defence_dock(v)
             label = ("under-armed with cash - Class 0 for fighters/shields"
-                     if dock != STARDOCK else
+                     if dock != v.dock else
                      "under-armed with cash - StarDock for fighters/shields")
             plot = self._plot(v, dock, label)
             if plot is not None:
@@ -1550,24 +1576,45 @@ class SeatBrain:
                         return plot, Intent("colonize", int(sid))
         return None
 
-    def _go_stardock(self, v: View):
-        """Autopilot to sector 1 when the ladder can pay for CargoTran or genesis.
+    def _dock_trip_sector(self, v: View) -> int:
+        """Yard, bank, and genesis follow the dock. A colonist-only trip stays at Terra."""
+        dock = int(v.dock)
+        if dock == STARDOCK:
+            return STARDOCK
+        if v.genesis_aboard > 0:
+            return dock
+        if not v.worlds():
+            return dock
+        reserve = self._citadel_reserve(v)
+        if (len(v.genesis_planets()) < self.target_planets
+                and v.credits >= genesis_torpedo_cost() + reserve
+                and not self._no_genesis_hull(v)):
+            return dock
+        if self._cargotran_affordable(v) and str(v.ship_class or "") != "cargotran":
+            return dock
+        if v.colonists_aboard == 0 and self._colonists_needed(v) > 0:
+            return STARDOCK
+        return dock
 
-        ``plot_course`` routes the real map, so sector 1 does not have to be
+    def _go_stardock(self, v: View):
+        """Autopilot to StarDock when the ladder can pay for CargoTran or genesis.
+
+        ``plot_course`` routes the real map, so the dock does not have to be
         explored first. FedSpace headings and ether probes are not a strategy.
         If the engine already rejected this plot, S6 bans it and we frontier-explore
-        instead of issuing it again.
+        instead of issuing it again. Colonists stay at Terra (sector 1).
         """
-        if v.landed is not None or v.here == STARDOCK or not self._needs_stardock(v):
+        target = self._dock_trip_sector(v)
+        if v.landed is not None or v.here == target or not self._needs_stardock(v):
             return None
-        plot = self._plot(v, STARDOCK, self._stardock_reason(v))
+        plot = self._plot(v, target, self._stardock_reason(v))
         if plot is None:
             return None
         why = self._banned_why(plot, v)
         if why:
             return self._explore(v, f"StarDock plot rejected ({why})")
         kind = "colonize" if v.worlds() else "acquire"
-        return plot, Intent(kind, STARDOCK)
+        return plot, Intent(kind, target)
 
     def _earn(self, v: View):
         if not self._evil_loop_owns(v):
@@ -1615,7 +1662,7 @@ class SeatBrain:
         committed = self._commit_haul(v)
         if committed is not None:
             return committed
-        if v.here == STARDOCK and v.worlds() and self._fogged_hot():
+        if v.here == v.dock and v.worlds() and self._fogged_hot():
             hw = self._maybe_buy_rich_hardware(v)
             if hw is not None:
                 return hw, Intent("acquire")
@@ -1748,10 +1795,10 @@ class SeatBrain:
         return self._distances_from(v, int(src)).get(int(dst))
 
     def _hops_to_stardock(self, v: View) -> int:
-        """Known hops to sector 1, or a short prior when the autopilot can still find it."""
-        if v.here == STARDOCK:
+        """Known hops to StarDock, or a short prior when the autopilot can still find it."""
+        if v.here == v.dock:
             return 0
-        hops = self._hops(v, v.here, STARDOCK)
+        hops = self._hops(v, v.here, v.dock)
         return hops if hops is not None else 6
 
     def _days_left(self, v: View) -> int:
@@ -1848,17 +1895,17 @@ class SeatBrain:
         future = max(200, min(self._days_left(v), 8) * 600)
         value = uplift * future
         turns = self._hops_to_stardock(v) * self._tpw(v) + 1
-        if v.here == STARDOCK and v.ok("buy_ship") and "cargotran" in v.choices("buy_ship", "ship_class"):
+        if v.here == v.dock and v.ok("buy_ship") and "cargotran" in v.choices("buy_ship", "ship_class"):
             net = int((v.params("buy_ship").get("ship_class") or {}).get("net_cost_by", {}).get("cargotran")
                       or self._cargotran_net(v) or 0)
             if v.credits < net:
                 return None
             action = self._act("buy_ship", {"ship_class": "cargotran"}, f"upgrade to CargoTran ({net} cr net)")
         else:
-            action = self._plot(v, STARDOCK, "CargoTran is affordable - autopilot to StarDock (sector 1)")
+            action = self._plot(v, v.dock, "CargoTran is affordable - autopilot to StarDock (sector 1)")
             if action is None:
                 return None
-        return value / max(1, turns), action, Intent("acquire", STARDOCK)
+        return value / max(1, turns), action, Intent("acquire", v.dock)
 
     def _opt_trade(self, v: View):
         if self._held_goods(v) or v.colonists_aboard or self._hauling_organics(v):
@@ -1918,7 +1965,7 @@ class SeatBrain:
             return None
         if not self._genesis_affordable_now(v) or self._no_genesis_hull(v):
             return None
-        if v.here == STARDOCK:
+        if v.here == v.dock:
             if not (v.ok("buy_equip") and "genesis" in v.choices("buy_equip", "item")):
                 return None
             if not self._genesis_flight_today(v):
@@ -1928,11 +1975,11 @@ class SeatBrain:
             action = self._act("buy_equip", {"item": "genesis", "qty": 1},
                                f"buy genesis #{have + 1} ({price} cr, NW-neutral plus growth)")
         else:
-            action = self._plot(v, STARDOCK, f"genesis #{have + 1} is affordable - autopilot to StarDock")
+            action = self._plot(v, v.dock, f"genesis #{have + 1} is affordable - autopilot to StarDock")
             if action is None:
                 return None
         turns = self._hops_to_stardock(v) * self._tpw(v) + 6 * self._tpw(v) + 8
-        return self._genesis_expected_value(v) / max(1, turns), action, Intent("acquire", STARDOCK)
+        return self._genesis_expected_value(v) / max(1, turns), action, Intent("acquire", v.dock)
 
     def _genesis_flight_today(self, v: View) -> bool:
         """A torpedo bought now can still fly the minimum deploy distance before the day ends.
@@ -1948,7 +1995,7 @@ class SeatBrain:
 
     def _genesis_affordable_now(self, v: View) -> bool:
         price = genesis_torpedo_cost()
-        if v.here == STARDOCK:
+        if v.here == v.dock:
             price = int((v.params("buy_equip").get("item") or {}).get("unit_price_by", {}).get("genesis")
                         or genesis_torpedo_cost())
         keep = CITADEL_TIER_COST[0][0] + self.working_capital + self._unfinished_l2_cash(v)
@@ -2013,7 +2060,11 @@ class SeatBrain:
             return None
         trips = max(1, (gap + holds - 1) // holds)
         sid = int(planet["sector_id"])
-        outbound = self._hops_to_stardock(v)
+        if v.here == STARDOCK:
+            outbound = 0
+        else:
+            terra_hops = self._hops(v, v.here, STARDOCK)
+            outbound = terra_hops if terra_hops is not None else 6
         back = self._hops(v, STARDOCK, sid)
         if back is None:
             back = self._hops(v, v.here, sid)
@@ -2229,7 +2280,7 @@ class SeatBrain:
                 n = int(sid)
             except (TypeError, ValueError):
                 return
-            if n != STARDOCK:
+            if n != v.dock:
                 seen.add(n)
 
         for adj in v.obs.get("adjacent") or []:
@@ -2351,7 +2402,7 @@ class SeatBrain:
         cluster = {int(a) for a in anchors}
         for ep in anchors:
             for nxt in g.get(int(ep), ()):
-                if nxt in self.mem.ports_seen and nxt != STARDOCK:
+                if nxt in self.mem.ports_seen and nxt != v.dock:
                     cluster.add(int(nxt))
         return cluster
 
@@ -2376,7 +2427,7 @@ class SeatBrain:
         for sid in self._cluster_sectors(v):
             # One visit is enough. A sector with no port never gains a price; retrying it
             # is the 4↔47 ABA that stalls the ferry (S3 offline).
-            if sid in (here, STARDOCK) or sid in priced or self.mem.visits.get(sid, 0) > 0:
+            if sid in (here, v.dock) or sid in priced or self.mem.visits.get(sid, 0) > 0:
                 continue
             adjacent = sid in g.get(here, ())
             if adjacent or known_distance(g, here, sid) is not None:
@@ -2968,7 +3019,9 @@ class SeatBrain:
 
     def _known_class0_sectors(self, v: View) -> list[int]:
         """StarDock plus any Alpha Centauri / Rylos the seat has actually seen."""
-        found = [STARDOCK]
+        found = [int(v.dock)]
+        if STARDOCK not in found:
+            found.append(STARDOCK)
         for entry in (v.obs.get("known_ports") or []):
             if not isinstance(entry, dict):
                 continue
@@ -2996,8 +3049,8 @@ class SeatBrain:
 
     def _nearest_equip_port(self, v: View) -> int:
         """Nearest known Class 0 / StarDock for fighters/shields/holds (CLASS0_TERRA.md)."""
-        best = STARDOCK
-        best_hops = self._hops(v, v.here, STARDOCK)
+        best = int(v.dock)
+        best_hops = self._hops(v, v.here, v.dock)
         if best_hops is None:
             best_hops = 10**9
         for sid in self._known_class0_sectors(v):
@@ -3039,13 +3092,13 @@ class SeatBrain:
         colonisation (seed 250925 P3: 1745 -> 20 colonists by day 10).
         """
         if self._cargotran_affordable(v) or self._needs_stardock(v):
-            return STARDOCK
+            return self._dock_trip_sector(v)
         if v.worlds() and v.colonists_aboard == 0 and self._colonists_needed(v) > 0:
             return STARDOCK
         return self._nearest_equip_port(v)
 
     def _at_equip_port(self, v: View) -> bool:
-        if v.here == STARDOCK:
+        if v.here == v.dock or v.here == STARDOCK:
             return True
         if not class0_tw2002():
             return False
@@ -3153,7 +3206,7 @@ class SeatBrain:
         hops = (spec.get("hops_by") or {}).get(str(int(target)))
         if hops is None:
             from ..engine import constants as engine_k
-            if not (tw.get("fed_lock") and int(target) in engine_k.FEDSPACE_SECTORS):
+            if not (tw.get("fed_lock") and (int(target) in engine_k.FEDSPACE_SECTORS or int(target) == int(v.dock))):
                 return None
             hops = self._hops(v, v.here, int(target))
             if hops is None:
@@ -3194,7 +3247,8 @@ class SeatBrain:
             if left < self._tpw(v):  # day over: sit still with the lock (a free no-op, nothing that docks)
                 return self._act("query_limpets", {}, "holding my unmanned ship in tow over Extern")
             return None
-        if left >= self._tpw(v) or not v.ok("tow_engage") or v.here not in engine_k.FEDSPACE_SECTORS:
+        in_fed = v.here in engine_k.FEDSPACE_SECTORS or int(v.here or 0) == int(v.dock)
+        if left >= self._tpw(v) or not v.ok("tow_engage") or not in_fed:
             return None
         choices = {str(c) for c in v.choices("tow_engage", "target")}
         for s in ((v.obs.get("fleet") or {}).get("ships") or []):
@@ -3293,7 +3347,7 @@ class SeatBrain:
             isinstance(t, dict) and str(t.get("id") or "") not in {partner, str(v.self_id or "")}
             for t in (v.sector.get("traders") or [])
         )
-        leaving_fed = bool(v.sector.get("is_fedspace")) and int(v.here or 0) != int(engine_k.STARDOCK_SECTOR)
+        leaving_fed = bool(v.sector.get("is_fedspace")) and int(v.here or 0) != int(v.dock)
         home_drop = self.mem is not None and self.mem.home_sector is not None and v.here == self.mem.home_sector and v.ok("deploy_fighters")
         if not ((v.ok("attack") and hostiles) or leaving_fed or home_drop):
             return None
@@ -3442,7 +3496,7 @@ class SeatBrain:
             return None
         if v.landed is not None:
             return None
-        if int(v.here or 0) != int(engine_k.STARDOCK_SECTOR) or not v.ok("bank_withdraw"):
+        if int(v.here or 0) != int(v.dock) or not v.ok("bank_withdraw"):
             return None
         if self.mem is not None and self.mem.bank_unspent:
             return None
@@ -3494,7 +3548,7 @@ class SeatBrain:
 
     def _genesis_shortfall(self, v: View) -> tuple[int, bool]:
         """(withdraw amount, buy is already on hand). Zero means genesis is not this visit's buy."""
-        if v.here != STARDOCK or v.genesis_aboard > 0 or v.colonists_aboard > 0 or self._hauling_organics(v):
+        if v.here != v.dock or v.genesis_aboard > 0 or v.colonists_aboard > 0 or self._hauling_organics(v):
             return 0, False
         if self._cargotran_net(v) is not None and not self._cargotran_affordable(v):
             return 0, False
@@ -3725,7 +3779,7 @@ class SeatBrain:
         """gb29-gb31: withdraw the exact hull shortfall, else deposit spare once per StarDock visit."""
         from ..engine import constants as engine_k
         mem = self.mem
-        at_dock = int(v.here or 0) == int(engine_k.STARDOCK_SECTOR)
+        at_dock = int(v.here or 0) == int(v.dock)
         if mem is not None and not at_dock:
             mem.bank_deposited = False
             mem.bank_unspent = False
@@ -3923,7 +3977,7 @@ class SeatBrain:
 
     def _port_info(self, v: View, sid: int) -> dict[str, Any] | None:
         """The port this seat knows at `sid` (the live sector block here, else known_ports). StarDock never."""
-        if sid == STARDOCK:
+        if sid == v.dock or sid == STARDOCK:
             return None
         if v.here is not None and int(v.here) == int(sid):
             port = v.sector.get("port")
@@ -4022,7 +4076,7 @@ class SeatBrain:
             if not isinstance(kp, dict) or kp.get("sector_id") is None:
                 continue
             sid = int(kp["sector_id"])
-            if sid == here or sid in engine_k.FEDSPACE_SECTORS:
+            if sid == here or sid in engine_k.FEDSPACE_SECTORS or sid == int(v.dock):
                 continue
             if not (self._port_buys(v, sid, "equipment") or self._port_buys(v, sid, "organics")):
                 continue
@@ -4068,7 +4122,7 @@ class SeatBrain:
 
     def _buy_transwarp_drive(self, v: View) -> dict[str, Any] | None:
         """Type 1 drive at StarDock on an ISS / FlagShip / Havoc only, and only out of spare cash."""
-        if v.here != STARDOCK or not v.ok("buy_equip"):
+        if v.here != v.dock or not v.ok("buy_equip"):
             return None
         if "transwarp_drive" not in {str(x) for x in v.choices("buy_equip", "item")}:
             return None  # the engine lists it only for a TW hull without a drive (legacy: never)
@@ -4192,7 +4246,7 @@ class SeatBrain:
     def _buy_combat_hull(self, v: View) -> dict[str, Any] | None:
         if not self._fogged_hot():
             return None
-        if v.here != STARDOCK or not v.ok("buy_ship") or v.credits < RICH_CREDITS:
+        if v.here != v.dock or not v.ok("buy_ship") or v.credits < RICH_CREDITS:
             return None
         if v.ship_class in ("merchant_cruiser", "scout_marauder"):
             return None  # CargoTran first
@@ -4249,13 +4303,13 @@ class SeatBrain:
         turns = self._hops_to_stardock(v) * self._tpw(v) + 1
         # Defence value: surviving a Ferrengi hit saves ~25% of credits once.
         value = min(v.credits * 0.25, 500_000)
-        if v.here == STARDOCK and v.ok("buy_ship") and hull in v.choices("buy_ship", "ship_class"):
+        if v.here == v.dock and v.ok("buy_ship") and hull in v.choices("buy_ship", "ship_class"):
             action = self._act("buy_ship", {"ship_class": hull}, f"upgrade to {hull} ({net} cr net) for defence")
         else:
-            action = self._plot(v, STARDOCK, f"{hull} affordable - StarDock for a tougher hull")
+            action = self._plot(v, v.dock, f"{hull} affordable - StarDock for a tougher hull")
             if action is None:
                 return None
-        return value / max(1, turns), action, Intent("acquire", STARDOCK)
+        return value / max(1, turns), action, Intent("acquire", v.dock)
 
     def _opt_defense(self, v: View):
         # Never divert a trade day to StarDock for fighters until cash clears the
@@ -4310,7 +4364,7 @@ class SeatBrain:
 
     def _scanner_item_choice(self, v: View) -> tuple[str, int] | None:
         """Scanner at StarDock: holo when the hull allows and cash covers it; else density."""
-        if not info_tw2002() or v.here != STARDOCK or not v.ok("buy_equip"):
+        if not info_tw2002() or v.here != v.dock or not v.ok("buy_equip"):
             return None
         items = set(str(x) for x in v.choices("buy_equip", "item"))
         prices = (v.params("buy_equip").get("item") or {}).get("unit_price_by") or {}
@@ -4345,7 +4399,7 @@ class SeatBrain:
         sector = v.sector or {}
         if sector.get("is_fedspace") or sector.get("is_msl"):
             return True
-        return int(v.here or 0) == STARDOCK
+        return int(v.here or 0) in (STARDOCK, int(v.dock))
 
     def _navhaz_pct(self, v: View, sector_id: int) -> int:
         for adj in v.obs.get("adjacent") or []:
@@ -4519,7 +4573,7 @@ class SeatBrain:
         if not isinstance(port, dict):
             port = {}
         cls = str(port.get("class") or "")
-        if int(v.here or 0) == STARDOCK or sector.get("class0_port") or cls in ("0", "stardock"):
+        if int(v.here or 0) in (STARDOCK, int(v.dock)) or sector.get("class0_port") or cls in ("0", "stardock"):
             return None
         if self.mem is not None and self.mem.last_crime_sector is not None and v.here is not None:
             if int(self.mem.last_crime_sector) == int(v.here):
@@ -4834,7 +4888,7 @@ class SeatBrain:
         from .tavern_brain import join_underground, seat_may_use, trace_due, trace_fits_income, visit_due
         if not K.bots_tavern_on() or not K.tavern_on() or not seat_may_use(self._tavern_skill()):
             return None
-        if v.here != STARDOCK or v.landed is not None or self.mem is None:
+        if v.here != v.dock or v.landed is not None or self.mem is None:
             return None
         self._note_tavern_income(v)
         tavern = v.obs.get("tavern") if isinstance(v.obs.get("tavern"), dict) else {}
@@ -5358,7 +5412,7 @@ class SeatBrain:
         from .deploy_brain import seat_may_deploy
         if not K.bots_deploy_on() or not seat_may_deploy(self._deploy_skill()) or self.mem is None:
             return None
-        if int(v.here or 0) != STARDOCK or not v.ok("buy_equip"):
+        if int(v.here or 0) != int(v.dock) or not v.ok("buy_equip"):
             return None
         if not self._own_planet_sectors(v) and self.mem.home_sector is None:
             return None
@@ -5405,7 +5459,7 @@ class SeatBrain:
         # FedSpace stays refused. An owned-planet sector on an MSL still gets one
         # fortify try (the sweep may clear it; the bar needs the deploy action).
         sec = v.sector or {}
-        if sec.get("is_fedspace") or here == STARDOCK:
+        if sec.get("is_fedspace") or here == STARDOCK or here == int(v.dock):
             return None
         if sec.get("is_msl") and here not in own:
             return None
@@ -5563,7 +5617,7 @@ class SeatBrain:
         is bought only when a neighbor already shows mines.
         """
         import tw2k.engine.constants as _HK
-        if not _HK.hardware_tw2002() or int(v.here or 0) != STARDOCK or not v.ok("buy_equip"):
+        if not _HK.hardware_tw2002() or int(v.here or 0) != int(v.dock) or not v.ok("buy_equip"):
             return None
         if v.credits < RICH_CREDITS and not self._fogged_hot():
             return None
@@ -5743,15 +5797,15 @@ class SeatBrain:
             cost, value = HOLO_SCANNER_COST, 30_000
         if v.credits < cost + self.cash_buffer:
             return None
-        if v.here == STARDOCK:
+        if v.here == v.dock:
             action = self._buy_scanner(v)
             if action is None:
                 return None
         else:
-            action = self._plot(v, STARDOCK, "StarDock for a long-range scanner")
+            action = self._plot(v, v.dock, "StarDock for a long-range scanner")
             if action is None:
                 return None
-        return value / max(1, turns), action, Intent("acquire", STARDOCK)
+        return value / max(1, turns), action, Intent("acquire", v.dock)
 
     def _opt_scan(self, v: View):
         if not info_tw2002() or not self._fitted_scanner(v):
@@ -5819,20 +5873,29 @@ class SeatBrain:
                 and v.credits - reserve >= 250)
 
     def _stardock_reason(self, v: View) -> str:
+        if int(v.dock) == STARDOCK:
+            if not v.worlds():
+                if self._cargotran_affordable(v):
+                    return "CargoTran is affordable - autopilot to StarDock (sector 1)"
+                return "genesis is affordable - autopilot to StarDock (sector 1)"
+            return "go to StarDock for colonists"
+        if self._dock_trip_sector(v) == STARDOCK:
+            return "go to Terra for colonists"
+        dock = int(v.dock)
+        if not v.worlds() and self._cargotran_affordable(v):
+            return f"CargoTran is affordable - autopilot to StarDock (sector {dock})"
         if not v.worlds():
-            if self._cargotran_affordable(v):
-                return "CargoTran is affordable - autopilot to StarDock (sector 1)"
-            return "genesis is affordable - autopilot to StarDock (sector 1)"
-        return "go to StarDock for colonists"
+            return f"genesis is affordable - autopilot to StarDock (sector {dock})"
+        return f"go to StarDock (sector {dock})"
 
     def _bank_detour(self, v: View, action: dict[str, Any], intent: Intent) -> tuple[dict[str, Any], Intent]:
         """bb11: one StarDock stop when spare cash is large and the dock is only a few hops off the plan."""
         from ..engine import constants as engine_k
-        if not self._reserve_on() or v.landed is not None or v.here in (None, STARDOCK):
+        if not self._reserve_on() or v.landed is not None or v.here in (None, v.dock):
             return action, intent
         kind = action.get("kind")
         target = (action.get("args") or {}).get("target")
-        if kind not in ("warp", "plot_course") or target is None or int(target) == int(STARDOCK):
+        if kind not in ("warp", "plot_course") or target is None or int(target) == int(v.dock):
             return action, intent
         mem = self.mem
         if mem is not None and mem.bank_detour_day == int(v.day):
@@ -5844,16 +5907,16 @@ class SeatBrain:
             return action, intent
         limit = int(engine_k.BOT_BANK_DETOUR_HOPS_ON if engine_k.bots_bank_on() else engine_k.BOT_BANK_DETOUR_HOPS)
         direct = self._hops(v, v.here, int(target))
-        via_dock = self._hops(v, v.here, STARDOCK)
-        after = self._hops(v, STARDOCK, int(target))
+        via_dock = self._hops(v, v.here, v.dock)
+        after = self._hops(v, v.dock, int(target))
         if direct is None or via_dock is None or after is None:
             return action, intent
         if via_dock + after - direct > limit:
             return action, intent
-        path = self._known_path(v, int(v.here), int(STARDOCK))
+        path = self._known_path(v, int(v.here), int(v.dock))
         if not path or any(sid in self._held_today(v) for sid in path):
             return action, intent
-        plotted = self._plot(v, int(STARDOCK), "bank the spare cash on the way")
+        plotted = self._plot(v, int(v.dock), "bank the spare cash on the way")
         if plotted is None:
             return action, intent
         if mem is not None:
@@ -5939,7 +6002,7 @@ class SeatBrain:
             return None
 
         def score(t: int):
-            d = known_distance(v.known_warps, STARDOCK, t)
+            d = known_distance(v.known_warps, v.dock, t)
             return (-(d if d is not None else 99), self.mem.visits.get(t, 0), t)
 
         return sorted(choices, key=score)[0]
@@ -6108,7 +6171,7 @@ class SeatBrain:
             self._hunt_arm_day = v.day  # _opt_hunt_arm: one arming buy a game day
         gplanets = v.genesis_planets()
         home = v.planet(mem.home_planet)
-        if not v.worlds() and v.genesis_aboard == 0 and not self._needs_stardock(v) and v.here != STARDOCK:
+        if not v.worlds() and v.genesis_aboard == 0 and not self._needs_stardock(v) and v.here != v.dock:
             short = "Trade known ports until CargoTran or genesis is affordable, then autopilot to StarDock."
         elif not gplanets and v.genesis_aboard == 0:
             short = "Afford and buy a genesis torpedo at StarDock."

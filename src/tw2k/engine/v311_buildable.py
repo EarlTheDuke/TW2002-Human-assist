@@ -73,7 +73,7 @@ def _hall_block(universe: Universe) -> dict[str, Any]:
 
 def federation_hall_spec(universe: Universe, player_id: str) -> tuple[bool, str | None, dict]:
     player = universe.players[player_id]
-    if int(player.sector_id) != int(K.STARDOCK_SECTOR):
+    if int(player.sector_id) != int(K.stardock_sector_of(universe)):
         return False, "must be at StarDock", {}
     if player.planet_landed is not None:
         return False, "lift off first", {}

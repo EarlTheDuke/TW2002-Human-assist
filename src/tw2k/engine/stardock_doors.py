@@ -148,7 +148,7 @@ def _at_dock(universe: Universe, player_id: str) -> tuple[bool, str | None]:
         return False, "player is destroyed"
     if player.planet_landed is not None:
         return False, "you are on a planet"
-    if int(player.sector_id) != int(K.STARDOCK_SECTOR):
+    if int(player.sector_id) != int(K.stardock_sector_of(universe)):
         return False, "that door is at StarDock"
     return True, None
 

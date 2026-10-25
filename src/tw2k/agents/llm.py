@@ -1155,16 +1155,41 @@ def planet_notice(obs: Observation) -> str:
         return ""
     from .rules_text import plot_course_call
 
-    if int(here) == int(K.STARDOCK_SECTOR):
+    raw_dock = (obs.sector or {}).get("stardock_sector")
+    try:
+        sd = int(raw_dock) if raw_dock is not None else int(K.STARDOCK_SECTOR)
+    except (TypeError, ValueError):
+        sd = int(K.STARDOCK_SECTOR)
+    if sd == int(K.STARDOCK_SECTOR):
+        if int(here) == sd:
+            line = (
+                "FIRST PLANET: you have no planet and no genesis torpedo. "
+                "buy_equip {\"item\":\"genesis\",\"qty\":1} and terra_colonists, then deploy 3 or more warps out. "
+                "Do not wait for a credit target."
+            )
+        else:
+            line = (
+                "FIRST PLANET: you have no planet and no genesis torpedo. "
+                f"{plot_course_call(K.STARDOCK_SECTOR)} then buy genesis and terra_colonists. "
+                "Do not wait for a credit target."
+            )
+    elif int(here) == sd:
         line = (
             "FIRST PLANET: you have no planet and no genesis torpedo. "
-            "buy_equip {\"item\":\"genesis\",\"qty\":1} and terra_colonists, then deploy 3 or more warps out. "
+            f"buy_equip {{\"item\":\"genesis\",\"qty\":1}} at StarDock (sector {sd}), "
+            "then terra_colonists in sector 1, then deploy 3 or more warps out. "
             "Do not wait for a credit target."
+        )
+    elif int(here) == int(K.STARDOCK_SECTOR):
+        line = (
+            "FIRST PLANET: you have no planet and no genesis torpedo. "
+            f"terra_colonists here (sector 1). Genesis and the shipyard are at StarDock (sector {sd}): "
+            f"{plot_course_call(sd)}. Do not wait for a credit target."
         )
     else:
         line = (
             "FIRST PLANET: you have no planet and no genesis torpedo. "
-            f"{plot_course_call(K.STARDOCK_SECTOR)} then buy genesis and terra_colonists. "
+            f"{plot_course_call(sd)} then buy genesis. Terra colonists are in sector 1. "
             "Do not wait for a credit target."
         )
     target = _goal_credit_target(obs)
@@ -1303,7 +1328,11 @@ def route_notice(obs: Observation, trail: list[tuple[int, int, str]]) -> str:
     )
     from .rules_text import plot_course_call
 
-    sd = K.STARDOCK_SECTOR
+    raw_dock = (obs.sector or {}).get("stardock_sector")
+    try:
+        sd = int(raw_dock) if raw_dock is not None else int(K.STARDOCK_SECTOR)
+    except (TypeError, ValueError):
+        sd = int(K.STARDOCK_SECTOR)
     if int(here) != sd and _starter_hull_upgrade_affordable(obs):
         return (
             f"AUTOPILOT TO STARDOCK: you can afford a ship upgrade at StarDock (sector {sd}). Get there with "

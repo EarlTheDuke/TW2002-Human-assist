@@ -504,6 +504,7 @@ async def terra_citadel() -> dict[str, Any]:
         have_goods = _stockpile(body.get("observation") or {}, home_id)
         # One buy is a few posts, and the live route answers 429 past 30 posts in 10s.
         # A reread is not a dump: the previous verdict stays on the observation.
+        seen_sectors: set[int] = set()
         for _ in range(240):
             obs = body.get("observation") or {}
             if body.get("game_over"):
@@ -542,6 +543,7 @@ async def terra_citadel() -> dict[str, Any]:
                     continue
             if not short:
                 break
+            dock = int((obs.get("sector") or {}).get("stardock_sector") or 0)
             trade = legal(obs, "trade") or {}
             if trade.get("legal"):
                 params = trade.get("params") or {}
@@ -574,8 +576,29 @@ async def terra_citadel() -> dict[str, Any]:
                 await go(sellers[0])
                 continue
             hop = _hop_toward(obs, home_sector if here == 1 else 1)
-            fresh = [int(row.get("id") or 0) for row in (obs.get("adjacent") or []) if row.get("port")]
-            target = fresh[0] if fresh else hop
+            fresh = [
+                int(row.get("id") or 0)
+                for row in (obs.get("adjacent") or [])
+                if row.get("port") and int(row.get("id") or 0) not in (0, dock)
+            ]
+            warp = legal(obs, "warp") or {}
+            choices = [
+                int(x) for x in (((warp.get("params") or {}).get("target") or {}).get("choices") or [])
+                if int(x) != dock
+            ]
+            seen_sectors.add(here)
+            # Neighbors of Terra are not shops once StarDock has moved. Walk
+            # an unvisited exit instead of bouncing back to sector 1.
+            unseen_ports = [sid for sid in fresh if sid not in seen_sectors]
+            unseen = [sid for sid in choices if sid not in seen_sectors]
+            if unseen_ports:
+                target = unseen_ports[0]
+            elif fresh and not unseen:
+                target = fresh[0]
+            elif unseen:
+                target = unseen[0]
+            else:
+                target = hop if hop not in (None, dock) else (choices[0] if choices else None)
             if target is None:
                 break
             await go(target)

@@ -33,12 +33,12 @@ def on() -> bool:
     return K.tavern_on()
 
 
-def guard(player: Player) -> str | None:
+def guard(player: Player, universe: Universe | None = None) -> str | None:
     if not player.alive:
         return "player is destroyed"
     if player.planet_landed is not None:
         return "lift off first"
-    if int(player.sector_id) != int(K.STARDOCK_SECTOR):
+    if int(player.sector_id) != int(K.stardock_sector_of(universe)):
         return "the Tavern is at StarDock"
     return None
 
@@ -136,7 +136,7 @@ def handle_announce(universe: Universe, pid: str, action: Action) -> ActionResul
     if not on():
         return ActionResult(ok=False, error="unsupported action")
     player = universe.players[pid]
-    why = guard(player)
+    why = guard(player, universe)
     if why:
         return ActionResult(ok=False, error=why)
     text = _clean((action.args or {}).get("text"))
@@ -171,7 +171,7 @@ def handle_tricron(universe: Universe, pid: str, action: Action) -> ActionResult
     if not on() or not K.tricron_live():
         return ActionResult(ok=False, error="unsupported action")
     player = universe.players[pid]
-    why = guard(player)
+    why = guard(player, universe)
     if why:
         return ActionResult(ok=False, error=why)
     order = _place_order((action.args or {}).get("order"))
@@ -223,7 +223,7 @@ def handle_talk(universe: Universe, pid: str, action: Action) -> ActionResult:
     if not on():
         return ActionResult(ok=False, error="unsupported action")
     player = universe.players[pid]
-    why = guard(player)
+    why = guard(player, universe)
     if why:
         return ActionResult(ok=False, error=why)
     text = _clean((action.args or {}).get("text"))
@@ -245,7 +245,7 @@ def handle_graffiti(universe: Universe, pid: str, action: Action) -> ActionResul
     if not on():
         return ActionResult(ok=False, error="unsupported action")
     player = universe.players[pid]
-    why = guard(player)
+    why = guard(player, universe)
     if why:
         return ActionResult(ok=False, error=why)
     text = _clean((action.args or {}).get("text"))
@@ -267,7 +267,7 @@ def handle_order(universe: Universe, pid: str, action: Action) -> ActionResult:
     if not on():
         return ActionResult(ok=False, error="unsupported action")
     player = universe.players[pid]
-    why = guard(player)
+    why = guard(player, universe)
     if why:
         return ActionResult(ok=False, error=why)
     item = str((action.args or {}).get("item") or "")
@@ -309,7 +309,7 @@ def handle_grimy_ask(universe: Universe, pid: str, action: Action) -> ActionResu
     if not on():
         return ActionResult(ok=False, error="unsupported action")
     player = universe.players[pid]
-    why = guard(player)
+    why = guard(player, universe)
     if why:
         return ActionResult(ok=False, error=why)
     topic = str((action.args or {}).get("topic") or "").strip().casefold()
@@ -350,7 +350,7 @@ def handle_curse(universe: Universe, pid: str, action: Action) -> ActionResult:
     if not on():
         return ActionResult(ok=False, error="unsupported action")
     player = universe.players[pid]
-    why = guard(player)
+    why = guard(player, universe)
     if why:
         return ActionResult(ok=False, error=why)
     if int(player.grimy_curse_day) == int(universe.day):
@@ -385,7 +385,7 @@ def murder(universe: Universe, player: Player) -> None:
     universe.emit(
         EventKind.UG_MURDER,
         actor_id=player.id,
-        sector_id=int(K.STARDOCK_SECTOR),
+        sector_id=int(K.stardock_sector_of(universe)),
         payload={"_witnesses": sorted(universe.players)},
         summary=f"{player.name} was murdered on StarDock",
     )
@@ -395,7 +395,7 @@ def handle_enter(universe: Universe, pid: str, action: Action) -> ActionResult:
     if not on():
         return ActionResult(ok=False, error="unsupported action")
     player = universe.players[pid]
-    why = guard(player)
+    why = guard(player, universe)
     if why:
         return ActionResult(ok=False, error=why)
     if int(player.alignment) > int(K.UG_MAX_ALIGNMENT):
@@ -425,7 +425,7 @@ def handle_contract(universe: Universe, pid: str, action: Action) -> ActionResul
     if not on():
         return ActionResult(ok=False, error="unsupported action")
     player = universe.players[pid]
-    why = guard(player)
+    why = guard(player, universe)
     if why:
         return ActionResult(ok=False, error=why)
     if int(player.ug_entered_day) != int(universe.day):
@@ -499,7 +499,7 @@ def handle_rename(universe: Universe, pid: str, action: Action) -> ActionResult:
     if not K.ug_name_live():
         return ActionResult(ok=False, error="unsupported action")
     player = universe.players[pid]
-    why = guard(player)
+    why = guard(player, universe)
     if why:
         return ActionResult(ok=False, error=why)
     if int(player.ug_entered_day) != int(universe.day):
@@ -542,7 +542,7 @@ def handle_claim(universe: Universe, pid: str, action: Action) -> ActionResult:
     if not on():
         return ActionResult(ok=False, error="unsupported action")
     player = universe.players[pid]
-    why = guard(player)
+    why = guard(player, universe)
     if why:
         return ActionResult(ok=False, error=why)
     if int(player.ug_entered_day) != int(universe.day):
@@ -597,7 +597,7 @@ def _knows_underground(player: Player) -> bool:
 
 
 def observation(universe: Universe, player: Player) -> dict[str, Any] | None:
-    if not on() or int(player.sector_id) != int(K.STARDOCK_SECTOR):
+    if not on() or int(player.sector_id) != int(K.stardock_sector_of(universe)):
         return None
     state = getattr(universe, "tavern", None)
     if not isinstance(state, dict):
@@ -655,7 +655,7 @@ def observation(universe: Universe, player: Player) -> dict[str, Any] | None:
 
 def legal_specs(universe: Universe, player_id: str) -> list[tuple[str, bool, str, dict, int]]:
     player = universe.players[player_id]
-    why = guard(player)
+    why = guard(player, universe)
     day = int(universe.day)
     specs: list[tuple[str, bool, str, dict, int]] = []
     text_params = {"text": {"type": "str", "required": True, "max": int(K.TAVERN_TEXT_MAX)}}

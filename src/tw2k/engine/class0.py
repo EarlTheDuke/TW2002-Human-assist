@@ -60,13 +60,19 @@ def class0_rng(seed: int) -> random.Random:
     return random.Random(f"class0:{seed}")
 
 
+def _at_sol_or_dock(universe: Universe, sector_id: int) -> bool:
+    """Sector 1 (Sol / Terra) or the StarDock sector. The same sector while the dock stays at 1."""
+    sid = int(sector_id)
+    return sid == int(K.STARDOCK_SECTOR) or sid == int(K.stardock_sector_of(universe))
+
+
 def class0_service_here(universe: Universe, pid: str) -> bool:
-    """True at sector 1 or an Alpha Centauri / Rylos sector (limpet removal / Class 0 buy)."""
+    """True at Sol, StarDock, or an Alpha Centauri / Rylos sector (limpet removal / Class 0 buy)."""
     player = universe.players.get(pid)
     if player is None:
         return False
     sid = int(player.sector_id)
-    if sid == K.STARDOCK_SECTOR:
+    if _at_sol_or_dock(universe, sid):
         return True
     if not class0_tw2002():
         return False
@@ -75,7 +81,8 @@ def class0_service_here(universe: Universe, pid: str) -> bool:
 
 
 def is_class0_sector(universe: Universe, sector_id: int) -> bool:
-    if int(sector_id) == K.STARDOCK_SECTOR:
+    """Sol (sector 1) and the Alpha Centauri / Rylos sectors. The moved dock is not Class 0."""
+    if int(sector_id) == int(K.STARDOCK_SECTOR):
         return True
     specials = getattr(universe, "class0_sectors", None) or {}
     return int(sector_id) in {int(v) for v in specials.values()}
@@ -128,7 +135,7 @@ def class0_buy_ok(universe: Universe, pid: str) -> tuple[bool, str]:
     if player is None:
         return False, "unknown player"
     sid = int(player.sector_id)
-    if sid == K.STARDOCK_SECTOR:
+    if _at_sol_or_dock(universe, sid):
         return True, ""
     if class0_tw2002() and special_port_at(universe, sid) is not None:
         return True, ""
@@ -192,18 +199,19 @@ def compute_msl_sectors(universe: Universe) -> list[int]:
     ry = specials.get("rylos")
     if ac is None or ry is None:
         return []
-    pairs = [
-        (K.STARDOCK_SECTOR, int(ac)),
-        (int(ac), K.STARDOCK_SECTOR),
-        (K.STARDOCK_SECTOR, int(ry)),
-        (int(ry), K.STARDOCK_SECTOR),
-        (int(ac), int(ry)),
-        (int(ry), int(ac)),
-    ]
-    found: set[int] = {int(ac), int(ry), K.STARDOCK_SECTOR}
-    for a, b in pairs:
-        for sid in shortest_path(universe, a, b):
-            found.add(int(sid))
+    terra = int(K.STARDOCK_SECTOR)
+    dock = int(K.stardock_sector_of(universe))
+    ends: list[int] = []
+    for sid in (terra, dock, int(ac), int(ry)):
+        if sid not in ends:
+            ends.append(sid)
+    found: set[int] = set(ends)
+    for i, a in enumerate(ends):
+        for b in ends[i + 1:]:
+            for sid in shortest_path(universe, a, b):
+                found.add(int(sid))
+            for sid in shortest_path(universe, b, a):
+                found.add(int(sid))
     return sorted(found)
 
 
@@ -355,7 +363,8 @@ def extern_sweep(universe: Universe) -> int:
     msl = set(getattr(universe, "msl_sectors", None) or [])
     for sid in getattr(universe, "class0_sectors", {}).values():
         msl.add(int(sid))
-    msl.add(K.STARDOCK_SECTOR)
+    msl.add(int(K.STARDOCK_SECTOR))
+    msl.add(int(K.stardock_sector_of(universe)))
     events = 0
     for sid in sorted(msl):
         sector = universe.sectors.get(int(sid))
@@ -561,7 +570,7 @@ def ship_rename_spec(universe: Universe, pid: str) -> tuple[bool, str | None, di
     params = _ship_rename_params(player)
     if not K.ship_rename_live():
         return False, "unsupported action", params
-    if player is None or int(player.sector_id) != int(K.STARDOCK_SECTOR):
+    if player is None or int(player.sector_id) != int(K.stardock_sector_of(universe)):
         return False, "must be at StarDock (sector 1)", params
     cost = int(K.SHIP_RENAME_COST)
     if int(player.credits) < cost:
@@ -577,7 +586,7 @@ def handle_ship_rename(universe: Universe, pid: str, action: Action) -> ActionRe
     if not K.ship_rename_live():
         return ActionResult(ok=False, error="unsupported action")
     player = universe.players[pid]
-    if int(player.sector_id) != int(K.STARDOCK_SECTOR):
+    if int(player.sector_id) != int(K.stardock_sector_of(universe)):
         return ActionResult(ok=False, error="must be at StarDock (sector 1)")
     cleaned, why = clean_ship_name((action.args or {}).get("name"))
     if why or cleaned is None:

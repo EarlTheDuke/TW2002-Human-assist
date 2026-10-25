@@ -771,10 +771,10 @@ def handle_deploy_fighters(universe: Universe, pid: str, action: Action) -> Acti
     cost = K.TURN_COST["deploy_fighters"]
     if player.turns_today + cost > player.turns_per_day:
         return ActionResult(ok=False, error="out of turns")
-    if sector.id in K.FEDSPACE_SECTORS and not K.fedspace_deploy_live():
+    if K.in_fedspace(universe, sector.id) and not K.fedspace_deploy_live():
         return ActionResult(ok=False, error="cannot deploy fighters in FedSpace")
     dep = sector.fighters
-    if qty == 0 and sector.id in K.FEDSPACE_SECTORS:
+    if qty == 0 and K.in_fedspace(universe, sector.id):
         return ActionResult(ok=False, error="cannot deploy fighters in FedSpace")
     if qty == 0:
         if not _controls(universe, pid, dep):
@@ -792,7 +792,7 @@ def handle_deploy_fighters(universe: Universe, pid: str, action: Action) -> Acti
         return ActionResult(ok=True, turns_spent=cost)
     if qty <= 0 or qty > player.ship.fighters:
         return ActionResult(ok=False, error="invalid fighter quantity")
-    if sector.id in K.FEDSPACE_SECTORS:
+    if K.in_fedspace(universe, sector.id):
         from .fed import punish_fighter_drop
         return punish_fighter_drop(universe, player, cost)
     if K.sector_fighter_tw2002() and (dep is None or _controls(universe, pid, dep)):
@@ -859,7 +859,7 @@ def handle_deploy_mines(universe: Universe, pid: str, action: Action) -> ActionR
         return ActionResult(ok=False, error=K.atomic_mine_retired_error())
     if qty <= 0 or qty > player.ship.mines.get(kind, 0):
         return ActionResult(ok=False, error="insufficient mines")
-    if sector.id in K.FEDSPACE_SECTORS:
+    if K.in_fedspace(universe, sector.id):
         return ActionResult(ok=False, error="cannot deploy mines in FedSpace")
     cost = K.TURN_COST["deploy_mines"]
     if player.turns_today + cost > player.turns_per_day:

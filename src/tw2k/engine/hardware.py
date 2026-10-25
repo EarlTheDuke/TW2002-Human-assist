@@ -167,7 +167,9 @@ def _damp_planets_in_sector(universe: Universe, shooter_id: str, sector_id: int)
         other.photon_damped_sector_id = sector_id
 
 
-def photon_settings_block(player: Player, target_sector: int | None = None) -> str | None:
+def photon_settings_block(
+    player: Player, target_sector: int | None = None, universe=None,
+) -> str | None:
     """GameA photon card refusal, or None when that card is off or the shot is allowed.
 
     FedSpace Photons=False, Photons Disable Players=True, Multiple Photons=False.
@@ -179,9 +181,15 @@ def photon_settings_block(player: Player, target_sector: int | None = None) -> s
         return "your fighters are offline (photon)"
     if int(getattr(player.ship, "photon_refire_ticks", 0) or 0) > 0:
         return "photon wave still up"
-    if int(player.sector_id) in K.FEDSPACE_SECTORS:
+
+    def _fed(sid) -> bool:
+        if universe is None:
+            return int(sid) in K.FEDSPACE_SECTORS
+        return K.in_fedspace(universe, sid)
+
+    if _fed(player.sector_id):
         return "FedSpace photons are off"
-    if target_sector is not None and int(target_sector) in K.FEDSPACE_SECTORS:
+    if target_sector is not None and _fed(target_sector):
         return "FedSpace photons are off"
     return None
 
@@ -371,12 +379,12 @@ def handle_photon_tw2002(universe: Universe, pid: str, action: Action) -> Action
         return ActionResult(ok=False, error="photon target must be an adjacent sector")
     if target_id not in universe.sectors:
         return ActionResult(ok=False, error="invalid target sector")
-    block = photon_settings_block(player, target_id)
+    block = photon_settings_block(player, target_id, universe)
     if block:
         return ActionResult(ok=False, error=block)
     # FedSpace: keep existing penalty shape when firing from FedSpace at a protected situation.
     # The GameA card refuses above this, and does not dock alignment.
-    if player.sector_id in K.FEDSPACE_SECTORS:
+    if K.in_fedspace(universe, player.sector_id):
         # Align with legacy: firing weapons in FedSpace costs alignment when RANK_MODE off,
         # or when protected traders are involved. For sector-target photons, refuse in FedSpace
         # the same way attack refuses without inventing new rules — deduct if RANK not on.
@@ -465,9 +473,15 @@ def navhaz_pct(sector) -> int:
     return max(0, min(int(K.NAVHAZ_MAX_PCT), round(raw)))
 
 
+def _stardock_port(sector) -> bool:
+    port = getattr(sector, "port", None)
+    klass = getattr(port, "class_id", None)
+    return int(getattr(klass, "value", klass) or -1) == 8
+
+
 def add_navhaz(sector, pct: int) -> int:
     """Raise a sector's NavHaz (capped). StarDock never takes any (v25, revision history)."""
-    if sector.id == K.STARDOCK_SECTOR or int(pct) <= 0:
+    if int(sector.id) == int(K.STARDOCK_SECTOR) or _stardock_port(sector) or int(pct) <= 0:
         return navhaz_pct(sector)
     sector.nav_hazard = float(min(int(K.NAVHAZ_MAX_PCT), navhaz_pct(sector) + int(pct)))
     return navhaz_pct(sector)
@@ -481,7 +495,7 @@ def tick_navhaz(universe: Universe) -> None:
         pct = navhaz_pct(sector)
         if pct <= 0:
             continue
-        if sector.id in K.FEDSPACE_SECTORS:
+        if K.in_fedspace(universe, sector.id):
             sector.nav_hazard = 0.0
         else:
             sector.nav_hazard = float(max(0, pct - int(K.NAVHAZ_DISPERSION_PER_DAY)))
