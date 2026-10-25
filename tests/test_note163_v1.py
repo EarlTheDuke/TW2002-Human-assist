@@ -103,6 +103,11 @@ def test_profile_turns_the_bounty_on_and_the_other_two_strings_do_not(monkeypatc
             "B": dict(alignment=5, credits=100, sector_id=11),
         }
     )
+    dock = int(K.stardock_sector_of(universe))
+    if universe.players["A"].sector_id != dock:
+        universe.sectors[universe.players["A"].sector_id].occupant_ids.remove("A")
+        universe.players["A"].sector_id = dock
+        universe.sectors[dock].occupant_ids.append("A")
     result = _act(universe, "A", ActionKind.POST_REWARD, target_id="B", amount=1000)
     assert result.ok
     assert universe.players["A"].alignment == 16

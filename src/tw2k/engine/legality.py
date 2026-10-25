@@ -262,8 +262,8 @@ def legal_actions(universe: Universe, player_id: str) -> list[LegalAction]:
 
     release_stale_landing(universe, player)
     landed = player.planet_landed is not None
-    at_stardock = player.sector_id == K.STARDOCK_SECTOR
-    in_fedspace = player.sector_id in K.FEDSPACE_SECTORS
+    at_stardock = int(player.sector_id) == int(K.stardock_sector_of(universe))
+    in_fedspace = K.in_fedspace(universe, player.sector_id)
     port = sector.port
     from .port_build import docks_closed
     stardock_market = (
@@ -632,7 +632,7 @@ def legal_actions(universe: Universe, player_id: str) -> list[LegalAction]:
     if K.hardware_tw2002():
         from .hardware import photon_hull_ok, photon_settings_block
         adj = [int(w) for w in (sector.warps or [])]
-        block = photon_settings_block(player)
+        block = photon_settings_block(player, universe=universe)
         if photons <= 0:
             reason = "no photon missiles loaded (buy_equip photon_missiles at StarDock)"
         elif not photon_hull_ok(player):
@@ -646,7 +646,7 @@ def legal_actions(universe: Universe, player_id: str) -> list[LegalAction]:
         else:
             choices = list(adj)
             if K.photon_cloak_settings_live():
-                choices = [w for w in choices if int(w) not in K.FEDSPACE_SECTORS]
+                choices = [w for w in choices if not K.in_fedspace(universe, int(w))]
             if not choices:
                 reason = "FedSpace photons are off"
             else:
@@ -709,7 +709,7 @@ def legal_actions(universe: Universe, player_id: str) -> list[LegalAction]:
     from .class0 import is_class0_sector as _is_c0
     from .class0 import is_msl_sector as _is_msl
     if _c0() and (_is_msl(universe, player.sector_id) or _is_c0(universe, player.sector_id)):
-        if player.sector_id not in K.FEDSPACE_SECTORS:
+        if not K.in_fedspace(universe, player.sector_id):
             df_params["note"] = _MSL_NOTE
     out.append(_la(ActionKind.DEPLOY_FIGHTERS, legal=reason is None, reason=reason, cost=df_cost,
                    params=df_params))
@@ -746,7 +746,7 @@ def legal_actions(universe: Universe, player_id: str) -> list[LegalAction]:
     from .class0 import is_class0_sector as _is_c0b
     from .class0 import is_msl_sector as _is_mslb
     if _c0b() and (_is_mslb(universe, player.sector_id) or _is_c0b(universe, player.sector_id)):
-        if player.sector_id not in K.FEDSPACE_SECTORS:
+        if not K.in_fedspace(universe, player.sector_id):
             dm_params["note"] = _MSL_NOTE2
     out.append(_la(ActionKind.DEPLOY_MINES, legal=reason is None, reason=reason, cost=dm_cost,
                    params=dm_params))
@@ -894,7 +894,7 @@ def legal_actions(universe: Universe, player_id: str) -> list[LegalAction]:
             cap_by_scanner = None
         if K.ship_tw_on() and at_stardock:
             from .ship_transwarp import drive_buyable
-            if drive_buyable(player):
+            if drive_buyable(player, universe):
                 prices["transwarp_drive"] = int(K.ship_tw_type1_cost())
                 cap_by_tw = 1
             else:
@@ -904,7 +904,7 @@ def legal_actions(universe: Universe, player_id: str) -> list[LegalAction]:
         tow_offer: dict[str, int] = {}
         if K.tow_on() and K.ship_tw_on() and at_stardock:  # SHIP_TOW.md tt16
             from .tow import type2_offer
-            tow_offer = type2_offer(player)
+            tow_offer = type2_offer(player, universe)
             prices.update(tow_offer)
         mines_aboard = sum(int(v) for v in (player.ship.mines or {}).values())
         class_key = player.ship.ship_class.value
@@ -1254,7 +1254,8 @@ def legal_actions(universe: Universe, player_id: str) -> list[LegalAction]:
     # deploy_genesis
     gen_cost = int(K.GENESIS_DEPLOY_TURN_COST)
     genesis = int(player.ship.genesis or 0)
-    hops = len(_bfs_path(universe, K.STARDOCK_SECTOR, sector.id)) if sector.id != K.STARDOCK_SECTOR else 0
+    dock = int(K.stardock_sector_of(universe))
+    hops = len(_bfs_path(universe, dock, sector.id)) if int(sector.id) != dock else 0
     if genesis <= 0:
         reason = "no genesis torpedoes loaded (buy_equip genesis at StarDock)"
     elif in_fedspace:

@@ -378,14 +378,13 @@ def _pick_home_sector(universe: Universe) -> int | None:
     one-way lane. It is not an original rule. The draw uses the universe RNG,
     so the same seed places the same planet.
     """
-    blocked = set(int(s) for s in K.FEDSPACE_SECTORS)
-    blocked.add(int(K.STARDOCK_SECTOR))
+    blocked = set(int(s) for s in K.fedspace_sectors_of(universe))
     open_ids = [
         int(sid) for sid, sector in universe.sectors.items()
         if int(sid) not in blocked and not _sector_holds_someone(sector)
     ]
     universe.rng.shuffle(open_ids)
-    dock = int(K.STARDOCK_SECTOR)
+    dock = int(K.stardock_sector_of(universe))
     for sid in open_ids:
         if _bfs_path(universe, dock, sid) and _bfs_path(universe, sid, dock):
             return sid
@@ -691,7 +690,7 @@ def _overnight_ferrengi_encounters(universe: Universe) -> None:
         sector = universe.sectors.get(player.sector_id)
         choices: list[int] = []
         if sector is not None:
-            choices = [w for w in sector.warps if w not in K.FEDSPACE_SECTORS] or list(sector.warps)
+            choices = [w for w in sector.warps if not K.in_fedspace(universe, w)] or list(sector.warps)
         if choices:
             clear_ferrengi_encounter(universe, pid)
             _retreat_move(universe, player, int(choices[0]), overnight=True)
@@ -1057,7 +1056,7 @@ def _handle_warp(universe: Universe, pid: str, action: Action) -> ActionResult:
     damage = _apply_sector_hazards(universe, pid, dest)
 
     # If destroyed by fighters, handler already ejected player
-    if not player.alive or (player.sector_id == K.STARDOCK_SECTOR and damage > 0):
+    if not player.alive or (player.sector_id == K.stardock_sector_of(universe) and damage > 0):
         # Leave as-is after destruction
         pass
 
@@ -1373,13 +1372,13 @@ def _handle_deploy_fighters(universe: Universe, pid: str, action: Action) -> Act
         return ActionResult(ok=False, error=f"invalid fighter mode {mode_raw!r}")
     if qty <= 0 or qty > player.ship.fighters:
         return ActionResult(ok=False, error="invalid fighter quantity")
-    if sector.id in K.FEDSPACE_SECTORS and not K.fedspace_deploy_live():
+    if K.in_fedspace(universe, sector.id) and not K.fedspace_deploy_live():
         return ActionResult(ok=False, error="cannot deploy fighters in FedSpace")
 
     cost = K.TURN_COST["deploy_fighters"]
     if player.turns_today + cost > player.turns_per_day:
         return ActionResult(ok=False, error="out of turns")
-    if sector.id in K.FEDSPACE_SECTORS:
+    if K.in_fedspace(universe, sector.id):
         from .fed import punish_fighter_drop
         return punish_fighter_drop(universe, player, cost)
 
@@ -1426,7 +1425,7 @@ def _handle_deploy_mines(universe: Universe, pid: str, action: Action) -> Action
         return ActionResult(ok=False, error=K.atomic_mine_retired_error())
     if qty <= 0 or qty > player.ship.mines.get(kind, 0):
         return ActionResult(ok=False, error="insufficient mines")
-    if sector.id in K.FEDSPACE_SECTORS:
+    if K.in_fedspace(universe, sector.id):
         return ActionResult(ok=False, error="cannot deploy mines in FedSpace")
 
     cost = K.TURN_COST["deploy_mines"]
@@ -1580,7 +1579,7 @@ def _handle_attack(universe: Universe, pid: str, action: Action) -> ActionResult
     if isinstance(target_id, str) and target_id in universe.players and _are_allied(universe, pid, target_id):
         return ActionResult(ok=False, error="cannot attack a corp mate or ally")
             # fedspace-police-v1 f8: FedSpace protect (Zyrain under tw2002; legacy path unchanged)
-    if player.sector_id in K.FEDSPACE_SECTORS and fedspace_protects(target):
+    if K.in_fedspace(universe, player.sector_id) and fedspace_protects(target):
         from .fed import fed_tw2002, protect_fedspace_attack
         if fed_tw2002():
             return protect_fedspace_attack(universe, pid, target)
@@ -1775,7 +1774,7 @@ def _planet_collisions(universe: Universe) -> None:
     """Extern: an overloaded sector may lose two planets. No draw unless one is over the cap."""
     over = [
         sid for sid in sorted(universe.sectors)
-        if sid != K.STARDOCK_SECTOR
+        if sid != K.stardock_sector_of(universe)
         and len(universe.sectors[sid].planet_ids) > int(K.PLANETS_PER_SECTOR_CAP)
     ]
     if not over:
@@ -2738,13 +2737,13 @@ def _handle_deploy_genesis(universe: Universe, pid: str, action: Action) -> Acti
     sector = universe.sectors[player.sector_id]
     if player.ship.genesis <= 0:
         return ActionResult(ok=False, error="no genesis torpedoes loaded")
-    if sector.id in K.FEDSPACE_SECTORS:
+    if K.in_fedspace(universe, sector.id):
         return ActionResult(ok=False, error="cannot deploy genesis in FedSpace")
     # Enforce real distance from StarDock. In classic TW2002 planets had to
     # be built "deep" — you couldn't park a citadel next to Sol. Without
     # this check a single-hop-from-StarDock sector would qualify just by
     # being outside FedSpace, trivializing the colonist-ferry phase.
-    hops_from_stardock = len(_bfs_path(universe, K.STARDOCK_SECTOR, sector.id))
+    hops_from_stardock = len(_bfs_path(universe, K.stardock_sector_of(universe), sector.id))
     if hops_from_stardock > 0 and hops_from_stardock < K.GENESIS_MIN_HOPS_FROM_STARDOCK:
         return ActionResult(
             ok=False,
@@ -2982,7 +2981,7 @@ def _handle_buy_ship(universe: Universe, pid: str, action: Action) -> ActionResu
         from .fleet import buy_spare, wants_spare
         if wants_spare(action):  # SHIP_FLEET.md fl4: buy without trade-in (legacy ignores the arg)
             return buy_spare(universe, pid, str(action.args.get("ship_class") or ""))
-    if player.sector_id != K.STARDOCK_SECTOR:
+    if int(player.sector_id) != int(K.stardock_sector_of(universe)):
         return ActionResult(ok=False, error="must be at StarDock")
     class_key = action.args.get("ship_class")
     spec = K.ship_specs().get(class_key or "")
@@ -3067,7 +3066,7 @@ def _handle_buy_equip(universe: Universe, pid: str, action: Action) -> ActionRes
     day = int(universe.day)
     class_key = player.ship.ship_class.value
     at_special = special_port_at(universe, player.sector_id) is not None
-    at_stardock = player.sector_id == K.STARDOCK_SECTOR
+    at_stardock = int(player.sector_id) == int(K.stardock_sector_of(universe))
 
     # Class 0 special ports: fighters / shields / holds only.
     if at_special and class0_tw2002():
@@ -3224,7 +3223,7 @@ def _buy_planet_scanner(universe: Universe, pid: str, qty: int) -> ActionResult:
     if not K.planet_scanner_live():
         return ActionResult(ok=False, error="unknown item 'planet_scanner'")
     player = universe.players[pid]
-    if player.sector_id != K.STARDOCK_SECTOR:
+    if int(player.sector_id) != int(K.stardock_sector_of(universe)):
         return ActionResult(ok=False, error="must be at StarDock")
     if qty != 1:
         return ActionResult(ok=False, error="a ship carries one planet scanner (qty 1)")
@@ -3277,7 +3276,7 @@ def _handle_corp_create(universe: Universe, pid: str, action: Action) -> ActionR
     player = universe.players[pid]
     if player.corp_ticker is not None:
         return ActionResult(ok=False, error="already in a corporation")
-    if player.sector_id != K.STARDOCK_SECTOR:
+    if int(player.sector_id) != int(K.stardock_sector_of(universe)):
         return ActionResult(ok=False, error="must be at StarDock")
     if player.credits < K.CORP_FORMATION_COST:
         return ActionResult(ok=False, error=f"need {K.CORP_FORMATION_COST} cr to incorporate")
@@ -3571,7 +3570,7 @@ def _handle_plot_course(universe: Universe, pid: str, action: Action) -> ActionR
     target = action.args.get("target")
     if "navpoint" in action.args and K.navpoint_live():
         from .navpoints import resolve_navpoint
-        found = resolve_navpoint(player, action.args.get("navpoint"))
+        found = resolve_navpoint(player, action.args.get("navpoint"), universe)
         if found is None:
             return ActionResult(ok=False, error="no such NavPoint")
         target = found
@@ -3760,7 +3759,7 @@ def query_route(universe: Universe, pid: str, target: object) -> dict:
     except (TypeError, ValueError):
         if K.navpoint_live():
             from .navpoints import resolve_navpoint
-            found = resolve_navpoint(player, target)
+            found = resolve_navpoint(player, target, universe)
             if found is None:
                 return {"ok": False, "error": "no such NavPoint", "from": sector, "path": []}
             target_id = found
@@ -3873,7 +3872,7 @@ def _handle_photon_missile(universe: Universe, pid: str, action: Action) -> Acti
     target = universe.players[target_id]
     if target.sector_id != player.sector_id:
         return ActionResult(ok=False, error="target not in this sector")
-    if player.sector_id in K.FEDSPACE_SECTORS and fedspace_protects(target):
+    if K.in_fedspace(universe, player.sector_id) and fedspace_protects(target):
         player.alignment -= 100
         return ActionResult(ok=False, error="FedSpace forbids weapons fire")
     cost = K.TURN_COST["attack"]
@@ -4342,7 +4341,7 @@ def _try_interdict(universe: Universe, pid: str, sector) -> ActionResult | None:
     only while PHOTON_INTERDICT_DAMP_MODE is live (HardwareMenu). S1 leaves
     the interdictor off the skip list, so the stored path still burns fuel.
     """
-    if K.planet_interdict_quiet(sector.id):
+    if K.planet_interdict_quiet(sector.id, universe):
         return None
     if K.photon_interdict_damped(sector):
         return None
@@ -4555,7 +4554,7 @@ def _handle_planet_transwarp(universe: Universe, pid: str, action: Action) -> Ac
     dest = universe.sectors.get(dest_id)
     if dest is None:
         return ActionResult(ok=False, error="no such sector")
-    if dest_id == K.STARDOCK_SECTOR or dest_id in K.FEDSPACE_SECTORS:
+    if K.in_fedspace(universe, dest_id):
         return ActionResult(ok=False, error="cannot transwarp to FedSpace")
     if not K.sector_has_planet_room(len(dest.planet_ids)):
         return ActionResult(ok=False, error="sector already holds 5 planets")
@@ -4655,7 +4654,7 @@ def _handle_planet_transport(universe: Universe, pid: str, action: Action) -> Ac
     dest = universe.sectors.get(dest_id)
     if dest is None:
         return ActionResult(ok=False, error="no such sector")
-    if dest_id == K.STARDOCK_SECTOR or dest_id in K.FEDSPACE_SECTORS:
+    if K.in_fedspace(universe, dest_id):
         return ActionResult(ok=False, error="cannot transport to FedSpace")
     path = _bfs_path(universe, player.sector_id, dest_id)
     if not path:
@@ -5054,7 +5053,7 @@ def _handle_retreat(universe: Universe, pid: str, action: Action) -> ActionResul
     if ferr_enc is not None:
         # n17: flee any neighbour (Ferrengi boarded in-sector; no from_sector).
         sector = universe.sectors[player.sector_id]
-        choices = [w for w in sector.warps if w not in K.FEDSPACE_SECTORS] or list(sector.warps)
+        choices = [w for w in sector.warps if not K.in_fedspace(universe, w)] or list(sector.warps)
         if not choices:
             return _reject_free("no warp out to flee the Ferrengi")
         held_by_hull = hull_interdict_reason(universe, pid)

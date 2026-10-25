@@ -233,7 +233,7 @@ class ReplayRunner(MatchRunner):
         from ..engine import constants as K
 
         assert self._spec is not None
-        fed_sectors = sorted(K.FEDSPACE_SECTORS)
+        fed_sectors = sorted(K.fedspace_sectors_of(universe))
         start_order = [fed_sectors[0]] + [s for s in fed_sectors if s != fed_sectors[0]]
 
         for i, ag in enumerate(self._spec.agents):

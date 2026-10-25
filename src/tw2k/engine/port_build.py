@@ -350,9 +350,9 @@ def build_block(universe: Universe, player: Player) -> str | None:
     if why:
         return why
     sector = universe.sectors[player.sector_id]
-    if player.sector_id in K.FEDSPACE_SECTORS and not K.PORT_BUILD_FEDSPACE:
+    if K.in_fedspace(universe, player.sector_id) and not K.PORT_BUILD_FEDSPACE:
         return "FedSpace cannot hold a built port"
-    if player.sector_id == K.STARDOCK_SECTOR:
+    if int(player.sector_id) == int(K.stardock_sector_of(universe)):
         return "FedSpace cannot hold a built port"
     if sector.port is not None:
         return "this sector already has a port"

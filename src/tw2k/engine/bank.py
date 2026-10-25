@@ -29,7 +29,7 @@ def guard(universe: Universe, player: Player) -> str | None:
         return "player is destroyed"
     if player.planet_landed is not None:
         return "lift off first"
-    if player.sector_id != K.STARDOCK_SECTOR:
+    if int(player.sector_id) != int(K.stardock_sector_of(universe)):
         return "the bank is at StarDock"
     return None
 

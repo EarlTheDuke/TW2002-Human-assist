@@ -310,7 +310,7 @@ def run_match(seats: list[str], *, seed: int, days: int, universe_size: int = 10
             if not ok:
                 s["rej_engine"] += 1
                 s["rej_top"][f"{kind}: {err[:80]}"] += 1
-                if "out of turns" in err:
+                if "out of turns" in err or err == "death delay":
                     s["idle_done"] = True
             elif kind == "trade":
                 if args.get("side") == "sell":

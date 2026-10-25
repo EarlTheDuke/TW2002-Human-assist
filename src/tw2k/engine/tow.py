@@ -102,14 +102,18 @@ def engaged(universe: Universe, pid: str) -> tuple[TowLock, ParkedShip | Player]
     return lock, obj
 
 
-def _manned_in_fedspace(obj: ParkedShip | Player) -> bool:
-    return isinstance(obj, Player) and int(obj.sector_id) in K.FEDSPACE_SECTORS
+def _manned_in_fedspace(obj: ParkedShip | Player, universe=None) -> bool:
+    if not isinstance(obj, Player):
+        return False
+    if universe is None:
+        return int(obj.sector_id) in K.FEDSPACE_SECTORS
+    return K.in_fedspace(universe, obj.sector_id)
 
 
 def moving_towee(universe: Universe, pid: str) -> tuple[TowLock, ParkedShip | Player] | None:
     """The towee that would follow a move right now (a manned towee in FedSpace is released first, tt7)."""
     got = engaged(universe, pid)
-    if got is None or _manned_in_fedspace(got[1]):
+    if got is None or _manned_in_fedspace(got[1], universe):
         return None
     return got
 
@@ -221,7 +225,7 @@ def _player_target_block(universe: Universe, pid: str, other: Player | None) -> 
         return "that trader is on a planet"
     if int(other.ship.fighters) > int(K.TOW_MANNED_MAX_FIGHTERS):
         return "towing a ship with fighters aboard is not possible"
-    if int(other.sector_id) in K.FEDSPACE_SECTORS:
+    if K.in_fedspace(universe, other.sector_id):
         return "you cannot tow a trader in FedSpace"
     if _locked_anywhere(universe, "player", other.id):
         return "that trader is already in tow"
@@ -605,9 +609,9 @@ def emit_hold(universe: Universe, rec: ParkedShip) -> None:
 # ---- Type 2 TransWarp shelf (tt16) -------------------------------------------------------------
 
 
-def type2_offer(player: Player) -> dict[str, int]:
+def type2_offer(player: Player, universe=None) -> dict[str, int]:
     """StarDock shelf items for this hull: transwarp_type2 (no drive) / transwarp_upgrade (type1 fitted)."""
-    if not (tow_on() and K.ship_tw_on()) or player.sector_id != K.STARDOCK_SECTOR:
+    if not (tow_on() and K.ship_tw_on()) or int(player.sector_id) != int(K.stardock_sector_of(universe)):
         return {}
     if player.ship.ship_class.value not in K.SHIP_TW_HULLS:
         return {}
@@ -623,11 +627,11 @@ def buy_type2(universe: Universe, pid: str, item: str, qty: int) -> ActionResult
     player = universe.players[pid]
     if qty != 1:
         return ActionResult(ok=False, error="a TransWarp drive is bought one at a time")
-    if player.sector_id != K.STARDOCK_SECTOR:
+    if int(player.sector_id) != int(K.stardock_sector_of(universe)):
         return ActionResult(ok=False, error="TransWarp drives are sold at StarDock only")
     if player.ship.ship_class.value not in K.SHIP_TW_HULLS:
         return ActionResult(ok=False, error="only an Imperial StarShip, Corporate FlagShip, or Havoc Gunstar can fit a TransWarp drive")
-    offer = type2_offer(player)
+    offer = type2_offer(player, universe)
     if item not in offer:
         drive = getattr(player.ship, "transwarp_drive", None)
         if item == "transwarp_upgrade" and drive is None:
@@ -692,7 +696,7 @@ def in_tow_view(universe: Universe, pid: str) -> dict[str, Any] | None:
 
 def fleet_entry_extra(universe: Universe, rec: ParkedShip) -> dict[str, Any]:
     holder = towed_by(universe, "ship", rec.id)
-    hold = holder is not None and int(rec.sector_id) in K.FEDSPACE_SECTORS and extern_hold_why(universe, rec) is None
+    hold = holder is not None and K.in_fedspace(universe, rec.sector_id) and extern_hold_why(universe, rec) is None
     return {"in_tow": holder is not None, "extern_hold": bool(hold)}
 
 

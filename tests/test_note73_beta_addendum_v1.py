@@ -57,12 +57,13 @@ def _world(seed: int = 73):
 
 
 def _seat(world, pid: str, *, name: str, credits: int = 20_000, experience: int = 0, alignment: int = 0) -> Player:
+    dock = int(K.stardock_sector_of(world))
     player = Player(
-        id=pid, name=name, sector_id=K.STARDOCK_SECTOR, credits=credits,
+        id=pid, name=name, sector_id=dock, credits=credits,
         turns_per_day=250, experience=experience, alignment=alignment,
     )
     world.players[pid] = player
-    world.sectors[K.STARDOCK_SECTOR].occupant_ids.append(pid)
+    world.sectors[dock].occupant_ids.append(pid)
     return player
 
 

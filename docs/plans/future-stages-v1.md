@@ -112,7 +112,7 @@ Files: new `src/tw2k/voice/` (server parts, if any), `web/voice.js`, `web/voice.
 
 New flags from A and B join the profile only after Ben rules on them (or a source is CONFIRMED). Joining is a C "profile intake" item: add the helper to `V311_PROFILE_HELPERS`, add `or v311_profile()` to the helper, and update `tests/test_v311_rulings_v1.py`, `tests/test_tw2002_live_profile_v1.py` and `docs/plans/v311-profile-v1.md` together.
 
-Open profile items for Ben: class M ratios vs the 191,000-colonist start planet; two pods per day (CMB-g); `EXP_SCORE_MODE` confirm (it changes who wins); StarDock stays in sector 1 (Ben's earlier call; the original hides it in a random Class 9 sector).
+Open profile items for Ben: class M ratios vs the 191,000-colonist start planet; two pods per day (CMB-g); `EXP_SCORE_MODE` confirm (it changes who wins). GAP 1.5 is closed: `STARDOCK_LOCATION_MODE` row 236, Ben approved the Commander recommendation 2026-10-24. A stored game still keeps StarDock in sector 1.
 
 ### 5.4 Richer 2D map (Track C; 3D is out)
 

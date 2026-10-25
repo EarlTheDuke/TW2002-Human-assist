@@ -1264,7 +1264,7 @@ def build_observation(universe: Universe, player_id: str, event_history: int = 4
         turn_log, comms_view = seat_view(universe, player)
     known_sectors = _known_sectors(universe, player)
     bank_view = None
-    if K.bank_on() and (K.BANK_BALANCE_VIEW == "always" or player.sector_id == K.STARDOCK_SECTOR):
+    if K.bank_on() and (K.BANK_BALANCE_VIEW == "always" or int(player.sector_id) == int(K.stardock_sector_of(universe))):
         from .bank import self_view
         bank_view = self_view(player)
     obs = Observation(
@@ -1522,7 +1522,7 @@ def _known_sectors(universe: Universe, player) -> list[dict[str, Any]]:
             "x": round(float(getattr(sector, "x", 0.0) or 0.0), 4),
             "y": round(float(getattr(sector, "y", 0.0) or 0.0), 4),
             "port": port_code,
-            "is_fedspace": sid in K.FEDSPACE_SECTORS,
+            "is_fedspace": K.in_fedspace(universe, sid),
             "last_seen_day": remembered.get("last_seen_day"),
             "warps_known": sid in (player.known_warps or {}),
         })
@@ -1728,6 +1728,9 @@ def _sector_detail(universe: Universe, sector, player_id: str) -> dict[str, Any]
         "ferrengi": [],
     }
     from . import constants as K
+    dock = int(K.stardock_sector_of(universe))
+    if dock != int(K.STARDOCK_SECTOR):
+        info["stardock_sector"] = dock
     if K.fed_tw2002():  # FEDSPACE_POLICE.md f1/f2: Federal starships show in the sector like ships
         from .fed import federal_briefs
         info["federals"] = federal_briefs(universe, sector.id)
@@ -2039,7 +2042,7 @@ _FEDSPACE_CACHE: set[int] | None = None
 
 def _fedspace_set(universe: Universe) -> set[int]:
     from . import constants as K
-    return K.FEDSPACE_SECTORS
+    return K.fedspace_sectors_of(universe)
 
 
 def _summarize_trade_log(trade_log: list[dict[str, Any]]) -> dict[str, Any]:
@@ -2247,6 +2250,7 @@ def _action_hint(
     from . import constants as K
 
     day = int(getattr(universe, "day", 0) or 0) if universe is not None else 0
+    dock = int(K.stardock_sector_of(universe)) if universe is not None else int(K.STARDOCK_SECTOR)
     fighter_px = K.fighter_unit_price(day)
     hints: list[str] = []
     full_hints = not is_minimal()
@@ -2361,7 +2365,7 @@ def _action_hint(
                         f"(ship had {last_fighters} fighters). Before warping outside "
                         f"FedSpace again, consider buying at least {target_fighters} "
                         f"fighters and >=1 shield at StarDock (sec "
-                        f"{K.STARDOCK_SECTOR}). {afford_line}. This hint auto-"
+                        f"{dock}). {afford_line}. This hint auto-"
                         f"clears once you're back above that threshold."
                     )
             else:
@@ -2390,7 +2394,7 @@ def _action_hint(
             hints.append(
                 f"YOU ARE IN AN ESCAPE POD ({K.POD_SPEC['turns_per_warp']} turns per warp, "
                 f"{K.POD_SPEC['max_fighters']} fighters max). Reach StarDock (sector "
-                f"{K.STARDOCK_SECTOR}) and buy_ship: the pod trades in at a Scout's price, "
+                f"{dock}) and buy_ship: the pod trades in at a Scout's price, "
                 f"so a scout_marauder costs 0 cr. A pod that is destroyed is SHIP DESTROYED."
             )
         if pods_today >= K.PODS_PER_DAY:
@@ -2590,14 +2594,21 @@ def _action_hint(
                 if pnl_parts:
                     hints.append("P&L at this port: " + " | ".join(pnl_parts))
 
-    # StarDock-specific — the set of verbs that ONLY work at sector 1
+    # StarDock verbs. Terra stays sector 1, so the combined line is the legacy text
+    # only while the dock is still sector 1.
     sector_id = sector_info.get("id")
-    if sector_id == K.STARDOCK_SECTOR:
+    terra_here = (
+        sector_id == K.STARDOCK_SECTOR
+        and K.class0_tw2002()
+        and universe is not None
+        and getattr(universe, "terra_colonists", None) is not None
+    )
+    if sector_id == dock:
         bits = [
             "At StarDock: buy_ship, buy_equip (fighters/shields/holds/armid_mines/limpet_mines/atomic_mines/"
             "genesis/photon_missiles/ether_probes/colonists), corp_create legal here."
         ]
-        if K.class0_tw2002() and universe is not None and getattr(universe, "terra_colonists", None) is not None:
+        if terra_here:
             bits[0] = (
                 "At StarDock (Terra): buy_ship, buy_equip (fighters/shields/holds/armid_mines/limpet_mines/atomic_mines/"
                 "genesis/photon_missiles/ether_probes), terra_colonists (take/leave), corp_create legal here."
@@ -2606,7 +2617,7 @@ def _action_hint(
             ship_sd = getattr(player, "ship", None) if player is not None else None
             if ship_sd is not None:
                 free = getattr(ship_sd, "cargo_free", None)
-                terra_hint = K.class0_tw2002() and getattr(universe, "terra_colonists", None) is not None
+                terra_hint = terra_here
                 if isinstance(free, int) and free > 0:
                     if terra_hint:  # CLASS0_TERRA.md: colonists come from Terra, not buy_equip
                         take = min(free, int(universe.terra_colonists))
@@ -2730,7 +2741,7 @@ def _action_hint(
         full_hints
         and player is not None
         and sector_id is not None
-        and sector_id != K.STARDOCK_SECTOR
+        and sector_id != dock
     ):
         cur_ship = getattr(player, "ship", None)
         cur_class_val = getattr(getattr(cur_ship, "ship_class", None), "value", None)
@@ -2761,15 +2772,15 @@ def _action_hint(
                     hints.append(
                         f"STILL IN STARTER HULL with {credits:,}cr — you can "
                         f"afford {picks}. `buy_ship` is a 0-turn action at "
-                        f"StarDock (sector {K.STARDOCK_SECTOR}). "
-                        f'`plot_course {{"target":{K.STARDOCK_SECTOR},"execute":true}}` '
+                        f"StarDock (sector {dock}). "
+                        f'`plot_course {{"target":{dock},"execute":true}}` '
                         "to get there."
                     )
                 else:
                     hints.append(
                         f"STILL IN STARTER HULL with {credits:,}cr — you can "
                         f"afford {picks}. `buy_ship` is a 0-turn action at "
-                        f"StarDock (sector {K.STARDOCK_SECTOR}); warp back to "
+                        f"StarDock (sector {dock}); warp back to "
                         f"upgrade before burning more days trading in 20 holds."
                     )
 
@@ -2778,7 +2789,12 @@ def _action_hint(
         ship = getattr(player, "ship", None)
         if ship is not None:
             genesis = getattr(ship, "genesis", 0) or 0
-            if genesis > 0 and sector_id not in K.FEDSPACE_SECTORS and getattr(player, "planet_landed", None) is None:
+            in_fs = (
+                K.in_fedspace(universe, int(sector_id))
+                if universe is not None and sector_id is not None
+                else sector_id in K.FEDSPACE_SECTORS
+            )
+            if genesis > 0 and not in_fs and getattr(player, "planet_landed", None) is None:
                 hints.append(
                     f"You carry {genesis} genesis torpedo(es) — `deploy_genesis` HERE creates a planet you own (4 turns)."
                 )
@@ -2918,7 +2934,7 @@ def _action_hint(
         trader_line = _trader_check(player, sector_info)
         if trader_line:
             hints.append(trader_line)
-    if (K.slow_hull_hint_on() and player is not None and sector_info.get("id") == K.STARDOCK_SECTOR
+    if (K.slow_hull_hint_on() and player is not None and sector_info.get("id") == dock
             and int(getattr(player, "turns_per_day", 0) or 0) <= K.SLOW_HULL_HINT_MAX_TURNS_PER_DAY):
         slow_line = _slow_hull_line(player)
         if slow_line:
@@ -2993,7 +3009,11 @@ def _action_hint(
         ship_fighters = int(getattr(ship, "fighters", 0) or 0)
         ship_shields = int(getattr(ship, "shields", 0) or 0)
         cur_sid = sector_info.get("id")
-        in_fedspace = cur_sid in K.FEDSPACE_SECTORS if cur_sid is not None else False
+        in_fedspace = (
+            K.in_fedspace(universe, int(cur_sid))
+            if universe is not None and cur_sid is not None
+            else (cur_sid in K.FEDSPACE_SECTORS if cur_sid is not None else False)
+        )
         credits_now = int(getattr(player, "credits", 0) or 0)
         buy_500_cost = 500 * fighter_px
         if not in_fedspace and ship_fighters < 500:
@@ -3002,7 +3022,7 @@ def _action_hint(
                 f"UNDEFENDED IN DEEP SPACE — ship has {ship_fighters} fighters "
                 f"/ {ship_shields} shields. Ferrengi raiders spawn with "
                 f"400-3,100 fighters (aggression 1-10). Any warp from here "
-                f"could meet one. StarDock (sec {K.STARDOCK_SECTOR}) sells "
+                f"could meet one. StarDock (sec {dock}) sells "
                 f"fighters at {fighter_px}cr ea — 500 fighters = "
                 f"{buy_500_cost:,}cr, you have {credits_now:,}cr."
                 + (

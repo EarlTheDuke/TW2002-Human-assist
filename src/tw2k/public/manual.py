@@ -1499,6 +1499,10 @@ _SWITCH_PLAIN: dict[str, str] = {
     "TRADE_PRIVATE_MODE": "Your port trades, with their quantities and prices, are not shown to other traders in the sector.",
     "PHOTON_CLOAK_SETTINGS_MODE": "FedSpace refuses a photon. Players in that sector have their fighters offline for the wave, and that ship waits out the wave before firing again.",
     "TRICRON_MODE": "The tavern deals one Tri-Cron match: 10 rounds, ante 100 credits, payback 2 to 1.",
+    "STARDOCK_LOCATION_MODE": (
+        "StarDock is placed in a random ordinary sector. Terra stays in sector 1. "
+        "FedSpace is sectors 1 through 10 plus that StarDock sector."
+    ),
 }
 
 
@@ -2049,7 +2053,7 @@ _COVERS: dict[str, tuple[str, ...]] = {
     "moving": (
         "warp", "plot_course", "avoid",
         "COURSE_MAX_MODE", "ONE_WAY_SHARE_MODE", "TWO_WAY_WARP_MODE", "AUTOPILOT_PORT_STOP_MODE", "AVOID_MODE",
-        "BIG_BANG_DENSITY_MODE", "BIG_BANG_BUILT_MODE",
+        "BIG_BANG_DENSITY_MODE", "BIG_BANG_BUILT_MODE", "STARDOCK_LOCATION_MODE",
     ),
     "trading": (
         "trade", "rob", "steal", "planet_trade", "TRADE_PRIVATE_MODE",

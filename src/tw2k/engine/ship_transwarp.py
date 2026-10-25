@@ -100,10 +100,12 @@ def fed_lock_on(player) -> bool:
     return True
 
 
-def _fed_lock(player, sector_id: int) -> bool:
+def _fed_lock(player, sector_id: int, universe=None) -> bool:
     if not fed_lock_on(player):
         return False
-    return int(sector_id) in K.FEDSPACE_SECTORS
+    if universe is None:
+        return int(sector_id) in K.FEDSPACE_SECTORS
+    return K.in_fedspace(universe, sector_id)
 
 
 def _fighter_lock(universe: Universe, pid: str, sector_id: int) -> bool:
@@ -123,7 +125,7 @@ def _fighter_lock(universe: Universe, pid: str, sector_id: int) -> bool:
 
 def has_lock(universe: Universe, pid: str, sector_id: int) -> bool:
     player = universe.players[pid]
-    return _fighter_lock(universe, pid, sector_id) or _fed_lock(player, sector_id)
+    return _fighter_lock(universe, pid, sector_id) or _fed_lock(player, sector_id, universe)
 
 
 def turn_cost(player, hops: int) -> int:
@@ -139,11 +141,11 @@ def ore_cost(hops: int) -> int:
     return int(K.SHIP_TW_ORE_PER_HOP) * int(hops)
 
 
-def drive_buyable(player) -> bool:
+def drive_buyable(player, universe=None) -> bool:
     """StarDock shelf: eligible hull, no drive yet. Credits are checked by the caller."""
     if not ship_tw_on():
         return False
-    if player.sector_id != K.STARDOCK_SECTOR:
+    if int(player.sector_id) != int(K.stardock_sector_of(universe)):
         return False
     if not hull_can_fit(player.ship.ship_class.value):
         return False
@@ -158,7 +160,7 @@ def buy_drive(universe: Universe, pid: str, qty: int) -> ActionResult:
         return ActionResult(ok=False, error="transwarp drive unavailable (SHIP_TW_MODE legacy)")
     if qty != 1:
         return ActionResult(ok=False, error="a TransWarp drive is bought one at a time")
-    if player.sector_id != K.STARDOCK_SECTOR:
+    if int(player.sector_id) != int(K.stardock_sector_of(universe)):
         return ActionResult(ok=False, error="TransWarp drives are sold at StarDock only")
     if not hull_can_fit(player.ship.ship_class.value):
         return ActionResult(ok=False, error="only an Imperial StarShip, Corporate FlagShip, or Havoc Gunstar can fit a TransWarp drive")
@@ -199,11 +201,11 @@ def locked_choices(universe: Universe, pid: str) -> list[dict[str, int]]:
     names: set[int] = set()
     for sid in list(getattr(player, "known_sectors", None) or []):
         names.add(int(sid))
-    if _fed_lock(player, K.STARDOCK_SECTOR):
-        names.update(int(s) for s in K.FEDSPACE_SECTORS if int(s) in universe.sectors)
+    if _fed_lock(player, K.stardock_sector_of(universe), universe):
+        names.update(int(s) for s in K.fedspace_sectors_of(universe) if int(s) in universe.sectors)
     names.add(here)
     if fed_lock_on(player):
-        names.update(int(s) for s in K.FEDSPACE_SECTORS)
+        names.update(int(s) for s in K.fedspace_sectors_of(universe))
     rows: list[tuple[int, int, int]] = []
     for sid in names:
         if sid == here or not has_lock(universe, pid, sid):

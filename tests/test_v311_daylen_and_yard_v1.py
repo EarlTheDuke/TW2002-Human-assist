@@ -350,9 +350,10 @@ def _yard(monkeypatch, *, profile: bool):
     from tw2k.engine.models import Player
 
     u = generate_universe(GameConfig(seed=250925, universe_size=120, max_days=3, enable_ferrengi=False))
-    p = Player(id="P1", name="A", sector_id=K.STARDOCK_SECTOR, credits=50_000, turns_per_day=250)
+    dock = int(K.stardock_sector_of(u))
+    p = Player(id="P1", name="A", sector_id=dock, credits=50_000, turns_per_day=250)
     u.players["P1"] = p
-    u.sectors[K.STARDOCK_SECTOR].occupant_ids.append("P1")
+    u.sectors[dock].occupant_ids.append("P1")
     return u, next(a for a in legal_actions(u, "P1") if a.kind == ActionKind.BUY_SHIP)
 
 

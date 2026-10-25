@@ -1442,6 +1442,7 @@ class Universe(BaseModel):
             "ferrengi_pace_covered_s": 0.0,
             "special_ports_destroyed": 0,
             "inactive_users_armed": False,
+            "stardock_sector": None,
         })
         # A server restart clears Gold grudges. Never write the list out.
         if isinstance(data, dict):
@@ -1501,6 +1502,10 @@ class Universe(BaseModel):
     # NOTE 151. True only when this universe was generated while inactive-user
     # deletion was already on. Omitted while false so a legacy dump stays identical.
     inactive_users_armed: bool = False
+    # GAP 1.5. None means StarDock is sector 1 and the field is left out of
+    # a dump, so a legacy universe stays byte-identical. Set only when
+    # generation placed the dock in another sector.
+    stardock_sector: int | None = None
     # STARDOCK_TAVERN.md tv28. Omitted while None so a legacy dump stays byte-identical.
     tavern: dict[str, Any] | None = None
 

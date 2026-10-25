@@ -119,7 +119,7 @@ def place_federals(universe: Universe) -> None:
         return
     seed = int(universe.config.seed)
     rng = fed_rng(seed)
-    hops = _bfs_hops(universe, K.STARDOCK_SECTOR)
+    hops = _bfs_hops(universe, K.stardock_sector_of(universe))
     candidates = [
         sid
         for sid, h in hops.items()
@@ -169,7 +169,9 @@ def place_fed_starships(universe: Universe) -> None:
         universe.fed_starships = []
         return
     ids = sorted(universe.sectors)
-    dock = K.STARDOCK_SECTOR if K.STARDOCK_SECTOR in universe.sectors else ids[0]
+    dock = K.stardock_sector_of(universe)
+    if dock not in universe.sectors:
+        dock = ids[0]
     rest = [sid for sid in ids if sid != dock]
     second = rest[0] if rest else dock
     third = rest[1] if len(rest) > 1 else second
@@ -440,12 +442,12 @@ def protect_fedspace_attack(universe: Universe, pid: str, target) -> ActionResul
 def _tow_destinations(universe: Universe) -> list[int]:
     if K.FED_TOW_DEST == "msl":
         msl = [int(s) for s in (getattr(universe, "msl_sectors", None) or [])
-               if int(s) not in K.FEDSPACE_SECTORS]
+               if not K.in_fedspace(universe, s)]
         if msl:
             return sorted(msl)
     return sorted(
         sid for sid in universe.sectors
-        if sid not in K.FEDSPACE_SECTORS and sid != K.STARDOCK_SECTOR
+        if not K.in_fedspace(universe, sid)
     )
 
 
@@ -496,7 +498,7 @@ def run_tows(universe: Universe) -> int:
             continue
         if citadel_home(universe, p) is not None:
             continue
-        if int(p.sector_id) not in K.FEDSPACE_SECTORS:
+        if not K.in_fedspace(universe, p.sector_id):
             continue
         if int(p.ship.fighters) > int(K.fed_tow_fighter_limit()):
             if _tow_player(universe, pid, reason="arms") is not None:
@@ -504,7 +506,7 @@ def run_tows(universe: Universe) -> int:
     # f12: parking — per FedSpace sector, keep at most FED_SHIPS_PER_SECTOR;
     # tow latest arrivals first (reverse occupant_ids).
     limit = int(K.FED_SHIPS_PER_SECTOR)
-    for sid in sorted(K.FEDSPACE_SECTORS):
+    for sid in sorted(K.fedspace_sectors_of(universe)):
         sector = universe.sectors.get(sid)
         if sector is None:
             continue
@@ -574,7 +576,7 @@ def police_ok(universe: Universe, pid: str) -> tuple[bool, str]:
     if not fed_tw2002():
         return False, "unsupported action"
     player = universe.players[pid]
-    if int(player.sector_id) != K.STARDOCK_SECTOR:
+    if int(player.sector_id) != int(K.stardock_sector_of(universe)):
         return False, "Police HQ is in sector 1"
     if int(player.alignment) < int(K.POLICE_MIN_ALIGNMENT):
         return False, "alignment too low for Police HQ"
@@ -713,7 +715,7 @@ def commission_eligible(player) -> bool:
 
 
 def police_observation(universe: Universe, player) -> dict[str, Any] | None:
-    if not fed_tw2002() or int(player.sector_id) != K.STARDOCK_SECTOR:
+    if not fed_tw2002() or int(player.sector_id) != int(K.stardock_sector_of(universe)):
         return None
     if int(player.alignment) < int(K.POLICE_MIN_ALIGNMENT):
         return None
@@ -728,7 +730,7 @@ def police_observation(universe: Universe, player) -> dict[str, Any] | None:
 
 
 def fedspace_hint(universe: Universe, player) -> dict[str, Any] | None:
-    if not fed_tw2002() or int(player.sector_id) not in K.FEDSPACE_SECTORS:
+    if not fed_tw2002() or not K.in_fedspace(universe, player.sector_id):
         return None
     sector = universe.sectors[player.sector_id]
     # Fog (h15): count only the ships this seat can see - itself plus uncloaked live ships.

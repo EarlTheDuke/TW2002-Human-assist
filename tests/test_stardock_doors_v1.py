@@ -104,7 +104,7 @@ def test_v311_lists_the_library_and_the_hidden_bar(monkeypatch) -> None:
     monkeypatch.setattr(K, "V311_PROFILE", "v311")
     assert K.stardock_doors_live() is True
     universe = _world()
-    _seat(universe, sector=int(K.STARDOCK_SECTOR))
+    _seat(universe, sector=int(K.stardock_sector_of(universe)))
     kinds = _kinds(universe)
     library = kinds["library"]
     bar = kinds["singles_bar"]

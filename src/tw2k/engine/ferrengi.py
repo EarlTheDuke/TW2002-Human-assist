@@ -151,7 +151,7 @@ def place_ferrengal(universe: Universe) -> None:
         return
     seed = int(universe.config.seed)
     rng = _ferrengal_rng(seed)
-    hops = _bfs_hops(universe, K.STARDOCK_SECTOR)
+    hops = _bfs_hops(universe, K.stardock_sector_of(universe))
     pool: list[int] = []
     if K.universe_topology_live():
         pool = sorted(
@@ -218,7 +218,7 @@ def _sectors_near_ferrengal(universe: Universe, radius: int) -> list[int]:
     return sorted(
         sid
         for sid, h in hops.items()
-        if h <= radius and sid not in K.FEDSPACE_SECTORS and sid >= 11
+        if h <= radius and not K.in_fedspace(universe, sid) and sid >= 11
     )
 
 
@@ -496,7 +496,7 @@ def engage_entrant(universe: Universe, pid: str) -> None:
     player = universe.players.get(pid)
     if player is None or not player.alive or int(player.ship.fighters) <= 0:
         return
-    if player.sector_id in K.FEDSPACE_SECTORS or getattr(player, "ferrengi_encounter", None):
+    if K.in_fedspace(universe, player.sector_id) or getattr(player, "ferrengi_encounter", None):
         return
     if _player_cloaked(player):
         return
@@ -518,7 +518,7 @@ def clear_ferrengi_encounter(universe: Universe, pid: str) -> None:
 
 
 def _ferrengi_hops(universe: Universe, sec) -> list[int]:
-    choices = [w for w in sec.warps if w not in K.FEDSPACE_SECTORS]
+    choices = [w for w in sec.warps if not K.in_fedspace(universe, w)]
     if K.ferrengi_tw2002() and K.FERRENGI_FIGHTER_BLOCK:
         choices = [
             w
@@ -567,7 +567,7 @@ def preferred_ferrengi_dest(universe: Universe, ferr: FerrengiShip, choices: lis
         return None
     remembered = [
         p for p in universe.players.values()
-        if p.alive and p.id in ferr.grudges and int(p.sector_id) not in K.FEDSPACE_SECTORS
+        if p.alive and p.id in ferr.grudges and not K.in_fedspace(universe, p.sector_id)
     ]
     if remembered:
         target = min(remembered, key=lambda p: (int(p.sector_id), p.id))
@@ -717,7 +717,7 @@ def _ferrengi_roam_and_hunt(universe: Universe) -> None:
             for p in universe.players.values()
             if p.alive
             and p.sector_id == ferr.sector_id
-            and p.sector_id not in K.FEDSPACE_SECTORS
+            and not K.in_fedspace(universe, p.sector_id)
             and not _player_cloaked(p)
             and getattr(p, "ferrengi_encounter", None) is None
         ]
@@ -742,7 +742,7 @@ def _ferrengi_roam_and_hunt(universe: Universe) -> None:
         if ferr.aggression < required_aggression:
             continue
         if victim.ship.fighters > ferr.fighters * K.FERRENGI_FLEE_FIGHTER_RATIO:
-            choices = [w for w in sec.warps if w not in K.FEDSPACE_SECTORS]
+            choices = [w for w in sec.warps if not K.in_fedspace(universe, w)]
             if choices:
                 dest = preferred_ferrengi_dest(universe, ferr, choices)
                 if dest is None:

@@ -470,7 +470,7 @@ def interdictor_planet(universe: Universe, pid: str, sector):
     """A planet hostile to `pid` in `sector` that can interdict now. Read only (no fuel burn)."""
     from .models import Commodity
 
-    if K.planet_interdict_quiet(sector.id):
+    if K.planet_interdict_quiet(sector.id, universe):
         return None
     if K.photon_interdict_damped(sector):
         return None
@@ -1172,9 +1172,10 @@ def _destroy_ship_legacy(universe: Universe, pid: str, reason: str, killer_id: s
         universe.sectors[player.sector_id].occupant_ids.remove(pid)
     except ValueError:
         pass
-    player.sector_id = K.STARDOCK_SECTOR
+    dock = int(K.stardock_sector_of(universe))
+    player.sector_id = dock
     player.end_port_visit()
-    universe.sectors[K.STARDOCK_SECTOR].occupant_ids.append(pid)
+    universe.sectors[dock].occupant_ids.append(pid)
     player.ship.cargo = {c: 0 for c in player.ship.cargo}
     from .models import ShipClass as SC
     player.ship.ship_class = SC.MERCHANT_CRUISER
@@ -1457,7 +1458,7 @@ def _destroy_ship_tw2002(
         # The summary reaches the killer and every witness; where the pod went does not (fog).
         tail = f"escaped in a pod [pod {player.pods_today}/{K.PODS_PER_DAY} today]"
     else:
-        dest = K.STARDOCK_SECTOR
+        dest = int(K.stardock_sector_of(universe))
         if exp_before > 0:
             player.experience = exp_before - int(exp_before * K.SD_EXP_LOSS)
         # R5 B: self-destruct halves a negative alignment and leaves a

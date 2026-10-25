@@ -2,7 +2,7 @@
 
 Plan only. Every October row, regraded at `60b17fef` (branch `track-g-note108`, cut from `feature/grokbot-player`). v5 graded the same 171 ids at `f969cee`. This pass does not add a switch. Helper row 164 stays unused.
 
-A row is Match when the original rule is what a normal game does now. Match-behind-flag means the original rule is coded and the named switch stays off until `V311_PROFILE` is `v311`, unless the profile section says that helper is left out on purpose. Partial means part of the rule is in. Different means a normal game still does something else. Missing means this pass found no handler. Ben-decision is a number Ben has not chosen. Class M colonists and a random StarDock stay there.
+A row is Match when the original rule is what a normal game does now. Match-behind-flag means the original rule is coded and the named switch stays off until `V311_PROFILE` is `v311`, unless the profile section says that helper is left out on purpose. Partial means part of the rule is in. Different means a normal game still does something else. Missing means this pass found no handler. Ben-decision is a number Ben has not chosen. Class M colonists stay a stored rule. Random StarDock is Match-behind-flag on `STARDOCK_LOCATION_MODE` row 236 (Ben approved the Commander recommendation 2026-10-24).
 
 `docs/plans/GAP_MAP.md` is the October 3 baseline refreshed to `62961c5`. Its own header says those counts are the October picture. v5 already replaced that picture. This file replaces v5. Grades below are from the tip code, not from that October table.
 
@@ -11,11 +11,11 @@ A row is Match when the original rule is what a normal game does now. Match-behi
 | Grade | v5 | v6 |
 |---|---|---|
 | Match | 50 | 75 |
-| Match-behind-flag | 17 | 94 |
+| Match-behind-flag | 17 | 95 |
 | Partial | 53 | 1 |
 | Different | 38 | 0 |
 | Missing | 11 | 0 |
-| Ben-decision | 2 | 1 |
+| Ben-decision | 2 | 0 |
 | Total | 171 | 171 |
 
 Pointer check: 2.17 and 4.14 stay Match-behind-flag on `DETECT_GEAR_MODE`. The 4.16 chart is `constants.transport_range`. The 5.15 hold transfer is `corpships.apply_furb`. Corbomite on 5.17 is `hardware.apply_corbomite`. The disruptor is `hardware.handle_fire_disruptor`.
@@ -25,12 +25,14 @@ NOTE 177 moved five more Partial rows. At that note, 5.14, 5.20, and 9.8 were gr
 NOTE 178 recorded 5.7 as the printed expected value, 14.6 with the credit finish off, 11.11 as bubbles Gold-only, and 12.3 as Different because movement is by turns. R12 A grades 12.3 Match. R14 A keeps the credit finish. 12.4 is Match-behind-flag: the printed Extern and midnight jobs are in `runner.tick_day`, and the ones a normal game does not run stay on switches that already exist. 2.5 is R3 A, Match-behind-flag.
 GAP 1.15 moved from Partial to Match-behind-flag. The switch was already `FED_TOW_LIMIT_MODE` row 168 (NOTE 117). Bible 50 when on. Gypsy 98 stored when off. No new switch.
 The level 6 interdictor damp is `PHOTON_INTERDICT_DAMP_MODE` row 234 and stays off. The interdictor piece itself is Match-behind-flag. Duration stays 1 day-tick. The FedSpace photon card is `PHOTON_CLOAK_SETTINGS_MODE` row 230.
-R1–R14 are adopted from the suggested reply in `V311_RULINGS_FOR_BEN.md`. 1.6, 4.1, 6.2, 10.1, and 12.3 are Match. 5.14 and 5.20 moved to Match-behind-flag. 6.3 is the handbook curve from #183 and stays Match-behind-flag. 2.15 stays Partial; the confirmed samples stay Match-behind-flag. The only Ben-decision left in this list is 1.5.
+R1–R14 are adopted from the suggested reply in `V311_RULINGS_FOR_BEN.md`. 1.6, 4.1, 6.2, 10.1, and 12.3 are Match. 5.14 and 5.20 moved to Match-behind-flag. 6.3 is the handbook curve from #183 and stays Match-behind-flag. 2.15 stays Partial; the confirmed samples stay Match-behind-flag. 1.5 left Ben-decision for Match-behind-flag on `STARDOCK_LOCATION_MODE` row 236. Ben approved the Commander recommendation 2026-10-24. No Ben-decision row remains. Partial remains 2.15.
 The every-row list before this pass was 75 Match and 92 Match-behind-flag. Headers that said 76 and 91 were one swap off that list. 4.8 leaves Partial and is counted once, as Match-behind-flag. Detonation is Match and is not a second row. The shop unit price is `HARDWARE_PRICE_MODE` row 14. No third price was added. 12.4 leaves Partial and is counted once, as Match-behind-flag. No new switch was added. Partial is now 2.15. 4.10 stays Match-behind-flag in this list. Its duration is still three printed seconds (cabal and the modern manual 1, Gypsy 10, GameA 20) and was not given a switch.
 
 ## What moved
 
 GAP 3.15 moved from Match to Match-behind-flag on `SHIP_CAPACITY_MODE` row 229. A stored game keeps unlimited mines, genesis, and photons, and a TransWarp jump with no printed hop ceiling. Holds stay on the tw2002 roster. The ship transporter stays `SHIP_TRANSPORT_RANGE`.
+
+GAP 1.5 moved from Ben-decision to Match-behind-flag on `STARDOCK_LOCATION_MODE` row 236. A stored game keeps StarDock in sector 1. Under `V311_PROFILE=v311`, generation places it in a random ordinary sector. Terra stays sector 1. FedSpace is sectors 1-10 plus that sector.
 
 The v5 "no switch at all" list now has a switch on this tip: planet scanner, scanner fog, citadel perks, citadel parking, the good-trader tax, radio, daily stats, FedComm, gold aliens, and corporation rankings. Gold aliens are coded and off, and the profile leaves `GOLD_ALIEN_MODE` out on purpose. Density, one-way lanes, the 45-hop plot cap, Class 0 hold prices, the treasury cap, Ferrengi pace and grudges, and the planet-bust experience loop moved in NOTEs 78 through 102. Player-kill experience (`COMBAT_EXP_DIVISOR` 15/35/25) and the ether-probe route are already what a normal game does, so those rows are Match. Corp member transfers of credits, fighters, shields, and mines are in `corp.handle_corp_transfer`. Holds and the corp treasury are `CORP_CARGO_TREASURY_MODE` row 183, NOTE 162.
 
@@ -160,7 +162,7 @@ Most of those are stored defaults that are already tw2002, or switches the profi
 1.2 Match-behind-flag `ONE_WAY_SHARE_MODE` row 88, NOTE 78, and `TWO_WAY_WARP_MODE` row 178, NOTE 157. About 3 percent one-way when the game does not set `one_way_fraction`. Legacy one-way stays 0.15. Extra two-way lanes are 30 percent of the sector count. Legacy stays average 2.7. `constants.one_way_fraction_for`, `constants.two_way_edge_target`.
 1.3 Match-behind-flag `COURSE_MAX_MODE` row 86, NOTE 78. When the switch or the v311 profile is on, a computer plot longer than the game's Maximum Course Length is refused and a plot of that length succeeds. `GameConfig.max_course_length` is that setting. Unset, the published sample `V311_COURSE_MAX_HOPS` (45) is used. Ven GameA TWSTATS is 20 (`GAMEA_COURSE_MAX_HOPS`, NOTE 96, n96-course-max). The live refusal number and the TEDIT min/max are still unread. Legacy still searches 60. `constants.plot_course_hop_limit`, `runner._handle_plot_course`, `runner.query_route`.
 1.4 Match. FedSpace is sectors 1 through 10. `constants.FEDSPACE_SECTORS`. `fed.protect_fedspace_attack`.
-1.5 Ben-decision. StarDock stays in sector 1. `constants.STARDOCK_SECTOR`.
+1.5 Match-behind-flag `STARDOCK_LOCATION_MODE` row 236. Ben approved the Commander recommendation 2026-10-24. Off, StarDock stays in sector 1 (`constants.STARDOCK_SECTOR`). On, generation places that port in a random ordinary sector. Terra stays sector 1. The draw skips FedSpace 1-10, Alpha Centauri, Rylos, Ferrengal, and any other reserved special port. FedSpace is sectors 1-10 plus that sector. `constants.stardock_location_live`, `universe._maybe_place_random_stardock`, `constants.fedspace_sectors_of`.
 1.6 Match. R1 A. A normal game opens Terra at `TERRA_MAX_COLONISTS` 100,000 with one person per hold. Regen stays `TERRA_REGEN_PER_DAY` 750 and a load stays `TERRA_LOAD_TURNS` 1. `TERRA_COLONIST_MODE` row 25 is unchanged: live still opens at 30,000 with 1,000 per hold, and the profile still selects that later screen. `class0.handle_terra_colonists`.
 1.7 Match. Class 0 ports are on. `CLASS0_MODE` is tw2002. `class0.place_class0_ports`.
 1.8 Match-behind-flag `FEDERATION_HALL_MODE` row 182, NOTE 162, and `STARDOCK_DOORS_MODE` row 233, NOTE 129. Bank, tavern, shipyard, and hardware stay on. Federation Hall and the hardware shop screen stay off until the switch is on. NOTE 129: Class 0 shields at 131 a point are `SHIELD_POINT_MODE` row 225. A drink at 80 and food at 24 are `TAVERN_BAR_PRICE_MODE` row 226. Cineplex show 1 at 100 is `CINEPLEX_PRICE_MODE` row 227. Fighters at 218 that day stay on the 160-239 wave (UNVERIFIED, may be stock-dependent). The live where-to list adds the Libram Universitatus. B is not on that list and opens the singles bar. Key C lists Ferrengi hulls present in the game and takes no charge. Keys A and B stay empty lines. The bar prints the capture's exit lines and takes no credits. The unnamed 47-credit drop stays deferred. `constants.federation_hall_live`, `constants.shield_point_live`, `constants.stardock_doors_live`.

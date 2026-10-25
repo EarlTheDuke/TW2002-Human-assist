@@ -224,7 +224,7 @@ def new_spare_ship(class_key: str) -> Ship:
 
 def buy_spare(universe: Universe, pid: str, class_key: str) -> ActionResult:
     player = universe.players[pid]
-    if player.sector_id != K.STARDOCK_SECTOR:
+    if int(player.sector_id) != int(K.stardock_sector_of(universe)):
         return ActionResult(ok=False, error="must be at StarDock")
     why = spare_blocked(universe, pid, class_key)
     if why is not None:
@@ -240,13 +240,13 @@ def buy_spare(universe: Universe, pid: str, class_key: str) -> ActionResult:
         from .corpships import on_new_spare
         on_new_spare(player, ship)
     sid = _ensure_fleet_id(universe, ship)
-    universe.parked_ships[sid] = ParkedShip(id=sid, owner_id=pid, sector_id=K.STARDOCK_SECTOR, ship=ship,
+    universe.parked_ships[sid] = ParkedShip(id=sid, owner_id=pid, sector_id=K.stardock_sector_of(universe), ship=ship,
                                             parked_day=int(universe.day))
     spec = K.ship_specs()[class_key]
     universe.emit(
         EventKind.FLEET_SPARE_BOUGHT,
         actor_id=pid,
-        sector_id=K.STARDOCK_SECTOR,
+        sector_id=int(K.stardock_sector_of(universe)),
         payload={"ship_class": class_key, "ship_id": sid, "cost": cost},
         summary=f"{player.name} bought a spare {spec['display_name']} ({cost} cr); it waits in orbit at StarDock",
     )
@@ -263,16 +263,16 @@ def sell_credit(rec: ParkedShip) -> int:
 
 def sellable(universe: Universe, pid: str) -> list[ParkedShip]:
     player = universe.players[pid]
-    if player.sector_id != K.STARDOCK_SECTOR:
+    if int(player.sector_id) != int(K.stardock_sector_of(universe)):
         return []
-    return [p for p in owned_parked(universe, pid) if int(p.sector_id) == K.STARDOCK_SECTOR]
+    return [p for p in owned_parked(universe, pid) if int(p.sector_id) == int(K.stardock_sector_of(universe))]
 
 
 def handle_sell_ship(universe: Universe, pid: str, action: Action) -> ActionResult:
     if not K.fleet_on():
         return ActionResult(ok=False, error="unsupported action")
     player = universe.players[pid]
-    if player.sector_id != K.STARDOCK_SECTOR:
+    if int(player.sector_id) != int(K.stardock_sector_of(universe)):
         return ActionResult(ok=False, error="must be at StarDock")
     sid = _parse_id(action.args.get("ship_id"))
     if sid is None:
@@ -284,7 +284,7 @@ def handle_sell_ship(universe: Universe, pid: str, action: Action) -> ActionResu
         return ActionResult(ok=False, error=f"no ship {sid}")
     if rec.owner_id != pid:
         return ActionResult(ok=False, error="not your ship")
-    if int(rec.sector_id) != K.STARDOCK_SECTOR:
+    if int(rec.sector_id) != int(K.stardock_sector_of(universe)):
         return ActionResult(ok=False, error="that ship is not in orbit at StarDock")
     credit = sell_credit(rec)
     _remove(universe, sid)
@@ -293,7 +293,7 @@ def handle_sell_ship(universe: Universe, pid: str, action: Action) -> ActionResu
     universe.emit(
         EventKind.SHIP_SOLD,
         actor_id=pid,
-        sector_id=K.STARDOCK_SECTOR,
+        sector_id=int(K.stardock_sector_of(universe)),
         payload={"ship_id": sid, "ship_class": hull, "credit": credit, "_witnesses": [pid]},
         summary=f"{player.name} sold the {rec.ship.name} ({hull}) for {credit} cr",
     )
@@ -489,7 +489,7 @@ def extern_repossess(universe: Universe) -> int:
     n = 0
     for sid in sorted(universe.parked_ships):
         rec = universe.parked_ships[sid]
-        if int(rec.sector_id) not in K.FEDSPACE_SECTORS:
+        if not K.in_fedspace(universe, rec.sector_id):
             continue
         if K.tow_on():  # SHIP_TOW.md tt22: an own fedsafe tower beside it with the ship locked in tow
             from .tow import emit_hold, extern_hold_why
@@ -569,10 +569,10 @@ def unmanned_attack_block(universe: Universe, pid: str, rec: ParkedShip | None) 
             return "cannot attack your own ship"
         if _are_allied(universe, pid, rec.owner_id):
             return "cannot attack a corp mate or ally"
-        if int(player.sector_id) in K.FEDSPACE_SECTORS:
+        if K.in_fedspace(universe, player.sector_id):
             return "FedSpace - unmanned ships cannot be attacked here"
         return None
-    if int(player.sector_id) in K.FEDSPACE_SECTORS:
+    if K.in_fedspace(universe, player.sector_id):
         return "FedSpace - unmanned ships cannot be attacked here"
     from .corpships import attack_block
     return attack_block(universe, pid, rec)
@@ -723,7 +723,7 @@ def fleet_block(universe: Universe, pid: str) -> dict[str, Any]:
             "holds": int(rec.ship.holds),
             "cargo": {c.value: int(rec.ship.cargo.get(c, 0)) for c in Commodity},
             "transwarp": (tw or {}).get("fitted"),
-            "repo_at_extern": K.FLEET_FED_REPO == "fedspace" and int(rec.sector_id) in K.FEDSPACE_SECTORS,
+            "repo_at_extern": K.FLEET_FED_REPO == "fedspace" and K.in_fedspace(universe, rec.sector_id),
         })
         if K.corpship_on():
             from .corpships import sector_label
@@ -749,7 +749,7 @@ def legal_specs(universe: Universe, pid: str) -> list[tuple[str, bool, str | Non
     out: list[tuple[str, bool, str | None, int, dict[str, Any]]] = []
     sell = sellable(universe, pid)
     credit_by = {str(p.id): sell_credit(p) for p in sell}
-    if player.sector_id != K.STARDOCK_SECTOR:
+    if int(player.sector_id) != int(K.stardock_sector_of(universe)):
         why = "must be at StarDock (sector 1)"
     elif not sell:
         why = "no ship of yours in orbit at StarDock"

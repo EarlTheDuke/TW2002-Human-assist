@@ -1680,7 +1680,7 @@ class MatchRunner:
         # safe from PvP. If we run out of FedSpace slots (>=10 agents) we cycle.
         # Optional: `GameConfig.all_start_stardock` places everyone at sector 1
         # so StarDock verbs are legal on turn 1 for every slot.
-        fed_sectors = sorted(K.FEDSPACE_SECTORS)
+        fed_sectors = sorted(K.fedspace_sectors_of(universe))
         start_order = [fed_sectors[0]] + [s for s in fed_sectors if s != fed_sectors[0]]
 
         agents: list[BaseAgent] = []
@@ -1689,7 +1689,7 @@ class MatchRunner:
                 # A resumed game already has its players.
                 color = AGENT_COLORS[i % len(AGENT_COLORS)]
                 if bool(getattr(spec.config, "all_start_stardock", False)):
-                    start_sid = K.STARDOCK_SECTOR
+                    start_sid = K.stardock_sector_of(universe)
                 else:
                     start_sid = start_order[i % len(start_order)]
                 # Tiny deterministic loadout variance per player slot so two

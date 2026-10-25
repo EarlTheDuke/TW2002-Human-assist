@@ -44,9 +44,10 @@ def _dock(credits: int = 80_000):
         GameConfig(seed=4, universe_size=20, max_days=3, enable_planets=False, enable_ferrengi=False)
     )
     player = Player(id="P1", name="Trader", ship=Ship(), credits=credits, experience=0)
-    player.sector_id = K.STARDOCK_SECTOR
+    dock = int(K.stardock_sector_of(universe))
+    player.sector_id = dock
     universe.players["P1"] = player
-    universe.sectors[K.STARDOCK_SECTOR].occupant_ids.append("P1")
+    universe.sectors[dock].occupant_ids.append("P1")
     return universe, player
 
 

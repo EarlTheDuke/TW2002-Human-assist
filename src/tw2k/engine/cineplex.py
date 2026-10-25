@@ -22,7 +22,7 @@ def legal_spec(universe: Universe, player_id: str) -> tuple[bool, str | None, in
         return False, "player is destroyed", 0, {}
     if player.planet_landed is not None:
         return False, "you are on a planet", 0, {}
-    if int(player.sector_id) != int(K.STARDOCK_SECTOR):
+    if int(player.sector_id) != int(K.stardock_sector_of(universe)):
         return False, "Cineplex is at StarDock", 0, {}
     cost = int(K.cineplex_cost())
     params: dict = {"cost": cost}

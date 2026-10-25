@@ -475,6 +475,11 @@ def generate_universe(config: GameConfig) -> Universe:
     from .class0 import place_class0_ports
     place_class0_ports(universe, pinned=pinned_class0)
 
+    # GAP 1.5. Off, this is a no-op and sector 1 keeps the StarDock port.
+    # On, that port moves to a random ordinary sector. Terra stays at 1.
+    # A side RNG, so the generator stream above is unchanged.
+    _maybe_place_random_stardock(universe)
+
     # fedspace-police-v1: Federals (isolated rng; no-op under FED_MODE legacy)
     from .fed import place_federals, place_fed_starships
     place_federals(universe)
@@ -494,6 +499,42 @@ def generate_universe(config: GameConfig) -> Universe:
         universe.inactive_users_armed = True
 
     return universe
+
+
+def _maybe_place_random_stardock(universe: Universe) -> None:
+    """Move the StarDock port off sector 1 when STARDOCK_LOCATION_MODE is on.
+
+    Protected sectors are the ones generation already reserves: FedSpace 1-10
+    (Terra and Sol are sector 1), Alpha Centauri, Rylos, Ferrengal, and any
+    other port marked special. The draw uses its own RNG.
+    """
+    if not K.stardock_location_live():
+        return
+    origin = universe.sectors.get(int(K.STARDOCK_SECTOR))
+    if origin is None or origin.port is None:
+        return
+    blocked = {int(s) for s in K.FEDSPACE_SECTORS}
+    for value in (getattr(universe, "class0_sectors", None) or {}).values():
+        blocked.add(int(value))
+    home = getattr(universe, "ferrengal_sector", None)
+    if home:
+        blocked.add(int(home))
+    for sid, sector in universe.sectors.items():
+        port = sector.port
+        if port is not None and getattr(port, "special", None):
+            blocked.add(int(sid))
+    candidates = [int(sid) for sid in sorted(universe.sectors) if int(sid) not in blocked]
+    if not candidates:
+        return
+    rng = random.Random(f"tw2k-stardock-loc:{int(universe.config.seed)}")
+    sid = int(rng.choice(candidates))
+    dest = universe.sectors[sid]
+    dest.port = origin.port
+    origin.port = None
+    universe.stardock_sector = sid
+    if getattr(universe, "class0_sectors", None):
+        from .class0 import compute_msl_sectors
+        universe.msl_sectors = compute_msl_sectors(universe)
 
 
 def _seed_initial_ferrengi(rng: random.Random, universe: Universe) -> None:
