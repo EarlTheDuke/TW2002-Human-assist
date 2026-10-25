@@ -639,6 +639,10 @@
     return "drift";
   }
   function shipFit(motion, markers, hull) {
+    // Grown hoops set a radius past the old glass (~108). Fit 0.76 and the
+    // phone fit 0.72 crop that ring and clip the 1,000-marker cloud. 0.4
+    // keeps the ring and the darts inside the 400x260 frame.
+    if (hull === "interdictor_cruiser") return 0.4;
     if (motion === "static") return 0.72;
     if (markers >= 80) return 0.76;
     if (hull === "imperial_starship") return 0.84;
