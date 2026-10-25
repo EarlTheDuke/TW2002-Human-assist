@@ -27,6 +27,8 @@ The held three-quarter pose is yaw `0.82`, pitch `0.5`, which `shipPose` already
 
 Product for this wave waits until the four-hull cuts and the earlier batches ahead in fleet order have passed.
 
+Product stills scaffold: [batch 4 dish product](cockpit-ship-stage-p1b-batch4-dish-product.md) (#339, `c01ebb2f`). Stills directory: [p1b-batch4-dish](stills/p1b-batch4-dish/). The scaffold does not stamp Pass. It ships no PNGs. Measured cells stay TBD until product.
+
 1. The P1 spike has merged and passed: Merchant Cruiser and Imperial StarShip ([P1 pass](cockpit-ship-stage-p1-pass.md)).
 2. Cut 1 has merged and passed: Scout Marauder and Merchant Freighter ([cut 1 acceptance](cockpit-ship-stage-p1b-scout-freighter-acceptance.md)).
 3. Cut 2 has merged and passed: BattleShip and Corporate FlagShip ([cut 2 acceptance](cockpit-ship-stage-p1b-battleship-flagship-acceptance.md)).
