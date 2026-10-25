@@ -34,6 +34,7 @@ P1 is the spike named in the P0 pack and the render memo. Open the sheet below t
 - [Batch 2 haulers acceptance](cockpit-ship-stage-p1b-batch2-haulers-acceptance.md) — Pass / Fail / Hold-WebGL for CargoTran + Colonial Transport + Taurean Mule (#232).
 - [Batch 3 guns acceptance](cockpit-ship-stage-p1b-batch3-acceptance.md) — Pass / Fail / Hold-WebGL for Missile Frigate + Havoc GunStar (#235).
 - [Batch 4 dish/X acceptance](cockpit-ship-stage-p1b-batch4-acceptance.md) — Pass / Fail / Hold-WebGL for Star Master + Constellation (+ FlagShip re-shot) (#236).
+- [Batch 5 brick and hoops acceptance](cockpit-ship-stage-p1b-batch5-acceptance.md) — Pass / Fail / Hold-WebGL for Tholian Sentinel + Interdictor Cruiser (#240).
 - [Fleet order](cockpit-ship-stage-p1b-fleet-order.md) — Batch sequence for the other 15 player hulls, one batch at a time, after the spike merges.
 - [Next hulls](cockpit-ship-stage-p1b-next-hulls.md) — Mesh contract for Scout Marauder, Merchant Freighter, BattleShip, and Corporate FlagShip.
 - [Batch 1 remainder](cockpit-ship-stage-p1b-batch1-remainder.md) — Escape Pod and T'Khasi Orion; Scout re-shot.
