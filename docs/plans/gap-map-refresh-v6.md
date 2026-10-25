@@ -11,8 +11,8 @@ A row is Match when the original rule is what a normal game does now. Match-behi
 | Grade | v5 | v6 |
 |---|---|---|
 | Match | 50 | 75 |
-| Match-behind-flag | 17 | 95 |
-| Partial | 53 | 1 |
+| Match-behind-flag | 17 | 96 |
+| Partial | 53 | 0 |
 | Different | 38 | 0 |
 | Missing | 11 | 0 |
 | Ben-decision | 2 | 0 |
@@ -25,8 +25,8 @@ NOTE 177 moved five more Partial rows. At that note, 5.14, 5.20, and 9.8 were gr
 NOTE 178 recorded 5.7 as the printed expected value, 14.6 with the credit finish off, 11.11 as bubbles Gold-only, and 12.3 as Different because movement is by turns. R12 A grades 12.3 Match. R14 A keeps the credit finish. 12.4 is Match-behind-flag: the printed Extern and midnight jobs are in `runner.tick_day`, and the ones a normal game does not run stay on switches that already exist. 2.5 is R3 A, Match-behind-flag.
 GAP 1.15 moved from Partial to Match-behind-flag. The switch was already `FED_TOW_LIMIT_MODE` row 168 (NOTE 117). Bible 50 when on. Gypsy 98 stored when off. No new switch.
 The level 6 interdictor damp is `PHOTON_INTERDICT_DAMP_MODE` row 234 and stays off. The interdictor piece itself is Match-behind-flag. Duration stays 1 day-tick. The FedSpace photon card is `PHOTON_CLOAK_SETTINGS_MODE` row 230.
-R1–R14 are adopted from the suggested reply in `V311_RULINGS_FOR_BEN.md`. 1.6, 4.1, 6.2, 10.1, and 12.3 are Match. 5.14 and 5.20 moved to Match-behind-flag. 6.3 is the handbook curve from #183 and stays Match-behind-flag. 2.15 stays Partial; the confirmed samples stay Match-behind-flag. 1.5 left Ben-decision for Match-behind-flag on `STARDOCK_LOCATION_MODE` row 236. Ben approved the Commander recommendation 2026-10-24. No Ben-decision row remains. Partial remains 2.15.
-The every-row list before this pass was 75 Match and 92 Match-behind-flag. Headers that said 76 and 91 were one swap off that list. 4.8 leaves Partial and is counted once, as Match-behind-flag. Detonation is Match and is not a second row. The shop unit price is `HARDWARE_PRICE_MODE` row 14. No third price was added. 12.4 leaves Partial and is counted once, as Match-behind-flag. No new switch was added. Partial is now 2.15. 4.10 stays Match-behind-flag in this list. Its duration is still three printed seconds (cabal and the modern manual 1, Gypsy 10, GameA 20) and was not given a switch.
+R1–R14 are adopted from the suggested reply in `V311_RULINGS_FOR_BEN.md`. 1.6, 4.1, 6.2, 10.1, and 12.3 are Match. 5.14 and 5.20 moved to Match-behind-flag. 6.3 is the handbook curve from #183 and stays Match-behind-flag. 2.15 is Match-behind-flag. The 2026-10-25 lasers for classes 2, 3, and 5 are in `PORT_LASER_BARRAGE`. Non-Fed class 8 stays sample-list only. 1.5 left Ben-decision for Match-behind-flag on `STARDOCK_LOCATION_MODE` row 236. Ben approved the Commander recommendation 2026-10-24. No Ben-decision row remains. No counted Partial remains.
+The every-row list before this pass was 75 Match and 92 Match-behind-flag. Headers that said 76 and 91 were one swap off that list. 4.8 leaves Partial and is counted once, as Match-behind-flag. Detonation is Match and is not a second row. The shop unit price is `HARDWARE_PRICE_MODE` row 14. No third price was added. 12.4 leaves Partial and is counted once, as Match-behind-flag. No new switch was added. 2.15 left Partial for Match-behind-flag. Partial is now 0. 4.10 stays Match-behind-flag in this list. Its duration is still three printed seconds (cabal and the modern manual 1, Gypsy 10, GameA 20) and was not given a switch.
 
 ## What moved
 
@@ -192,7 +192,7 @@ Most of those are stored defaults that are already tw2002, or switches the profi
 2.12 Match. Robbing a port is on. `rob_steal.handle_rob`.
 2.13 Match. Stealing from a port is on. `rob_steal.handle_steal`.
 2.14 Match-behind-flag `BUST_CLEAR_MODE` row 94, NOTE 82. Clearing can be every Extern or every 7 days. Legacy still clears every Extern. `rob_steal.busts_clear_this_extern`, `rob_steal.clear_all_busts`.
-2.15 Partial. Confirmed samples are Match-behind-flag. Blowing a port is behind `PORT_ATTACK_MODE` row 30 and `PORT_ATTACK_ALL_CLASSES_MODE` row 138, NOTE 98. Ven GameA 2026-10-24 samples (`docs/playtests/twgs-live/gap215-port-attack-2026-10-24.md`) are the class fallbacks when the attack flag is on: confirmed lasers class 1 337, class 4 1419, class 6 598, class 7 1121, with the measured defs. DEF_ONLY classes 2, 3, and 5 have a def sample and no laser. A captured port name uses that port's def. Lasers for classes 2, 3, 5, and non-Fed 8 are still open, and def still varies per port, so the row stays Partial. `runner._handle_port_attack`.
+2.15 Match-behind-flag. Blowing a port is behind `PORT_ATTACK_MODE` row 30 and `PORT_ATTACK_ALL_CLASSES_MODE` row 138, NOTE 98. Ven GameA samples (`docs/playtests/twgs-live/gap215-port-attack-2026-10-25.md`, `gap215_final.json`) are the class fallbacks when the attack flag is on. CONFIRMED lasers: class 1 337, class 2 482, class 3 873, class 4 1419, class 5 391, class 6 598, class 7 1121, with the measured defs. Classes 2, 3, and 5 were measured 2026-10-25 (New Cesium 55/482 plasma, Peleus 86/873 Class 2 Halos, Aesculapius 59/391 plasma). A captured port name uses that port's def, and a variance row with no laser does not borrow one. Non-Fed class 8 Vergil Minor def 99 / laser 954 stays on the sample list and is not written into `PORT_DEFENSE_RATING` or `PORT_LASER_BARRAGE` (engine class 8 is StarDock). Fed prior class 8 def 91 / laser 701 stays FED_PRIOR and unwired. Class 0 and class 9 stay BLOCKED. Def still varies per port. Generation does not stamp a class constant. `runner._handle_port_attack`.
 2.16 Match. Building and upgrading a port is on. `constants.port_upgrade_on`.
 2.17 Match-behind-flag `DETECT_GEAR_MODE` row 34. The psychic probe price peek is coded and off. `constants.detect_gear_live`.
 2.18 Match. StarDock trading is on. `economy.execute_trade`.

@@ -279,7 +279,7 @@ Setup: one ship that can survive a return shot. A new sector for each class.
 
 ### Port rating and barrage, classes 0-5 and 7-9
 
-Measured 2026-10-24 on Ven GameA (TW Test Game 2, Slot A, v3.34b). Capture: `docs/playtests/twgs-live/gap215-port-attack-2026-10-24.md`. Do not repeat the confirmed shots. CONFIRMED lasers: class 1 337, class 4 1419, class 6 598 (prior REPORT2), class 7 1121. Still open: lasers for classes 2, 3, 5, and non-Fed class 8. Class 0 and StarDock stay Group I. Def rating is per port, not a class constant. A 0-fighter commit aborts after the def and shield text.
+Measured on Ven GameA (TW Test Game 2, Slot A, v3.34b). Capture: `docs/playtests/twgs-live/gap215-port-attack-2026-10-25.md`. Do not repeat the confirmed shots. CONFIRMED lasers: class 1 337, class 2 482, class 3 873, class 4 1419, class 5 391, class 6 598 (prior REPORT2), class 7 1121. Non-Fed class 8 Vergil Minor laser 954 is sample-list only. Class 0 and StarDock stay Group I. Def rating is per port, not a class constant. A 0-fighter commit aborts after the def and shield text. The 1-fighter commit is the laser.
 
 item_id: n98-port-rating
 

@@ -1,5 +1,7 @@
 # GAP 2.15 ? Port attack defensive rating / laser (TWGS Slot A)
 
+Lasers for classes 2, 3, 5, and non-Fed 8 were measured on 2026-10-25. That pass is `gap215-port-attack-2026-10-25.md`. The JSON `gap215_final.json` is the 2026-10-25 file. This note is the 2026-10-24 capture. Those four rows were DEF_ONLY that day.
+
 Engine: TW2002 v3.34b under TWGS v2.20b. Game: TW Test Game 2 (Slot A).
 Captured: 2026-10-24 America/Los_Angeles.
 

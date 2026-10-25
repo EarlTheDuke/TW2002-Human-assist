@@ -1610,7 +1610,7 @@ def _handle_attack(universe: Universe, pid: str, action: Action) -> ActionResult
 
 
 def _handle_port_attack(universe: Universe, pid: str, action: Action) -> ActionResult:
-    """Live only. Samples from Ven GameA 2026-10-24, plus the class 6 pair."""
+    """Live only. Ven GameA samples, including the 2026-10-25 lasers."""
     player = universe.players[pid]
     if player.planet_landed is not None:
         return ActionResult(ok=False, error="must be in space to attack")
