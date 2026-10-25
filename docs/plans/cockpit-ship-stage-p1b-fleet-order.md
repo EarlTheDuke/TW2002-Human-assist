@@ -4,7 +4,9 @@ Parent: [P0 pack](cockpit-ship-stage-p0.md). Looks: [silhouette bible](cockpit-s
 
 The stills inventory is [stills/README.md](stills/README.md) (#344).
 
-Planning only. Surveyed `feature/grokbot-player` @ `8a31f30` (#194). This sheet does not change the engine, the cockpit, the meshes, or the warp clips.
+Planning only. Surveyed `feature/grokbot-player` @ `8a31f30` (#194). Refreshed onto `863e4eb2` (#379). This sheet does not change the engine, the cockpit, the meshes, or the warp clips. This sheet does not stamp Pass.
+
+Batch 3 guns, Missile Frigate and Havoc GunStar, are Landed+Pass. Product #363 (`5ebec08f`). Pass #370 (`223dacfa`). Those two left `fleet-glass-v1`. Batch 4, Star Master and Constellation, is the live product cut, in flight. On this tip those two meshes stay `fleet-glass-v1`. Pass is not stamped. Batch 5, Tholian Sentinel and Interdictor Cruiser, waits behind the dish Pass. The brick product has not started.
 
 Merchant Cruiser and Imperial StarShip are the P1 spike. They are not in the 15. Stills directory: [`stills/p1-merchant-imperial/`](stills/p1-merchant-imperial/). TBD scaffold. No PNG. The scaffold does not stamp Pass. The roster below is the other player `ShipClass` values in `src/tw2k/engine/models.py`, in the order a product Cur should take them. Role numbers are `SHIP_SPECS_TW2002` and `POD_SPEC` in `src/tw2k/engine/constants.py`. Marker count is the sticky formula: `n < 1 → 0`, else `max(1, ceil(n / 100))`. Accent hexes are the `SHIPS` entries in `web/redesign.js`, already recorded in the bible. The picture follows the job, not the live-roster grant. The only fighter cap that moves a marker count is the Scout (base 150 → 2 markers, live 250 → 3).
 
@@ -16,7 +18,7 @@ Do not start P1b product code until the P1 spike PR is merged. That spike builds
 
 Stay on the shared SVG path unless that spike failed the bar. A fleet batch does not open three.js or raw WebGL. If the spike missed the bar, stop. The off-ramp in the render memo is the next decision. It still consumes `buildHullFaces`, it does not add a second hull file, and it does not get a head start by meshing the next trader.
 
-One batch at a time, in the order below. Every batch edits `web/hull-meshes.js`, and the 40 KB gzip budget is cumulative. The next batch rebases onto the merged one. Ferrengi hulls stay out. No engine field, no new event, no viewport removal, no layout split.
+One batch at a time, in the order below. Every batch edits `web/hull-meshes.js`, and the 40 KB gzip budget is cumulative. The next batch rebases onto the merged one. Ferrengi hulls stay out. No engine field, no new event, no viewport removal, no layout split. Batch 3 has landed and passed. The live cut is batch 4. Batch 5 waits behind the dish Pass.
 
 ## Why this group order
 
@@ -61,7 +63,7 @@ Missile Frigate, BattleShip, Havoc GunStar.
 
 Done when the shared bar holds for all three, and a covered-name reader separates BattleShip / Havoc (turrets on a wide wedge versus a split prow) at both sizes. The Frigate reads as a photon boat: two dorsal missiles larger than the canopy. The Imperial from the spike is re-shot so those missiles stay larger than its forward barrels. Cap markers: Frigate 50, BattleShip 100, Havoc 100.
 
-Product stills scaffold: [`cockpit-ship-stage-p1b-batch3-guns-product.md`](cockpit-ship-stage-p1b-batch3-guns-product.md) (#337, `d211b4e9`). Stills directory: [`stills/p1b-batch3-guns/`](stills/p1b-batch3-guns/). The scaffold does not stamp Pass. It does not change this batch's place or the gate above.
+Missile Frigate and Havoc GunStar landed in #363 (`5ebec08f`) on the SVG path. Those two left `fleet-glass-v1`. Pass is #370 (`223dacfa`). Stills: [`cockpit-ship-stage-p1b-batch3-guns-product.md`](cockpit-ship-stage-p1b-batch3-guns-product.md) (#337, `d211b4e9`), directory [`stills/p1b-batch3-guns/`](stills/p1b-batch3-guns/). This sheet does not stamp Pass. It does not change this batch's place or the gate above.
 
 ### Batch 4 — dish, X, and the other capital
 
@@ -69,7 +71,7 @@ Star Master, Constellation, Corporate FlagShip.
 
 Done when the shared bar holds for all three, and a covered-name reader separates FlagShip / Imperial / Star Master (tall tower versus long castle versus a dish) at both sizes. The Constellation reads as an X of four nacelles, with no castle, no dish, and no prongs. Cap markers: Star Master 50, Constellation 50, FlagShip 200. The Imperial is re-shot beside the tower.
 
-Product stills scaffold: [`cockpit-ship-stage-p1b-batch4-dish-product.md`](cockpit-ship-stage-p1b-batch4-dish-product.md) (#339, `c01ebb2f`). Stills directory: [`stills/p1b-batch4-dish/`](stills/p1b-batch4-dish/). The scaffold does not stamp Pass. It does not change this batch's place or the gate above.
+Star Master and Constellation are the live product cut, in flight. On this tip those two meshes stay `fleet-glass-v1`. Pass is not stamped. Product stills scaffold: [`cockpit-ship-stage-p1b-batch4-dish-product.md`](cockpit-ship-stage-p1b-batch4-dish-product.md) (#339, `c01ebb2f`). Stills directory: [`stills/p1b-batch4-dish/`](stills/p1b-batch4-dish/). The scaffold does not stamp Pass. It does not change this batch's place or the gate above. The Corporate FlagShip stays the cut-2 mesh. This cut re-shots that tower.
 
 ### Batch 5 — brick and hoops
 
@@ -77,7 +79,7 @@ Tholian Sentinel, Interdictor Cruiser. Two hulls, on purpose. The Interdictor's 
 
 Done when the shared bar holds for both, and a covered-name reader separates Tholian / Colonial (short plated brick versus tall cabin box) and Constellation / Interdictor (an X of engines versus two hoops) at both sizes. Colonial and Constellation are re-shot from their merged batches. Interdictor markers: 1,000 at 100,000 fighters, orbiting outside the hoops. Reuse the marker grouping the spike recorded for the throwaway 1,000-ring (one group moved by a transform, or one canvas layer for markers only). The count formula does not gain a silent cap. Record the drift frame time at 1,000 on this hull, the one whose hoops are real.
 
-Product stills scaffold: [`cockpit-ship-stage-p1b-batch5-brick-product.md`](cockpit-ship-stage-p1b-batch5-brick-product.md) (#340, `75997134`). Stills directory: [`stills/p1b-batch5-brick/`](stills/p1b-batch5-brick/). The scaffold does not stamp Pass. It does not change this batch's place or the gate above.
+Tholian Sentinel and Interdictor Cruiser wait behind the dish Pass. The brick product has not started. On this tip both meshes stay `fleet-glass-v1`. Product stills scaffold: [`cockpit-ship-stage-p1b-batch5-brick-product.md`](cockpit-ship-stage-p1b-batch5-brick-product.md) (#340, `75997134`). Stills directory: [`stills/p1b-batch5-brick/`](stills/p1b-batch5-brick/). The scaffold does not stamp Pass. It does not change this batch's place or the gate above.
 
 ## Per hull
 
