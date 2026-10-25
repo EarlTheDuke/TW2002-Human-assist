@@ -2,6 +2,8 @@
 
 Read-test for the batch-3 gun wave. Docs only. Tip surveyed: `feature/grokbot-player` @ `61422328`.
 
+Stills for this sheet are listed in the [stills inventory](stills/README.md) (#344) under [p1b-batch3-guns](stills/p1b-batch3-guns/).
+
 Taken from these sheets, which this file does not replace:
 
 - [Batch 3 guns](cockpit-ship-stage-p1b-batch3.md) — the mesh contract for this wave. Missiles, rails, prongs, accents, and the numbered checks live there.

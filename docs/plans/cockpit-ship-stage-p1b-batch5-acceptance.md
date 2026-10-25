@@ -2,6 +2,8 @@
 
 Read-test for the batch-5 brick and hoops wave. Docs only. Tip surveyed: `feature/grokbot-player` @ `390e6a99`.
 
+Stills for this sheet are listed in the [stills inventory](stills/README.md) (#344) under [p1b-batch5-brick](stills/p1b-batch5-brick/).
+
 Taken from these sheets, which this file does not replace:
 
 - [Batch 5 brick and hoops](cockpit-ship-stage-p1b-batch5.md) — the mesh contract for this wave. Armor slabs, hoops, accents, and the numbered checks live there.
