@@ -1,6 +1,6 @@
 # Cockpit ship-stage stills — inbound map
 
-Docs only. This sheet lists which planning files on `feature/grokbot-player` @ `3e9d2909` (#377) already point at the [stills inventory](stills/README.md) (#344). It does not stamp Pass. It adds no PNG. It leaves every other sheet as this tip left it. #372 updates the inventory row for `p1b-batch3-guns`. #373 refreshes the batch-4 readiness note. #374 refreshes the batch-3 readiness note. #375 refreshes the batch-5 readiness note. #377 refreshes the P2 readiness note and adds body links to the inventory. That sheet already had a dedicated link (#366). None of those adds a directory. The counts below stay the counts surveyed through #371.
+Docs only. This sheet lists which planning files on `feature/grokbot-player` @ `9d4c972f` (#381) already point at the [stills inventory](stills/README.md) (#344). It does not stamp Pass. It adds no PNG. It leaves every other sheet as this tip left it. #372 updates the inventory row for `p1b-batch3-guns`. #373 refreshes the batch-4 readiness note. #374 refreshes the batch-3 readiness note. #375 refreshes the batch-5 readiness note. #377 refreshes the P2 readiness note and adds body links to the inventory. That sheet already had a dedicated link (#366). #379 (`863e4eb2`) refreshed this map through #377. #380 (`5c719360`) records the inventory row `p1b-batch4-dish` as product in flight, not measured, no PNG. Pass is not stamped. #381 (`9d4c972f`) refreshes the fleet order onto `5c719360`. Guns stay Landed+Pass. Star Master and Constellation stay the live dish cut, in flight. Batch 5 waits behind the dish Pass. P2 stays gated. None of those adds a directory. The counts below stay the counts surveyed through #371.
 
 The inventory table has eight directories. The new row is [p1-merchant-imperial](stills/p1-merchant-imperial/) (#357): Merchant Cruiser and Imperial StarShip. That row is a TBD scaffold. It holds a placeholder README and no PNG.
 
@@ -22,7 +22,7 @@ Scan rule: a hit is the literal string `stills/README.md` under `docs/plans/`. A
 
 ## P1b
 
-- [Fleet order](cockpit-ship-stage-p1b-fleet-order.md) — dedicated link (#356), directory [p1-merchant-imperial](stills/p1-merchant-imperial/) (#361). TBD scaffold, no PNG.
+- [Fleet order](cockpit-ship-stage-p1b-fleet-order.md) — dedicated link (#356), directory [p1-merchant-imperial](stills/p1-merchant-imperial/) (#361). That directory stays a TBD scaffold, no PNG. #381 (`9d4c972f`) refreshes this sheet onto `5c719360`. The live cut is the batch-4 dish, in flight. The inventory row `p1b-batch4-dish` is product in flight, not measured, no PNG. Pass is not stamped. Guns stay Landed+Pass. Batch 5 waits behind the dish Pass. P2 stays gated. This sheet does not stamp Pass.
 - [Four-hull build](cockpit-ship-stage-p1b-four-hull-build.md) — dedicated link, and a second link in the sheet body. Tip history on the same sheet also names the path.
 - [Scout and Freighter frames](cockpit-ship-stage-p1b-scout-freighter.md) — dedicated link, directory `p1b-scout-freighter`.
 - [BattleShip and FlagShip frames](cockpit-ship-stage-p1b-battleship-flagship.md) — dedicated link, directory `p1b-battleship-flagship`.
@@ -67,7 +67,7 @@ Scan rule: a hit is the literal string `stills/README.md` under `docs/plans/`. A
 
 - [Batch 2 haulers product](cockpit-ship-stage-p1b-batch2-haulers-product.md) — dedicated link, directory `p1b-batch2-haulers`.
 - [Batch 3 guns product](cockpit-ship-stage-p1b-batch3-guns-product.md) — dedicated link, directory `p1b-batch3-guns`. Measured product (#363, `5ebec08f`). PNGs are in that directory. The directory README still calls that directory a scaffold with no PNG. #372 (`d063a95a`) records the inventory row as measured product: Missile Frigate 283 faces, Havoc GunStar 261 faces, PNGs in the directory, Pass on the batch-3 acceptance (#370).
-- [Batch 4 dish product](cockpit-ship-stage-p1b-batch4-dish-product.md) — dedicated link. Scaffold. No PNG.
+- [Batch 4 dish product](cockpit-ship-stage-p1b-batch4-dish-product.md) — dedicated link. #380 (`5c719360`) records the inventory row `p1b-batch4-dish` as product in flight, not measured, no PNG. Pass is not stamped. Star Master and Constellation stay on `fleet-glass-v1`.
 - [Batch 5 brick product](cockpit-ship-stage-p1b-batch5-brick-product.md) — dedicated link. Scaffold. No PNG.
 
 ## Other
@@ -80,7 +80,7 @@ Mention only. The literal string appears in the shared tip-history paragraph. Th
 
 ## Candidates
 
-Ship-stage sheets that lacked `stills/README.md` on the #358 map are listed in the role sections above. #377 added further inventory links on P2 readiness. That sheet already sits under Readiness. Its new body links stay on that line.
+Ship-stage sheets that lacked `stills/README.md` on the #358 map are listed in the role sections above. #377 added further inventory links on P2 readiness. That sheet already sits under Readiness. Its new body links stay on that line. #379 recorded that. #380 changes the `p1b-batch4-dish` inventory row and adds no link. #381 refreshes the fleet order, which already sits under P1b, and adds no link.
 
 Also scanned, and left off this list: [fighter marker math](cockpit-ship-stage-marker-math.md) records the 100:1 count and names no stills directory.
 
