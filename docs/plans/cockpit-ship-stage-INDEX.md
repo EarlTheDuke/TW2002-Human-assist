@@ -1,6 +1,6 @@
 # Cockpit ship stage — sheet index
 
-Finder for the ship-stage planning pack. Docs only. Tip: `feature/grokbot-player` @ `ca4a980c`. COMMANDER_NEXT just landed through #242 (#239).
+Finder for the ship-stage planning pack. Docs only. Tip: `feature/grokbot-player` @ `dac74d9d`. COMMANDER_NEXT just landed through #242 (#239).
 
 ## Product order
 
@@ -45,6 +45,7 @@ P1 is the spike named in the P0 pack and the render memo. Open the sheet below t
 
 ## P2
 
+- [P2 readiness](cockpit-ship-stage-p2-readiness.md) — Gate status only: P2 FX and the left viewport stay behind the cut-2 product pass and the remaining P1b product passes (#241).
 - [P2 wire](cockpit-ship-stage-p2-wire.md) — Product checklist that plays the six FX states on the ship stage and retires the left viewport.
 
 ## P3
