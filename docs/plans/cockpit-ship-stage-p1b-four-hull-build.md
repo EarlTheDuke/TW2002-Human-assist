@@ -2,14 +2,14 @@
 
 Parents: [P1 acceptance](cockpit-ship-stage-p1-acceptance.md), [P1 spike](cockpit-ship-stage-p1-spike.md), [next hulls](cockpit-ship-stage-p1b-next-hulls.md), [fleet order](cockpit-ship-stage-p1b-fleet-order.md).
 
-Docs only. Tip: `feature/grokbot-player` @ `ad2956fb`. P1 SVG spike passed (#215). This sheet is the product build order after that pass. Looks stay on the contracts already on this tip.
+Docs only. Tip: `feature/grokbot-player` @ `a335998e`. P1 SVG spike passed (#215). This sheet is the product build order after that pass. Looks stay on the contracts already on this tip.
 
 ## Build order
 
-Scout Marauder + Merchant Freighter is the product cut in flight. One cut at a time. Finish the cut, then take the next.
+Cut 1 (Scout Marauder and Merchant Freighter) product landed in #238 (`54051577`). Acceptance is Pass via #244 (`f057cac7`). BattleShip and Corporate FlagShip remain the product cut in flight. One cut at a time. Finish the cut, then take the next.
 
-1. Scout Marauder and Merchant Freighter. In flight. Looks: [next hulls](cockpit-ship-stage-p1b-next-hulls.md).
-2. BattleShip and Corporate FlagShip. Same contract. Start after cut 1 has merged.
+1. Scout Marauder and Merchant Freighter. Landed in #238 (`54051577`). Acceptance Pass via #244 (`f057cac7`). Looks: [next hulls](cockpit-ship-stage-p1b-next-hulls.md).
+2. BattleShip and Corporate FlagShip. Same contract. In flight, from the merge of cut 1.
 3. Batch-1 remainder: Escape Pod and T'Khasi Orion. Looks: [batch 1 remainder](cockpit-ship-stage-p1b-batch1-remainder.md).
 4. Then, per [fleet order](cockpit-ship-stage-p1b-fleet-order.md): haulers ([batch 2](cockpit-ship-stage-p1b-batch2-haulers.md)), guns ([batch 3](cockpit-ship-stage-p1b-batch3.md)), dish and X ([batch 4](cockpit-ship-stage-p1b-batch4.md)), brick and hoops ([batch 5](cockpit-ship-stage-p1b-batch5.md)).
 
@@ -33,7 +33,7 @@ The rest of the P1 pass list still applies: side clip, `holdWarp`, phone still, 
 
 ## File ownership
 
-One product Cur at a time on `web/hull-meshes.js`. Cut 1 holds that file. Cut 2, and every cut after it, starts from the merge of the Cur ahead of it.
+One product Cur at a time on `web/hull-meshes.js`. Cut 1 merged in #238. Cut 2 holds that file. Every later cut starts from the merge of the Cur ahead of it.
 
 ## Contracts already on tip
 
