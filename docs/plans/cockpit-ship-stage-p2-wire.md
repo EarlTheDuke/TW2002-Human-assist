@@ -1,0 +1,167 @@
+# P2 wire — FX onto the ship stage
+
+Parent: [cockpit-ship-stage-p0.md](cockpit-ship-stage-p0.md). States and pictures: [FX sheet](cockpit-ship-stage-p0-fx.md). Meshes: [render memo](cockpit-ship-stage-p0-render.md).
+
+Planning only. This file does not change the engine, the redesign cockpit, the hull meshes, or the warp clips. Tip surveyed: `feature/grokbot-player` @ `7a0fcf03` (`Fold 2026-10-25 Ven GAP 2.15 lasers`).
+
+P2 product code waits for the P1 Merchant Cruiser and Imperial StarShip spike to merge. Start the product PR from that merge, on `feature/grokbot-player`. The six states play `buildHullFaces` on the stage. Until the spike has landed, that body is still the fleet-glass sausage the render memo is replacing. If the spike misses the bar and the WebGL off-ramp in the render memo is the path that merged, stop. This wire assumes the shared SVG mesh.
+
+No new engine field, no new `EVENT_FACTS` key, no new action, no new event. `EVENT_FACTS` in `src/tw2k/engine/observation.py` stays the whitelist. Cockpit wiring reads events the engine already emits.
+
+## Event → FX state
+
+Six states. Precedence when two want the same moment: combat, then warp, then mine-deploy, then planet-land, then port, then idle. States do not stack. A warp that also detonates mines plays the warp, then the short combat flash. Skip dismisses the current transient. Nothing blocks the turn.
+
+The live batch is the `live` array inside `fetchEvents` (`web/redesign.js`). `playWarpClips(live)` runs there today. The catch-up half is `hist`. `TW2KMedia.onEvents(clipEvents(hist), S, { history: true })` already refuses to start a clip for that half. The stage hook uses the same split: a history batch on connect paints the resting observation and does not replay FX.
+
+Seat filter, unless a row says otherwise: `ev.actor_id === S.self_id`, the same test `isRealMove` uses. Combat also fires when this seat is the victim named in facts (`attacker`, `defender`, or `victim` equal to `S.self_id`).
+
+`act(kind, args, label)` in `web/redesign.js` is the cockpit send. `ActionKind` in `src/tw2k/engine/actions.py` is the verb. `EventKind` in `src/tw2k/engine/models.py` is what comes back on `/events`.
+
+| FX state | What starts it | Symbols on this tip |
+| --- | --- | --- |
+| Idle | Rest after refresh, and after every transient ends. | `paintShipView` repaints from the observation. Held pose is `shipPose` yaw `0.82`, pitch `0.5`. Shield bubble reads `shields / shield_cap` via `shieldRead`. Stars are `starfield()` inside `#shipSvg` (`data-testid` `starfield-far`, `starfield-near`). |
+| Warp | A real move for this seat. | Already live: `isRealMove` is true for event `warp` when `facts.from !== facts.to` (`EVENT_FACTS` keys `from`, `to`), and for event `autopilot` when `facts.executed` and `facts.hops_done >= 1` (keys `target`, `executed`, `hops_done`). `playWarpClips` → `chooseWarpClip` → `showWarpClip`. The row is `web/media/warp-clips.json` for `ship.class`. Action `warp` is `act("warp", { target })`. Action `plot_course` with `execute: true` is `engage()` / `engage(true)` and is what emits `autopilot`. The word Express is the button label, not an `ActionKind`. |
+| Warp, P2 wiring | Same warp state. `isRealMove` returns false for these today. | Event `ship_transwarp`, facts `from`, `to`, `hops`, `ore` (`locked`, `blind` are also whitelisted). Action `act("ship_transwarp", { sector_id })`. Event `planet_transwarp`, facts `planet_id`, `from_sector`, `to_sector`. `jumpForm` posts `act("planet_transwarp", { planet_id, dest_sector })`. Event `retreat`, facts `from`, `to`. Action `act("retreat", {})`. A retreat with `from !== to` uses a short warp. |
+| Port | Held bay while the new observation has a port. There is no dock event. | Arrive: a real move (the warp rows above) whose new `S.sector.port` is set. Leave: the next real move. The warp state owns the flight. `paintScene` already keys StarDock off `/stardock/i` on the port name, or `sector.id === 1`, and any other port off `sector_port_` plus `class_id`. Follow that, not the class digit. `PortClass.STARDOCK` is 8. `stardock_class_label()` in `src/tw2k/server/reference.py` returns 9 while `port_class_live()` is on. `portClassShown` in `web/redesign.js` is the digit on the sector report. Action `trade` opens the trade form and does not change FX state. |
+| Planet | Down, then up. | Event `land_planet`, facts `planet_id`, `class`, `seized`. Action `act("land_planet", { planet_id })`. The cockpit sets `surface = true` only when the result body matches `/landed/i` and does not match `/repelled/i` (inside `act`, kind `land_planet`). Event `liftoff`, fact `planet_id`. Action `act` kind `liftoff` sets `surface = false`. Liftoff does not also warp. Class names are `PLANET_CLASS_NAMES` in `src/tw2k/engine/constants.py` (M Earth, K Desert, L Mountainous, O Oceanic, C Glacial, H Volcanic, U Gaseous). |
+| Mine | A mine that stays in the sector. | Event `deploy_mines`, facts `qty`, `kind`. Action `act("deploy_mines", { kind, qty })` from the mines form. Kind `armid` or `limpet` is this state. Kind atomic is not: `_handle_deploy_mines` calls `_handle_atomic_detonation` and emits `atomic_detonation` (`qty`, `port_destroyed`) instead of `deploy_mines`. That emission is the combat flash. |
+| Combat | This seat is the actor, or the victim named in facts. One flash, then the resulting idle, planet, or pod paint. | See the combat rows below. |
+
+Combat rows the engine emits, and the cockpit already reads:
+
+| Event | Facts the stage branches on | Where it is emitted or read |
+| --- | --- | --- |
+| `combat` | `exchange_kind` of `ship_vs_ship`, `ferrengi_vs_ship`, `alien_vs_ship` (`src/tw2k/engine/combat.py`), `ship_vs_unmanned` (`src/tw2k/engine/fleet.py`), `planet_siege` (`_handle_land_planet`, with `vs` `planet`). `vs` of `fighter_sector` (`_offensive_wave_tw2002` and the other fighter-sector emits in `combat.py`) or `planet`. Losses on the base whitelist: `attacker_losses`, `defender_losses`, `shield_losses`. | Action `attack` is the cockpit send for a ship fight. A landing fight is action `land_planet` and may share the turn with this event. `act` already scans the batch for `vs === "planet"` and for `vs === "fighter_sector"`. |
+| `photon_fired`, `photon_hit` | `target`. A hit also has `disabled_ticks`. | Action `photon_missile` (`ActionKind.PHOTON_MISSILE`). Computer key P calls `openForm("photon_missile")`, and that form posts `act`. Manifest triggers `weapon.photon_fired` (rule `self`) and `weapon.photon_hit` (rule `self_target`). MVP uses the same streak. A distinct bolt is later. |
+| `mine_detonated` | `hits`, `damage`, `victim`. | `act` for kind `warp` already reads this row to build the result sentence. Manifest clip `hazard.mine_detonated`, rule `self_victim`. |
+| `atomic_detonation` | `qty`, `port_destroyed`. | Mine kind atomic, above. Same flash. |
+| `ferrengi_attack` | `victim`. | `src/tw2k/engine/ferrengi.py`. Manifest trigger rule `self_victim`, clip `combat.incoming`. |
+| `ferrengi_encounter` | `victim`, `ferr_fighters`, `your_fighters` (whitelist also has `ferr_id`, `ferr_hull`). | `plainEvent` already reads this kind. Flash when this seat is `victim` or `actor_id`. |
+| `ship_destroyed` | `victim`, `reason`. | Next `paintShipView` is the pod when this seat died. `SHIPS.escape_pod` is already a hull (`kind: "pod"`). The flash does not draw a second hull. `paintScene` today swaps the viewport to manifest key `in_pod` when `ship.class === "escape_pod"`. That still retires. The stage paint is the pod mesh. |
+
+Two combat facts the FX sheet names are conditional. `planet_fighters_lost` and `planet_shields_lost` are not in the base `EVENT_FACTS` tuple for `combat`. `event_facts` copies them when `siege_report_on()` is true (`SIEGE_REPORT_MODE == "tw2002"`, or the live / v311 profile). Branch when the key is present, which `act` already does for the siege sentence. Do not add the key.
+
+`web/redesign.js` also checks `exchange_kind === "offensive_clash"` (the warp-result scan inside `act`). On this tip the offensive wave emits `vs: "fighter_sector"` and does not set `exchange_kind`. Follow `vs`. The payload field `attacker_shield_losses` is not whitelisted, so the event view will not carry it. Use `shield_losses` when it is present, and the post-combat observation for the scar.
+
+`exchange_kind` `port` and `special_port` (both with `vs` `port`) are real `combat` payloads from a port fight in `runner.py`. The FX table did not name them. They use the same one-language streak. They are not a seventh state.
+
+`warp_blocked` (fact `target`) stays a refusal on the result line. `fetchEvents` already drops it from `liveMedia`. No flight. `ship_transwarp` can also emit `warp_blocked` (`ship_transwarp.py`); that row is still a refusal.
+
+Events that move a ship and are not P2 triggers:
+
+| Event | Why it stays off the stage |
+| --- | --- |
+| `ship_transwarp_fuse` | Facts `from`, `to`, `hops`, `ore`, `locked`. The jump fails and the ship is destroyed. The picture is the `ship_destroyed` flash and then the pod, not a warp. |
+| `fed_tow` | Facts `from`, `to`, `reason`. Not on the FX sheet. |
+| `ship_transport` | Facts `from`, `to`, `ship_id`, `hull`, `hops`. Not on the FX sheet. |
+| `planet_transport` | Facts `planet_id`, `from_sector`, `to_sector`. Not on the FX sheet. |
+| `deploy_fighters` | Facts `qty`, `mode`. Later may borrow the mine-drop language. Not a seventh state. |
+| `genesis_deployed`, `quasar_fire`, `interdict`, `buy_ship` | Real events. The FX sheet files each under Later. |
+| `deploy_atomic` | `ActionKind.DEPLOY_ATOMIC` is the planet detonator (`atomic_detonator`, facts `planet_id`, `outcome`). It is a different verb from a mine of kind atomic. Not a mine-deploy picture. |
+
+`sector_nebula` and `sector_hazard` exist under `keys` in `web/media/manifest.json`. `paintScene` never assigns them. It assigns `sector_deep`, `in_pod`, `planet_own`, `planet_foreign`, `sector_stardock`, `sector_terra`, `sector_port_` plus `class_id`, `sector_fedspace`. Retire the unused keys with the rest of the viewport stills so they cannot come back as a fallback. Fedspace tint, navhaz shimmer, and cloak dim stay Later, as the FX sheet says.
+
+## DOM nodes to retire
+
+The redesign page is `web/redesign.html`, served for `/bot?layout=redesign` (`_cockpit_layout` / `_redesign_page` in `src/tw2k/server/app.py`). The nodes below are the children of `#viewport` on that page. `web/bot.html` and `web/bot2.html` have their own viewport. They stay.
+
+`renderShipScene` assigns `svg.innerHTML` on `#shipSvg`. A transient drawn only inside that SVG is wiped on the next observation paint. Park transients in a sibling of `#shipSvg` inside `#ship`, suggested id `#stageFx`, and keep the hull paint in `#shipSvg`. Idle stars are the exception: they already live in `starfield()` and should stay there.
+
+| Node today (`web/redesign.html`) | P2 |
+| --- | --- |
+| `#viewport` (`data-testid="viewport"`, grid area `view`) | Remove the section. The grid area stays occupied by the sector-report pane below, until P3. |
+| `#vpScreen` | Remove with the section. `media-player.js` `ensureClipLayer` looks it up to create `#vpClip`. With the node gone, that call returns null and paints nothing. |
+| `#vpStars` (`data-testid="viewport-stars"`) | Retire. Idle stars are `starfield()` inside `#shipSvg`. `web/viewport.js` draws this canvas only when `#viewport` exists and `?mode=cu` is off. Drop the `<script src="/static/viewport.js">` tag from `redesign.html`. Leave the file. `/bot` still loads it. |
+| `#sceneStill` (`data-testid="scene-still"`) | Retire. `paintScene` stops choosing a still. Deep space and fedspace become the stage starfield. Port stills (`sector_port_*`, `sector_stardock`, `docked_port`, `sector_terra`) become the port bay on `#stageFx`. Planet stills (`planet_own`, `planet_foreign`, `planet_land`, `planet_liftoff`, `planet_surface`, class stills) become the planet disc on `#stageFx`. `in_pod` becomes `paintShipView` of `escape_pod`. |
+| `#warpClip` (`data-testid="warp-clip"`) and children `#warpSvg` (`data-testid="warp-svg"`), `#warpVideo` (`data-testid="warp-video"`), `#warpSkip` (`data-testid="warp-skip"`) | Reparent from `#vpScreen` into `#stageFx`. Keep the ids and test ids. `showWarpClip`, `holdWarp`, `skipWarp`, and `window.__tw2kWarp` already look up `#warpClip` by id. CSS in `web/redesign.css` is id-scoped (`#warpClip[data-camera]`, `#warpClip[data-exit]`, `#warpClip[data-stars]`) and follows the node. `WARP_LINGER_MS` stays 4000. `holdWarp` stays on `window.__tw2kWarp.hold`. |
+| `.scan`, `#sceneTag` | No writer in `web/redesign.js`. CSS only (`web/redesign.css`). Remove with the viewport. |
+| `#vpCaption` (`data-testid="viewport-caption"`) | Ambient caption from `TW2KViewport.update`. The sector report already carries sector, fedspace, and port. Remove with the viewport. |
+| `#vpSkip` (`data-testid="viewport-skip"`) | Media skip. The stage skip is `#warpSkip` → `skipWarp`. One skip on the stage dismisses the current transient. |
+| `#vpControls` and `[data-vp-mode]` (`data-testid` `viewport-mode-live`, `viewport-mode-stills`, `viewport-mode-off`) | Move onto `#ship`. Live animates, Stills holds the canonical pose, Off skips transients. Move `data-mode` with them. `warpMotion` today reads `$("viewport").getAttribute("data-mode")`. Point it at the new host. Keep the test ids and the `localStorage` key `tw2k.viewport` (`viewport.js` `KEY`) so a saved mode still applies. Copy that read into `redesign.js` when the script tag is dropped: query `viewport`, then the saved key, then default `live`. |
+| `#vpClip` (`data-testid="viewport-clip"`), created by `ensureClipLayer` | Not in the HTML. It is the dock, combat, planet, and warp.out video layer. It dies with `#vpScreen`. Do not reparent it. The stage replaces those pictures. Leave `web/media-player.js` and `web/media/manifest.json` on disk. Other pages still resolve clips. |
+
+Manifest pictures that leave the redesign viewport, and where the tell goes. Clip keys are `manifest.triggers` / `manifest.clips`. Still keys are `manifest.keys` and `manifest.kinds`.
+
+| Viewport picture | Stage tell |
+| --- | --- |
+| `warp.out`, kind still `move_warp`, `#warpClip` videos | Warp state. Same `buildHullFaces` body, cameras `side` `chase` `headon` `top` `gate`, stars `streaks` `tunnel` `nebula` `sparse` `gate`, exits `jump` `fade` `flash` `fold` `gate`. Plume may follow the clip `plume`. TransWarp magenta stays `ship.transwarp.fitted` on the hull (`renderShipScene`), not a property of the clip. |
+| `dock.stardock`, `dock.port`, `dock_port_*` videos, `sector_port_*`, `sector_stardock`, `docked_port`, `sector_terra` | Port bay on `#stageFx`: nose slightly up, engines idle, two original uprights. Colours from the FX sheet (StarDock `#d7e4f5` / `#1c2430`, class 0 `#24344a` / `#121820`, classes 1–7 and 9 `#3a3428` / `#e0b15a`). Trade letters stay on the sector report. |
+| `planet.land`, `planet.liftoff`, `planet_own`, `planet_foreign`, `planet_land`, `planet_liftoff`, class stills M K L O U | Planet disc behind the hull, gear-down. H and C have no still in the manifest. MVP uses the FX sheet colours and does not wait on bitmaps. Unknown class uses the idle starfield. |
+| `combat.hit`, `combat.miss`, `combat.incoming`, `combat.witnessed`, stills `combat_alert`, `combat_hit`, `combat_incoming`, `combat_miss`, `combat_photon` | One white-orange streak on `#stageFx`. Shield bubble flares when shields were lost. Fighter markers pulse when fighters were lost. Then the post-combat observation, scars included when shields are under 35% (`shieldRead` `low`). |
+| Kind still `combat_mine`, clip `hazard.mine_detonated` | Mine drop: `min(qty, 6)` meshes aft of the hull, one numeral for `qty`. Armid spiked ball, limpet flat disc, dim hazard amber. A detonation is the combat streak, not the drop. |
+| `in_pod` | `paintShipView` of `SHIPS.escape_pod`. |
+
+`warpMotion` on this tip treats `prefers-reduced-motion` and mode `stills` as a held frame, and mode `off` as no clip. It does not read `body.cu-seat`. `shipMotion` holds for reduced motion and for `max-width: 700px`, and also does not read `body.cu-seat`. `?mode=cu` only adds class `cu-seat` (`redesign.js`) and makes `viewport.js` return before it touches the DOM. P2 holds the end frame for `body.cu-seat` the same way it holds for reduced motion, on both the hull drift and the transients. If the merged P1 already taught `shipMotion` that class, reuse it.
+
+## Sector report
+
+`#sectorText` is the ANSI report. `sectorText()` in `web/redesign.js` writes it with `$("sectorText").innerHTML`. It is not an FX layer. Aging out the viewport keeps every line that function writes.
+
+Facts on the node today: sector id and fedspace or uncharted space, port name plus `data-port-class` (value from `portClassShown`), each planet as `data-planet="class"`, Terra as `data-planet="class"` plus `data-terra="row"`, `data-navhaz="here"` when `nav_hazard_pct` is above 0, ships, traders, fighter group, `data-mines="sector"` for armid and limpet counts, `data-beacon="here"`, warps out, and `You are LANDED on …` from `landedPlanet()`.
+
+`data-mines="armid"` and `data-mines="limpet"` are the ship stat bars in `paintShip`. `data-mines="form"` is the mines form. Those stay on `#ship` and `#menu`. They are not the sector report.
+
+Relocation that keeps the selectors: move the existing `#sectorText` element out of `#vpScreen` into a report pane that takes grid area `view`. Suggested pane id `#sectorReport`, class a plain panel, containing `#sectorText` unchanged (`id="sectorText"`, class `ansi`). `sectorText()` keeps writing the same string. The pane is text. It has no canvas, no still, and no clip.
+
+`web/redesign.css` currently pins `#sectorText` to the bottom of the viewport (`position: absolute; left: 0; right: 0; bottom: 0`). That rule becomes ordinary flow inside `#sectorReport`, so the report is readable on its own and does not overlay the hull. Grid stays `grid-template-areas: "view nav ship" / "here here term"` until P3. P3 owns the 55–60% stage. This pane is only so the left column does not collapse when `#viewport` is removed.
+
+The report does not go inside `#shipSvg`. That SVG is rewritten by `renderShipScene`.
+
+With the id and the data attributes left as `sectorText()` writes them, these tests keep working and the product PR does not edit them:
+
+- `tests/test_terra_and_planet_ownership_v1.py` (`[data-planet=class]`, `[data-terra=row]`)
+- `tests/test_cockpit_redesign_fix2_v1.py` (`#sectorText`)
+- `tests/test_cockpit_redesign_gate_v1.py` (`#sectorText`)
+- `tests/test_cockpit_redesign_nav_v1.py` (`#sectorText` contains `LANDED`)
+- `tests/test_cockpit_combat_clarity_v1.py` (`#sectorText`)
+- `tests/test_cockpit_deep_d1_fix_v1.py` (`#sectorText`)
+- `tests/test_cockpit_fullpass_fix2_v1.py` (`#sectorText`)
+- `tests/test_cockpit_gameplay_visible_v1.py` (`[data-mines=sector]`, `#sectorText`, `[data-beacon=here]`)
+- `tests/test_cockpit_hazards_fix_v1.py` (`#sectorText`)
+- `tests/test_cockpit_hazards_scans_v1.py` (`#sectorText`)
+- `tests/test_cockpit_info_audit_v1.py` (`[data-planet=class]`, `#sectorText`)
+- `tests/test_cockpit_note45_polish_v1.py` (`[data-navhaz=here]`, `[data-planet=class]`, `#sectorText`)
+- `tests/test_cockpit_note51_polish_v1.py` (`#sectorText`)
+- `tests/test_cockpit_note97_v1.py` (`#sectorText [data-port-class]`)
+
+`scripts/ai_cockpit/runner.py` also reads `#sectorText`. The same id keeps that harness working. It is not a test file.
+
+If a later edit renames the id or drops an attribute, the product PR updates every file in that list in the same change. The default in this wire is to keep them.
+
+P0 names `tests/test_video_cockpit_v1.py` as the assertion to update when `id="viewport"` is removed. On this tip that test reads `web/bot.html` (`HTML = web/bot.html`) and asserts the viewport inside `#main` on the default `/bot` page. Removing the redesign node does not fail it. Leave that test, `web/bot.html`, and `web/bot2.html` alone.
+
+Tests the product PR does update, because they assert redesign markup or parentage that this move breaks:
+
+- `tests/test_cockpit_redesign_wire_v1.py` asserts `data-testid="scene-still"` in the `?layout=redesign` response.
+- `tests/test_cockpit_warp_ship_clips_v1.py` and `tests/test_cockpit_warp_variants_v1.py` compare `#warpClip.getBoundingClientRect()` to `#viewport`. `test_cockpit_warp_variants_v1.py` also waits for `#viewport` `data-mode`. Point those assertions at `#ship` / `#stageFx` once `data-mode` lives there.
+- `tests/test_note146_warp_clips_10_v1.py` clicks `viewport-mode-stills` and `viewport-mode-off`. The test ids move with the control, so the clicks can stay. Update any assertion that the mode attribute is on `#viewport`.
+- `tests/test_cockpit_warp_clips_per_hull_v1.py` and `tests/test_cockpit_warp_video_v1.py` read `web/redesign.html` and drive `?layout=redesign`. Keep `#warpClip` and `warp-skip` in the page. Update them where they require the clip to sit inside `#viewport`.
+- `tests/test_cockpit_ship_view_all_hulls_v1.py` and `tests/test_cockpit_ship_view_full_v1.py` read `#warpClip` on the redesign page. Ids stay. Update them only where a parent check fails.
+
+`tests/test_cockpit_scene_image_v1.py`, `tests/test_cockpit_visual_qc_v1.py`, `tests/test_cockpit_warp_ring_v1.py`, and `tests/test_cockpit_redesign_cur_v1.py` hit `/bot` or `/bot2`, not the redesign document. They stay green while `bot.html` and `bot2.html` stay.
+
+## Ordered checklist for the product Cur
+
+Files this product PR may edit: `web/redesign.html`, `web/redesign.js`, `web/redesign.css`, and the test files named above. It does not edit `src/tw2k/**`, `web/hull-meshes.js`, `web/media/warp-clips.json`, `web/bot.html`, `web/bot2.html`, `web/viewport.js`, or `web/media-player.js`, except a comment if one of those files is imported by the redesign page and the edit is required to stop a picture. Prefer leaving them byte-identical and dropping the script tag from `redesign.html`.
+
+1. Branch from `feature/grokbot-player` after the P1 spike PR has merged. Confirm Merchant Cruiser and Imperial StarShip are the bible meshes (`TW2KHullMeshes.look` is no longer only `fleet-glass-v1` for those two, and a warp clip for each still calls `buildHullFaces`). If that merge opened the WebGL off-ramp instead, stop and write a new note. Do not wire these states onto a second hull.
+2. Add `#stageFx` inside `#ship`, as a sibling of `#shipSvg`. Idle remains `paintShipView` / `shipPose`. Transients render into `#stageFx`.
+3. Move Live / Stills / Off onto `#ship` with the test ids and `data-mode`. Teach `warpMotion` and the transient player to read that host. `body.cu-seat`, `prefers-reduced-motion`, and mode `stills` hold the end frame. Mode `off` shows the hull with no transient. Phone width keeps the still the hull already uses (`shipMotion` returns `static` under `max-width: 700px`).
+4. Reparent `#warpClip` and its children onto `#stageFx`. Extend `isRealMove` so `ship_transwarp` (`from !== to`), `planet_transwarp` (`from_sector !== to_sector`), and `retreat` (`from !== to`) count as real moves. Leave `warp_blocked` and `ship_transwarp_fuse` out. `playWarpClips` then runs for those moves with the existing bag, duration, and `WARP_LINGER_MS`. Skip still calls `skipWarp`. `holdWarp` still pauses a frame. A clip returns without awaiting the turn.
+5. Add the stage state function and call it from `fetchEvents` on the `live` array only. Apply precedence combat, warp, mine-deploy, planet-land, port, idle. Ignore `hist`. Port is the held bay when `S.sector.port` is set after a real move, using `paintScene`'s StarDock rule (name or sector 1). Planet sets the disc only along the existing `surface = true` path, and `liftoff` clears it with no second warp. Mine drop runs for `deploy_mines` of kind `armid` or `limpet`. `atomic_detonation` uses the combat streak. Combat uses the event table above, including `vs === "fighter_sector"` and `exchange_kind` `port` / `special_port`, then `paintShipView`. A `ship_destroyed` for this seat ends on `escape_pod`.
+6. Move `#sectorText` into `#sectorReport` on grid area `view`. Keep `sectorText()` and its selectors. Replace the absolute overlay rule with flow layout. Remove `#viewport` and the nodes in the retire table. Remove the `viewport.js` script tag from `redesign.html`. Stop calling `paintScene` to show a picture.
+7. Update the redesign tests listed in the sector-report section that assert `scene-still` or that `#warpClip` is inside `#viewport`. Leave the fourteen `#sectorText` tests, `test_video_cockpit_v1.py`, and the `/bot` and `/bot2` viewport tests unchanged.
+
+Done when the P0 P2 list is true on `/bot?layout=redesign`, and these wire checks are true with it:
+
+- Each of the six states runs from the event or observation named in the table, for this seat, on the live batch only.
+- `#warpClip` is a descendant of `#ship`, and `window.__tw2kWarp.hold` still pauses it.
+- `#viewport`, `#vpStars`, `#sceneStill`, and `#vpClip` are absent from the redesign document.
+- `#sectorText`, `[data-port-class]`, `[data-planet="class"]`, `[data-mines="sector"]`, `[data-navhaz=here]`, `[data-beacon=here]`, and `[data-terra=row]` still resolve, and the LANDED line is still the string `sectorText()` writes.
+- Live, Stills, and Off still mean animate, canonical still, and no transient. Reduced motion and `?mode=cu` hold the still. Skip dismisses the clip. The turn is not blocked.
+- Merchant and Imperial clips still call `buildHullFaces`. The other fifteen hulls are whatever P1 left them.
+
+## Out of this product PR
+
+P3's layout split and the `#shipSvg` 140px cap. New engine events, new `EVENT_FACTS` keys, new actions. A second renderer. Ferrengi hull art. Copying or tracing EIS, Markham, or ANSI. The `/bot` and `/bot2` viewports and `tests/test_video_cockpit_v1.py`. Later items on the FX sheet: per-class bay dressing, a buy-ship beat, genesis flash, citadel geometry, a persistent mine hint, deploy-fighters as drop language, a different camera per `exchange_kind`, quasar or interdict shake, fedspace tint, navhaz shimmer, cloak dim. File clips (`kind: "file"`) stay optional. `docs/plans/COMMANDER_NEXT.md` and `docs/plans/GAP_MAP.md`.
