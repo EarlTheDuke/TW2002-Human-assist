@@ -4,7 +4,7 @@ Parent: [P0 pack](cockpit-ship-stage-p0.md). Looks: [silhouette bible](cockpit-s
 
 The stills inventory is [stills/README.md](stills/README.md) (#344).
 
-Planning only. Surveyed `feature/grokbot-player` @ `8a31f30` (#194). Refreshed onto `1ff9bef6` (#384). #382 (`436bfc47`) refreshed the ship-stage tip sheets onto #381. #383 (`2c097f6a`) records the batch-4 readiness tip at #382. #384 records P2 readiness onto #383. P2 stays gated. This sheet does not change the engine, the cockpit, the meshes, or the warp clips. This sheet does not stamp Pass.
+Planning only. Surveyed `feature/grokbot-player` @ `8a31f30` (#194). Refreshed onto `0dd332dd` (#385). #382 (`436bfc47`) refreshed the ship-stage tip sheets onto #381. #383 (`2c097f6a`) records the batch-4 readiness tip at #382. #384 records P2 readiness onto #383. P2 stays gated. #385 (`0dd332dd`) refreshes the stills inbound map through #384. It adds no PNG and does not stamp Pass. This sheet does not change the engine, the cockpit, the meshes, or the warp clips. This sheet does not stamp Pass.
 
 Batch 3 guns, Missile Frigate and Havoc GunStar, are Landed+Pass. Product #363 (`5ebec08f`). Pass #370 (`223dacfa`). Those two left `fleet-glass-v1`. Batch 4, Star Master and Constellation, is the live product cut, in flight. On this tip those two meshes stay `fleet-glass-v1`. The [stills inventory](stills/README.md) (#380, `5c719360`) records [p1b-batch4-dish](stills/p1b-batch4-dish/) as product in flight, not measured. No PNG. Pass is not stamped. [Batch-4 readiness](cockpit-ship-stage-p1b-batch4-readiness.md) (#383, `2c097f6a`) records tip #382 (`436bfc47`). Batch 5, Tholian Sentinel and Interdictor Cruiser, waits behind the dish Pass. The brick product has not started. P2 stays gated.
 
