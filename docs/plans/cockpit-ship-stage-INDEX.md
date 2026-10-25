@@ -1,6 +1,6 @@
 # Cockpit ship stage — sheet index
 
-Finder for the ship-stage planning pack. Docs only. Tip: `feature/grokbot-player` @ `3798d2aa`. COMMANDER_NEXT just landed through #233 (#234).
+Finder for the ship-stage planning pack. Docs only. Tip: `feature/grokbot-player` @ `ca4a980c`. COMMANDER_NEXT just landed through #242 (#239).
 
 ## Product order
 
