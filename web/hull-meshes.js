@@ -1,7 +1,8 @@
 /* ship-view-full-v1. Shared hull meshes for the redesign ship panel and the warp clips.
    Fleet-glass pass: our own lofts and plates. No copied ANSI, no traced cinema.
    P1 spike: merchant_cruiser and imperial_starship use richer stations and kit
-   on this same face list. The other hulls stay fleet-glass-v1.
+   on this same face list. P1b adds scout_marauder and merchant_freighter
+   on that same path. BattleShip, FlagShip, and the other hulls stay fleet-glass-v1.
    Classic page: window.TW2KHullMeshes
    Module: import { buildHullFaces } from "/static/hull-meshes.mjs"
 */
@@ -335,6 +336,71 @@
     }
     return { glow: glow, hot: hot, glen: glen, gthick: gthick };
   }
+  // Flat blade. Body stays metal. Leading edge and tip are the accent, so a
+  // shield wash cannot repaint the kit.
+  function canard(faces, sign, xLead, xTrail, zIn, zOut, y, metal, accent, sweep) {
+    var s = sign < 0 ? -1 : 1;
+    var span = Math.abs(xLead - xTrail) || 1;
+    var tipLead = xLead - span * (sweep == null ? 0.36 : sweep);
+    var tipTrail = xTrail + span * 0.04;
+    var thick = 1.7;
+    var zTip = s * zOut;
+    var zRoot = s * zIn;
+    var top = [
+      [xLead, y + thick, zRoot],
+      [tipLead, y + thick * 0.7, zTip],
+      [tipTrail, y + thick * 0.52, zTip * 0.94],
+      [xTrail, y + thick * 0.8, s * Math.max(zIn * 0.8, 1.2)]
+    ];
+    var bot = [
+      [xLead, y - thick * 0.85, zRoot],
+      [xTrail, y - thick * 0.62, s * Math.max(zIn * 0.8, 1.2)],
+      [tipTrail, y - thick * 0.4, zTip * 0.94],
+      [tipLead, y - thick * 0.55, zTip]
+    ];
+    var ref = [(xLead + tipLead) / 2, y, s * (zIn + zOut) / 2];
+    pushFace(faces, top, metal, 1, false, ref);
+    pushFace(faces, bot, shade(metal, 0.56), 1, false, ref);
+    pushFace(faces, [top[0], top[1], bot[3], bot[0]], accent, 1, false, ref, true);
+    pushFace(faces, [top[1], top[2], bot[2], bot[3]], accent, 1, false, ref, true);
+    pushFace(faces, [top[2], top[3], bot[1], bot[2]], shade(metal, 0.7), 1, false, ref);
+    pushFace(faces, [top[3], top[0], bot[0], bot[1]], shade(metal, 0.78), 1, false, ref);
+  }
+  function knife(faces, xLead, xTrail, yBase, yTip, metal, accent) {
+    var rise = yTip - yBase;
+    var fore = [
+      [xLead, yBase, 0.72],
+      [xLead + (xTrail - xLead) * 0.22, yTip, 0.26],
+      [xTrail, yBase + rise * 0.18, 0.26],
+      [xTrail, yBase, 0.6]
+    ];
+    var ref = [(xLead + xTrail) / 2, (yBase + yTip) / 2, 0];
+    var aft = fore.map(function (p) { return [p[0], p[1], -p[2]]; });
+    pushFace(faces, fore, metal, 1, false, ref);
+    pushFace(faces, [aft[0], aft[3], aft[2], aft[1]], shade(metal, 0.64), 1, false, ref);
+    pushFace(faces, [fore[0], fore[1], [fore[1][0], fore[1][1], -fore[1][2]], [fore[0][0], fore[0][1], -fore[0][2]]], accent, 1, false, ref, true);
+    pushFace(faces, [fore[1], fore[2], [fore[2][0], fore[2][1], -fore[2][2]], [fore[1][0], fore[1][1], -fore[1][2]]], accent, 1, false, ref, true);
+  }
+  function bell(faces, x, y, z, metal, plume, scale) {
+    var sc = scale || 1;
+    var glen = plume.glen * (sc < 1 ? sc : 1);
+    var gt = plume.gthick * sc;
+    var mouth = x - 1.15 * sc;
+    boxAt(faces, x + 2.4 * sc, y, z, 6.4 * sc, 3.5 * sc, 3.5 * sc, metal, 1, false);
+    loftAt(faces, [
+      [x + 5.5 * sc, 0.85 * sc, 0.85 * sc],
+      [x + 4.7 * sc, 1.45 * sc, 1.45 * sc]
+    ], y, z, [8, 12, 18], 1, false, "round");
+    loftAt(faces, [
+      [mouth, 0.5 * sc, 0.5 * sc],
+      [mouth - glen * 0.4, gt * 0.7, gt * 0.92],
+      [mouth - glen, 0.15 * sc, 0.17 * sc]
+    ], y, z, plume.hot, 0.98, true, "round");
+    loftAt(faces, [
+      [mouth + 0.2 * sc, 0.95 * sc, 1.05 * sc],
+      [mouth - glen * 0.48, gt * 1.02, gt * 1.28]
+    ], y, z, plume.glow, 0.4, true, "round");
+  }
   function merchantSpike(faces, hull, metal, accent, glass, plume) {
     var sections = [[64, 5.4, 10.2], [46, 8.4, 15.2], [24, 9.2, 16.4], [2, 8.4, 14.8], [-20, 7.2, 12.4], [-40, 5.6, 9.2], [-58, 4.0, 6.4]];
     loftAt(faces, sections, 0, 0, hull, 1, false, "wedge");
@@ -374,8 +440,74 @@
       loftAt(faces, [[-102, 6.9, 6.9], [-106, 7.1, 7.1]], y, z, accent, 1, false, "round", true);
     });
   }
+  function scoutSpike(faces, hull, metal, accent, glass, plume) {
+    var sections = [
+      [92, 1.05, 1.25],
+      [70, 1.85, 2.15],
+      [46, 2.25, 2.55],
+      [18, 2.45, 2.75],
+      [-8, 2.25, 2.55],
+      [-32, 1.95, 2.25],
+      [-54, 1.55, 1.8],
+      [-74, 1.05, 1.25]
+    ];
+    loftAt(faces, sections, 0, 0, hull, 1, false, "round");
+    [-1, 1].forEach(function (sign) {
+      canard(faces, sign, 78, 40, 1.9, 32, 0.2, metal, accent, 0.16);
+      canard(faces, sign, -36, -66, 1.3, 8.4, -0.35, metal, accent, 0.42);
+    });
+    knife(faces, -34, -68, 1.9, 13.6, metal, accent);
+    knife(faces, -42, -64, -1.15, -6.4, metal, accent);
+    loftAt(faces, [[62, 0.95, 1.25], [50, 1.5, 1.85], [40, 0.85, 1.1]], 2.35, 0, glass, 1, false, "round");
+    loftAt(faces, [[64, 0.38, 1.05], [46, 0.46, 1.3]], 2.15, 0, accent, 1, false, "round", true);
+    stripe(faces, 66, -60, 2.75, 0.42, accent);
+    [-1, 1].forEach(function (sign) {
+      bell(faces, -78, -1.55, sign * 3.6, metal, plume, 0.5);
+    });
+  }
+  function freighterSpike(faces, hull, metal, accent, glass, plume) {
+    var sections = [
+      [42, 4.2, 8.6],
+      [24, 5.4, 10.8],
+      [6, 6.0, 12.2],
+      [-12, 5.6, 11.4],
+      [-28, 4.6, 9.2],
+      [-42, 3.4, 6.8]
+    ];
+    loftAt(faces, sections, 0, 0, hull, 1, false, "box");
+    [-1, 1].forEach(function (sign) {
+      boxAt(faces, 2, 6.55, sign * 22, 50, 1.25, 26, metal, 1, false);
+      loftAt(faces, [
+        [16, 4.4, 6.6],
+        [0, 5.8, 8.4],
+        [-16, 5.4, 7.8],
+        [-32, 3.8, 5.6]
+      ], -1.5, sign * 39, metal, 1, false, "box");
+      boxAt(faces, -8, -0.8, sign * 47.4, 40, 8.2, 1.5, accent, 1, false, true);
+      boxAt(faces, -8, 4.7, sign * 42.6, 38, 1.1, 6.8, accent, 1, false, true);
+    });
+    loftAt(faces, [[22, 1.7, 2.6], [12, 2.7, 3.8], [2, 1.45, 2.1]], 6.35, 0, glass, 1, false, "round");
+    loftAt(faces, [[24, 0.65, 2.2], [10, 0.8, 2.9]], 5.9, 0, accent, 1, false, "round", true);
+    stripe(faces, 28, -30, 7.35, 1.45, accent);
+    var win = [176, 154, 126];
+    var i;
+    for (i = 0; i < 3; i++) {
+      lamp(faces, 6 - i * 11, 1.15, 48.9, 1.7, 1.15, win, 1);
+      lamp(faces, 6 - i * 11, 1.15, -48.9, 1.7, 1.15, win, -1);
+    }
+    [-1, 1].forEach(function (sign) {
+      bell(faces, -38, -2.3, sign * 23, metal, plume, 1.62);
+    });
+  }
+  function spikeAccent(ship, spec) {
+    if (spec && spec.accent) return parseHex(spec.accent);
+    if (ship.class === "imperial_starship") return parseHex("#ffe9a0");
+    if (ship.class === "scout_marauder") return parseHex("#5dffc8");
+    if (ship.class === "merchant_freighter") return parseHex("#7af0ff");
+    return parseHex("#7aa2ff");
+  }
   function buildSpikeFaces(ship, spec) {
-    var accent = parseHex(spec.accent || (ship.class === "imperial_starship" ? "#ffe9a0" : "#7aa2ff"));
+    var accent = spikeAccent(ship, spec);
     var hull = [26, 33, 48];
     var metal = [38, 46, 62];
     var glass = mixRgb([236, 246, 255], accent, 0.18);
@@ -383,13 +515,15 @@
     var plume = plumeOf(spec, tw);
     var faces = [];
     if (ship.class === "imperial_starship") imperialSpike(faces, hull, metal, accent, glass, plume);
+    else if (ship.class === "scout_marauder") scoutSpike(faces, hull, metal, accent, glass, plume);
+    else if (ship.class === "merchant_freighter") freighterSpike(faces, hull, metal, accent, glass, plume);
     else merchantSpike(faces, hull, metal, accent, glass, plume);
     return faces;
   }
   function buildHullFaces(sh, def) {
     var ship = sh || {};
     var spec = def || {};
-    if (ship.class === "merchant_cruiser" || ship.class === "imperial_starship") return buildSpikeFaces(ship, spec);
+    if (ship.class === "merchant_cruiser" || ship.class === "imperial_starship" || ship.class === "scout_marauder" || ship.class === "merchant_freighter") return buildSpikeFaces(ship, spec);
     var sections = LOFT[ship.class] || LOFT.merchant_cruiser;
     var shape = SHAPE[ship.class] || "round";
     var accent = parseHex(spec.accent || "#7aa2ff");
