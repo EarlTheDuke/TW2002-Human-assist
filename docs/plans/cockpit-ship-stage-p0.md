@@ -9,6 +9,7 @@ Ben can override any recommended default in the decision list at the bottom. The
 | Sheet | What Ben is reacting to |
 | --- | --- |
 | [Silhouette bible](cockpit-ship-stage-p0-silhouette-bible.md) | Original look for all 17 player hulls, plus the fighter marker. |
+| [P1b next hulls](cockpit-ship-stage-p1b-next-hulls.md) | Mesh contract for Scout Marauder, Merchant Freighter, BattleShip, and Corporate FlagShip. Implement after the spike merges. |
 | [FX state machine](cockpit-ship-stage-p0-fx.md) | Idle, warp, port, planet, mine, combat. Triggers are events that exist today. |
 | [Render decision](cockpit-ship-stage-p0-render.md) | Stay on the shared SVG mesh. Spike Merchant Cruiser and Imperial StarShip before the fleet. |
 | Sticky, below | One paragraph for `COMMANDER_NEXT` or an improvement list. |
@@ -52,6 +53,8 @@ Done when:
 - `prefers-reduced-motion`, a phone (`max-width: 700px`), and `body.cu-seat` hold the canonical still. The turn is not blocked.
 - `web/hull-meshes.js` stays under 40 KB gzipped (the ship-view budget cited in NOTE 94 is 300 KB). Frame time for the drift pose is recorded at 500 and at 1,000 markers.
 - Ship-view tests that assert the 200-cap legend are updated in the same change. No engine change, no new action, no new event field.
+
+After that spike merges, the next meshes are the four hulls in [P1b](cockpit-ship-stage-p1b-next-hulls.md). They are not part of this spike.
 
 ### P2 — FX onto the stage, then remove the viewport
 

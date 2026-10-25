@@ -188,3 +188,18 @@ Cover the name plate. These pairs have to stay apart at hero size and at 140px:
 | FlagShip / Imperial / Star Master | Tall tower versus long castle versus a dish. |
 | Constellation / Interdictor | An X of engines versus two hoops. |
 | Escape Pod / Scout | A finned capsule versus a long needle. |
+
+## P1b wave — next four after the spike
+
+The one-paragraph entries above stay the picture for all 17 hulls. The mesh contract for the next four, after Merchant Cruiser and Imperial StarShip, is [cockpit-ship-stage-p1b-next-hulls.md](cockpit-ship-stage-p1b-next-hulls.md).
+
+| Key | Panel name | Job the mesh has to show |
+| --- | --- | --- |
+| `scout_marauder` | Scout Marauder | Fast needle. Canards. |
+| `merchant_freighter` | Merchant Freighter | Wide fast trader. Cheeks. |
+| `battleship` | BattleShip | Gun platform. Hex wedge, turret pair. |
+| `corporate_flagship` | Corporate FlagShip | Corp liner. Stepped tower. |
+
+There is no Destroyer class on `SHIP_SPECS_TW2002` or `ShipClass`. BattleShip is that gun platform. The freighter is the day-one trader out of the starter (trading index 325, 2 turns per warp, cheaper than the cruiser). Colonial Transport scores higher (417) and waits. CargoTran waits with it. Each P1b entry has the role read, the silhouette, the accent, and the canonical three-quarter plus head-on checklist for the 100:1 marker ring.
+
+Implement those four after the Merchant and Imperial spike merges and passes the render memo. This wave does not start product code.
