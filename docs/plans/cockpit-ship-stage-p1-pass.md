@@ -2,6 +2,8 @@
 
 Record of the read. Parent: [P1 acceptance](cockpit-ship-stage-p1-acceptance.md). Measurements: [P1 spike](cockpit-ship-stage-p1-spike.md). Merged product: [#215](https://github.com/EarlTheDuke/TW2002-Human-assist/pull/215) (`9d29349a`). Sheets read at `feature/grokbot-player` @ `3765f609`.
 
+The stills inventory is [stills/README.md](stills/README.md) (#344), directory [p1-merchant-imperial](stills/p1-merchant-imperial/) (TBD scaffold, no PNG, does not stamp Pass).
+
 Docs only. The renderer stayed on the shared SVG loft (`buildHullFaces` / `projectFace`). This sheet does not change `web/*`, the engine, tests, `COMMANDER_NEXT`, `GAP_MAP`, the sheet index, or the other ship-stage sheets.
 
 **Pass.** All nine acceptance bullets hold. WebGL stays the closed off-ramp.
