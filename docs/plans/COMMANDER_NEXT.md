@@ -6,28 +6,35 @@ Report Page: https://cursor.com/canvas/store-edda9433-2d33-4b62-8d22-af10c2ff389
 
 Playtest wrap: `docs/playtests/multibot-2026-10-24-sat-grok-l3/README.md`
 
-Tip parent: `feature/grokbot-player` @ `5a8cab96` (GAP 1.5, random StarDock under the v3.11 profile). This change folds the 2026-10-25 Ven GameA lasers into GAP 2.15 and grades that row Match-behind-flag. Class 2 New Cesium 55/482, class 3 Peleus 86/873, and class 5 Aesculapius 59/391 are in `PORT_LASER_BARRAGE`. Non-Fed class 8 Vergil Minor 99/954 stays on `PORT_ATTACK_GAMEA_SAMPLES` and is not written into the class maps. Fed prior class 8 stays FED_PRIOR (def 91 / laser 701) and unwired. Counts are 75 Match, 96 Match-behind-flag, 0 Partial, 0 Ben-decision. 4.10 stays Match-behind-flag in the every-row list. Its October cell still says Partial for duration and was not regraded. `PORT_ATTACK_MODE` and `PORT_ATTACK_ALL_CLASSES_MODE` stay legacy. Parent `ec4bc50b` is Libram key C. The parent change on `5a8cab96` is GAP 1.5 on `STARDOCK_LOCATION_MODE` row 236. Parent `2ba08a05` is the verified deferral tip (#189). The mailbox sha `307f2b07` is not an object on this branch. Parent `fec5d73c` is the verified #188 tip (Grade GAP 12.4 nightly Extern as Match-behind-flag). That parent already contains #187 (GAP 4.8), #186 (R1–R14), #180, the handbook curve (#183), the port-attack samples (#185), attack turns row 228 (#164), ship capacity row 229 (#163), the photon-cloak card row 230 (#161), Tri-Cron row 231 (#160), Grimy tips row 232 (#155), StarDock doors row 233 (#153), the interdictor damp row 234 (#171), the limpet and rename capture (#154), the full TWSTATS capture (#157), the October Missing-cell close (#173), and the leftover grades (#181). `SELF_DESTRUCT_PENALTY_MODE` is row 235. GAP 1.5 is Match-behind-flag. Ben approved the Commander recommendation 2026-10-24. Off, StarDock stays in sector 1. On, generation places it in a random ordinary sector. Terra stays sector 1. FedSpace is sectors 1-10 plus that sector. Ben-decision count is 0. Partial count is 0. GAP 4.8 detonation is Match. The shop unit price is Match-behind-flag on `HARDWARE_PRICE_MODE`. No third Armid price was added. GAP 12.4 is Match-behind-flag. No new switch for 12.4. `INACTIVE_USER_MODE` and `INACTIVITY_TIMEOUT_MODE` stay off. Libram key C, Miscellaneous Documents, lists Ferrengi hulls present on a living ship in this game. Keys A and B stay the capture header and an empty line. No ANSI. No Alien Derelict text. `STARDOCK_DOORS_MODE` row 233 is the same switch. The singles bar still takes no credits. The unnamed 47-credit drop stays deferred. Photon duration recommends cabal and the modern manual, 1 second, already `PHOTON_WAVE_DURATION` 1 day-tick.
+Tip parent: `feature/grokbot-player` @ `7a0fcf03` (#193, Fold 2026-10-25 Ven GAP 2.15 lasers). Counts: 75 Match, 96 Match-behind-flag, 0 Partial, 0 Ben-decision. The Dev fidelity backlog is empty (171/171). The October GAP_MAP cell for 4.10 duration is Match-behind-flag, aligned with the every-row list in `docs/plans/gap-map-refresh-v6.md` and with `docs/plans/V311_REMAINING.md`. Duration recommendation is cabal and the modern manual, 1 second. The tip already maps that to `PHOTON_WAVE_DURATION` 1 day-tick. Gypsy 10 seconds and GameA 20 seconds stay recorded. No realtime clock. No duration switch. Limpet, interdictor, and price subgrades were not flipped. `PORT_ATTACK_MODE` and `PORT_ATTACK_ALL_CLASSES_MODE` stay legacy.
 
 ## Standing queue
 
-1. Remaining step before the next Class L ferry is a wt_live redeploy. Player of Games will request that redeploy when about to ferry.
-2. Hotter L3 retest start bank is **2M** credits. Decided by the Commander under Ben's proactive grant.
-3. Ops note: Computer Use seats 1–3 min/action; double-queue re-fire observed. Plan around that for the next multi-bot.
-4. DONE. GAP 6.3 handbook curve is Match-behind-flag on the tip (#183). Do not regress.
-5. DONE. GAP 2.15 lasers are in. Grade is Match-behind-flag. Classes 2, 3, and 5 are 482, 873, and 391 in `PORT_LASER_BARRAGE` (defs 55, 86, 59). Vergil Minor laser 954 stays sample-list only. Engine class 8 maps are untouched. Fed prior class 8 stays FED_PRIOR and unwired. Do not regress classes 1, 4, 6, and 7 (46/337, 110/1419, 98/598, 98/1121). Tip parent `5a8cab96`.
-6. DONE. R1–R14 from `docs/plans/V311_RULINGS_FOR_BEN.md` are adopted. Grades are in `docs/plans/gap-map-refresh-v6.md`.
-7. DONE. GAP 4.8 detonation is Match. Shop unit price is Match-behind-flag on `HARDWARE_PRICE_MODE` (stored 100, live card 1,000). No third price.
-8. DONE. GAP 12.4 is Match-behind-flag (`fec5d73c`). The printed Extern and midnight jobs already run from `runner.tick_day`. Collisions, Class 0 and Class 9 rebuilds, inactive deletion, and the lobby timeout stay on switches that already exist. No new switch. Do not regress `INACTIVE_USER_MODE` or `INACTIVITY_TIMEOUT_MODE`.
-9. The merge stack is cleared. Drafts #25, #28, #37, #82, #99, and #103 stay draft and out of merge order.
-10. DONE as a deferral (`2ba08a05`). A singles-bar price and a named 47-credit drop are not printed. The mailbox sha `307f2b07` is not an object on this branch. Quotes are in `V311_REMAINING.md` 1.8 and `V311_SOURCE_CONFLICTS.md`. Photon duration (GAP 4.10): recommend cabal and the modern manual, 1 second, for v3.11. That reading is already `PHOTON_WAVE_DURATION` 1 day-tick. Gypsy 10 seconds and GameA 20 seconds stay recorded. No duration switch.
-11. DONE (`ec4bc50b`). Libram key C (Miscellaneous Documents) lists Ferrengi hulls present on a living ship. Plain text from `FERRENGI_HULL_SPECS` and the live odds chart. Keys A and B stay the capture header and one empty line. No new switch. No ANSI. No Alien Derelict text. `STARDOCK_DOORS_MODE` row 233 stays legacy by default.
-12. DONE. GAP 1.5 is Match-behind-flag on `STARDOCK_LOCATION_MODE` row 236. Ben approved the Commander recommendation 2026-10-24. A stored game keeps StarDock in sector 1. `V311_PROFILE=v311` places it in a random ordinary sector at generation. Terra stays sector 1. FedSpace is sectors 1-10 plus that sector. The string `1` does not turn the switch on. Do not invent a fixed sector, Alien Derelict text, bar prices, or lasers.
+The Dev fidelity backlog is empty (171/171). No standing GAP item is left for the next Dev session.
+
+PoG (Player of Games), not Dev:
+
+1. wt_live redeploy, on request. The Class L ferry waits until Player of Games asks for that redeploy.
+2. Hotter L3 retest start bank is **2M** credits and is already live on their side. Decided by the Commander under Ben's proactive grant.
+
+Ops note, not a fidelity gap: Computer Use seats 1–3 min/action; double-queue re-fire observed. Plan around that for the next multi-bot.
+
+History (DONE GAP items, collapsed; do not reopen as fidelity work): GAP 2.15 lasers are Match-behind-flag on #193. Classes 2, 3, and 5 are 482, 873, and 391 in `PORT_LASER_BARRAGE` (defs 55, 86, 59). Vergil Minor laser 954 stays sample-list only. Classes 1, 4, 6, and 7 stay 46/337, 110/1419, 98/598, and 98/1121. Fed prior class 8 stays FED_PRIOR and unwired. GAP 1.5 is Match-behind-flag on `STARDOCK_LOCATION_MODE` row 236 (`5a8cab96`; Ben approved the Commander recommendation 2026-10-24). GAP 6.3 handbook curve is Match-behind-flag (#183). GAP 4.8 detonation is Match. The shop unit price is Match-behind-flag on `HARDWARE_PRICE_MODE` (stored 100, live card 1,000). No third price. GAP 12.4 is Match-behind-flag (`fec5d73c`). No new switch. `INACTIVE_USER_MODE` and `INACTIVITY_TIMEOUT_MODE` stay off. R1–R14 are adopted. Libram key C is `ec4bc50b`. The singles-bar price and the unnamed 47-credit drop stay deferred (`2ba08a05`). The mailbox sha `307f2b07` is not an object on this branch. Parent chain before #193: `5a8cab96`, `ec4bc50b`, `2ba08a05`, `fec5d73c`.
+
+## Next Dev (product / hygiene)
+
+Listed only. Not launched from this mailbox.
+
+a) P1 cockpit ship-stage spike. Merchant Cruiser and Imperial StarShip only. SVG path from the P0 pack: `docs/plans/cockpit-ship-stage-p0.md`, `docs/plans/cockpit-ship-stage-p0-render.md`, `docs/plans/cockpit-ship-stage-p0-fx.md`, and `docs/plans/cockpit-ship-stage-p0-silhouette-bible.md`. Fighter markers are 100:1 (`max(1, ceil(n / 100))` when n is at least 1). Ben-gated product code. Do not implement from this note.
+
+b) Optional COMMS cleanup. Keep COMMS for player channels. `TRADE_FAILED` and other action outcomes stay in verdict / lastResult. They are not Fed Comm.
+
+c) Drafts #25, #28, #37, #82, #99, and #103 stay draft and out of merge order.
 
 ## Blockers
 
-- The Class L ferry waits on the wt_live redeploy. Player of Games requests it.
-- Ben-decision is closed. GAP 1.5 is Match-behind-flag on `STARDOCK_LOCATION_MODE` row 236.
-- Drafts #25, #28, #37, #82, #99, and #103 stay open and out of merge order. They are not the next merge.
+- PoG: the Class L ferry waits on the wt_live redeploy. Player of Games requests it.
+- Dev fidelity: none. 171 of 171 rows are Match or Match-behind-flag.
 
 ## Adopted R1–R14
 
@@ -69,7 +76,7 @@ CONFIRMED this pass: class 2 New Cesium sector 160, def 55 / laser 482 / plasma;
 
 Unchanged: class 1 H'Catha 46/337, class 4 Duriron Minor 110/1419, class 6 Khancuhn Primus 98/598 KNOWN, class 7 Balmer 98/1121. Class 0 Sol and class 9 StarDock stay BLOCKED. Fed prior class 8 REPORT def 91 / laser 701 / class 3 shielding stays FED_PRIOR and unwired. Variance samples Leipzig, Mastro, Anaxagoras Primus, and Mirador Outpost stay def-only.
 
-`PORT_LASER_BARRAGE` gained 482, 873, and 391 for classes 2, 3, and 5. Class 8 was not written into `PORT_DEFENSE_RATING` or `PORT_LASER_BARRAGE`. `_port_attack_gamea_row` still returns None for class 8. GAP 2.15 is Match-behind-flag. Counted grades: 75 Match, 96 Match-behind-flag, 0 Partial, 0 Ben-decision. 4.10 stays Match-behind-flag in `gap-map-refresh-v6.md`. The October GAP_MAP cell for 4.10 still says Partial for duration and was left as written.
+`PORT_LASER_BARRAGE` gained 482, 873, and 391 for classes 2, 3, and 5. Class 8 was not written into `PORT_DEFENSE_RATING` or `PORT_LASER_BARRAGE`. `_port_attack_gamea_row` still returns None for class 8. GAP 2.15 is Match-behind-flag. Counted grades: 75 Match, 96 Match-behind-flag, 0 Partial, 0 Ben-decision. 4.10 stays Match-behind-flag in `gap-map-refresh-v6.md`. At #193 the October GAP_MAP cell for 4.10 duration still said Partial and was left as written. This mailbox refresh aligns that cell to Match-behind-flag.
 
 ## 2026-10-24 — GAP 2.15 Ven GameA port-attack ratings
 
