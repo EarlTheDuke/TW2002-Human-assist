@@ -10,6 +10,10 @@ SVG path (`buildHullFaces` / `projectFace`). WebGL only if the P1 spike fails th
 
 P1 is the spike named in the P0 pack and the render memo. Open the sheet below that matches the cut you are on.
 
+## P1
+
+- [P1 acceptance](cockpit-ship-stage-p1-acceptance.md) — Pass / Fail / Hold-WebGL read-test for the Merchant Cruiser and Imperial StarShip SVG spike.
+
 ## P0
 
 - [P0 pack](cockpit-ship-stage-p0.md) — Parent: today's picture, sticky rules, phased done-when, and the defaults Ben can override.
@@ -23,6 +27,7 @@ P1 is the spike named in the P0 pack and the render memo. Open the sheet below t
 - [Fleet order](cockpit-ship-stage-p1b-fleet-order.md) — Batch sequence for the other 15 player hulls, one batch at a time, after the spike merges.
 - [Next hulls](cockpit-ship-stage-p1b-next-hulls.md) — Mesh contract for Scout Marauder, Merchant Freighter, BattleShip, and Corporate FlagShip.
 - [Batch 2 haulers](cockpit-ship-stage-p1b-batch2-haulers.md) — Mesh contract for CargoTran, Colonial Transport, and Taurean Mule, after that four-hull wave.
+- [Batch 3 guns](cockpit-ship-stage-p1b-batch3.md) — Gun wave: Missile Frigate and Havoc GunStar; BattleShip re-shot.
 
 ## P2
 
