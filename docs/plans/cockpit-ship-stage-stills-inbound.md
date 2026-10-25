@@ -1,6 +1,6 @@
 # Cockpit ship-stage stills — inbound map
 
-Docs only. This sheet lists which planning files on `feature/grokbot-player` @ `69f5118a` (#369) already point at the [stills inventory](stills/README.md) (#344). It does not stamp Pass. It adds no PNG. It leaves every other sheet as this tip left it.
+Docs only. This sheet lists which planning files on `feature/grokbot-player` @ `223dacfa` (#370) already point at the [stills inventory](stills/README.md) (#344). It does not stamp Pass. It adds no PNG. It leaves every other sheet as this tip left it.
 
 The inventory table has eight directories. The new row is [p1-merchant-imperial](stills/p1-merchant-imperial/) (#357): Merchant Cruiser and Imperial StarShip. That row is a TBD scaffold. It holds a placeholder README and no PNG.
 
@@ -50,7 +50,7 @@ Scan rule: a hit is the literal string `stills/README.md` under `docs/plans/`. A
 - [BattleShip and FlagShip acceptance](cockpit-ship-stage-p1b-battleship-flagship-acceptance.md) — dedicated link, directory `p1b-battleship-flagship`.
 - [Batch 1 acceptance](cockpit-ship-stage-p1b-batch1-acceptance.md) — dedicated link, directory `p1b-batch1-escape-orion`.
 - [Batch 2 haulers acceptance](cockpit-ship-stage-p1b-batch2-haulers-acceptance.md) — dedicated link, directory `p1b-batch2-haulers`.
-- [Batch 3 acceptance](cockpit-ship-stage-p1b-batch3-acceptance.md) — dedicated link, directory `p1b-batch3-guns` (#364).
+- [Batch 3 acceptance](cockpit-ship-stage-p1b-batch3-acceptance.md) — dedicated link, directory `p1b-batch3-guns` (#364). Pass stamped (#370) on product #363 (`5ebec08f`). The Pass paragraph also names the inventory path. Not a candidate.
 - [Batch 4 acceptance](cockpit-ship-stage-p1b-batch4-acceptance.md) — dedicated link, directory `p1b-batch4-dish` (#364).
 - [Batch 5 acceptance](cockpit-ship-stage-p1b-batch5-acceptance.md) — dedicated link, directory `p1b-batch5-brick` (#364).
 
