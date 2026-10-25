@@ -1,6 +1,6 @@
 # Cockpit ship stage — sheet index
 
-Finder for the ship-stage planning pack. Docs only. Tip: `feature/grokbot-player` @ `1c3fd84b`. COMMANDER_NEXT just landed through #243 (#245). #251 refreshed COMMANDER_NEXT through #250. #252 moved the tip to `b95e4219`.
+Finder for the ship-stage planning pack. Docs only. Tip: `feature/grokbot-player` @ `336883dc`. COMMANDER_NEXT just landed through #243 (#245). #251 refreshed COMMANDER_NEXT through #250. #252 moved the tip to `b95e4219`. #253 refreshed the four-hull tip to `1c3fd84b`.
 
 ## Product order
 
