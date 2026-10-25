@@ -1,6 +1,6 @@
 # Cockpit ship stage — sheet index
 
-Finder for the ship-stage planning pack. Docs only. Tip: `feature/grokbot-player` @ `61422328`. The mailbox tip moved with #230 and #232; COMMANDER_NEXT may lag until its own refresh.
+Finder for the ship-stage planning pack. Docs only. Tip: `feature/grokbot-player` @ `3798d2aa`. COMMANDER_NEXT just landed through #233 (#234).
 
 ## Product order
 
@@ -31,6 +31,8 @@ P1 is the spike named in the P0 pack and the render memo. Open the sheet below t
 - [Cut 2 acceptance](cockpit-ship-stage-p1b-battleship-flagship-acceptance.md) — Pass / Fail / Hold-WebGL for BattleShip + Corporate FlagShip (#227).
 - [Batch 1 acceptance](cockpit-ship-stage-p1b-batch1-acceptance.md) — Pass / Fail / Hold-WebGL read-test for Escape Pod + T'Khasi Orion (#230).
 - [Batch 2 haulers acceptance](cockpit-ship-stage-p1b-batch2-haulers-acceptance.md) — Pass / Fail / Hold-WebGL for CargoTran + Colonial Transport + Taurean Mule (#232).
+- [Batch 3 guns acceptance](cockpit-ship-stage-p1b-batch3-acceptance.md) — Pass / Fail / Hold-WebGL for Missile Frigate + Havoc GunStar (#235).
+- [Batch 4 dish/X acceptance](cockpit-ship-stage-p1b-batch4-acceptance.md) — Pass / Fail / Hold-WebGL for Star Master + Constellation (+ FlagShip re-shot) (#236).
 - [Fleet order](cockpit-ship-stage-p1b-fleet-order.md) — Batch sequence for the other 15 player hulls, one batch at a time, after the spike merges.
 - [Next hulls](cockpit-ship-stage-p1b-next-hulls.md) — Mesh contract for Scout Marauder, Merchant Freighter, BattleShip, and Corporate FlagShip.
 - [Batch 1 remainder](cockpit-ship-stage-p1b-batch1-remainder.md) — Escape Pod and T'Khasi Orion; Scout re-shot.
