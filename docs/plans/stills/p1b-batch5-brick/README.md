@@ -1,8 +1,10 @@
 # p1b-batch5-brick
 
-Tholian Sentinel and Interdictor Cruiser product stills. 30 PNGs. This directory does not stamp Pass.
+Tholian Sentinel and Interdictor Cruiser product stills. 30 PNGs from product #402. This directory does not stamp Pass.
 
-Sheet: [batch 5 brick product](../../cockpit-ship-stage-p1b-batch5-brick-product.md).
+Measured on #402. Tholian Sentinel: 169 faces, point hash `7650706109f94fb1`, mint `#62f0c8`. Interdictor Cruiser: 341 faces, point hash `c3d45f327a3c6564`, pink `#ff5cab`, bounding radius 113.9. Pass is [batch 5 acceptance](../../cockpit-ship-stage-p1b-batch5-acceptance.md) #405 on product #402. The P3 mock (#403) is samples only. The P3 gate stays closed. #404 is a standalone P2 FX sample and does not open the wire.
+
+Sheet: [batch 5 brick product](../../cockpit-ship-stage-p1b-batch5-brick-product.md) (#402).
 
 Canonical pose is yaw `0.82`, pitch `0.5`. Head-on is yaw `-1.35`, pitch `0.2`. Side is yaw `1.35`, pitch `0.18`. Singles at 140px are 215×140. Canonical singles and the phone still are 400×260. Hero singles are 677×440. Pairs are 430×140, and the hero pairs are 1354×440.
 
