@@ -2,6 +2,8 @@
 
 Parent: [cockpit-ship-stage-p0.md](cockpit-ship-stage-p0.md).
 
+The stills inventory is [stills/README.md](stills/README.md) (#344).
+
 These looks are invented for this cockpit. The classic top-and-front ANSI pair for each hull is **UNVERIFIED** and is not a reference. Do not open, trace, or approximate EIS prints, EIS wallpaper, or Drew Markham ANSI. Role numbers are `SHIP_SPECS_TW2002` and `POD_SPEC` in `src/tw2k/engine/constants.py`. When `ship_roster_live()` is on, `SHIP_ROSTER_LIVE_TABLE` replaces cost, grant holds, hold ceiling, max fighters, turns per warp, and odds. Shields, photons, and mines stay on the base spec. Turns per warp match across the two tables. Where the grant or the fighter cap differs, the entry says so. The picture follows the job (fast, hauler, capital, fortress), not the grant. Accent hexes are the ones already on `SHIPS` in `web/redesign.js`, so the name plate and the hull stay the same colour. Kit names line up with `PARTS` / `detail` in `web/hull-meshes.js` so a later mesh pass can grow those parts instead of inventing a second vocabulary.
 
 The current mesh is the thing this bible replaces as a picture. It is four loft stations, an 8-sided skin, and one small role part. On the Merchant that is 153 faces, an AABB of about 162×32×64, and a bounding radius of about 93. `fighterSlots` starts at radius 56, which is inside that body. Empty shields (`shields / shield_cap < 0.35`) run the hull through the red damage wash in `projectFace`. The attached solid view is that wash on a sausage, with ticks on the hull.
