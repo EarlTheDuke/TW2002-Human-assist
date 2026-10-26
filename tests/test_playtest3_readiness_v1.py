@@ -983,7 +983,7 @@ def _step(page, seat: str, row: dict[str, bool], lobby, gid: str, notes: dict[st
             notes[f"{seat}-dock"] = _here(page)[:180]
             page.screenshot(path=str(SHOTS / f"08-stardock-{seat}.png"))
             return
-        _engage(page, 1)
+        _go_to_dock(page)
         return
     if row["dock"] and not row["gear"]:
         if _has_text(page, "#here button", "StarDock: buy gear"):
@@ -992,7 +992,7 @@ def _step(page, seat: str, row: dict[str, bool], lobby, gid: str, notes: dict[st
                 notes[f"{seat}-gear"] = _result(page)[:180]
             return
         if not _at_dock(page):
-            _engage(page, 1)
+            _go_to_dock(page)
         return
     if not row["trade"]:
         here = _sector(page)
@@ -1028,15 +1028,45 @@ def _step(page, seat: str, row: dict[str, bool], lobby, gid: str, notes: dict[st
         if target is None:
             raise AssertionError("no code bot on the board")
         if _sector(page) == str(target):
+            if "StarDock" in _here(page):
+                # StarDock is protected, and a v3.11 game draws it outside FedSpace (#192),
+                # where the code bot now shops. Wait for the bot to leave.
+                _progress(f"{seat} code bot is at StarDock {target}; waiting for it to leave")
+                page.keyboard.press(".")
+                return
             raise AssertionError(f"{seat} is in {target} but cannot attack the code bot: {_here(page)[:240]}")
         _engage(page, target)
         return
     page.keyboard.press(".")
 
 
+_DOCK_COURSE = "button[data-kind=stardock_course]"
+
+
 def _at_dock(page) -> bool:
+    # v3.11 lobby games draw StarDock's sector (GAP 1.5, #192). Sector 1 is then Terra,
+    # and Terra's "Plot course to StarDock (sector N)" button is not the dock itself.
+    if page.locator(_DOCK_COURSE).count():
+        return False
     text = _here(page)
     return "StarDock" in text or _sector(page) == "1"
+
+
+def _go_to_dock(page) -> bool:
+    """Head for StarDock: Terra (sector 1) shows the course when the dock was drawn elsewhere."""
+    if not page.locator(_DOCK_COURSE).count():
+        return _engage(page, 1)
+    before = _result(page)
+    _js_click(page, _DOCK_COURSE)
+    try:
+        page.locator("[data-testid=engage]").wait_for(timeout=8_000)
+    except Exception:
+        _progress(f"dock course no engage button result={_result(page)[:140]!r}")
+        return False
+    _js_click(page, "[data-testid=engage]")
+    outcome = _settle(page, before, 40)
+    _progress(f"engage StarDock -> sector={_sector(page)} result={outcome[:140]!r}")
+    return "refused" not in outcome.lower()
 
 
 def _engage(page, sector: int) -> bool:
