@@ -149,7 +149,7 @@ def _at_dock(universe: Universe, player_id: str) -> tuple[bool, str | None]:
     if player.planet_landed is not None:
         return False, "you are on a planet"
     if int(player.sector_id) != int(K.stardock_sector_of(universe)):
-        return False, "that door is at StarDock"
+        return False, K.stardock_gate_reason(universe, "that door is at StarDock")
     return True, None
 
 
@@ -193,7 +193,7 @@ def handle_library(universe: Universe, pid: str, action: Action) -> ActionResult
         return ActionResult(ok=False, error="unsupported action")
     ok, why = _at_dock(universe, pid)
     if not ok:
-        return ActionResult(ok=False, error=why or "that door is at StarDock")
+        return ActionResult(ok=False, error=why or K.stardock_gate_reason(universe, "that door is at StarDock"))
     key = _archive_key(action)
     labels = {letter: label for letter, label in ARCHIVES}
     if key not in labels:
@@ -224,7 +224,7 @@ def handle_singles_bar(universe: Universe, pid: str, action: Action) -> ActionRe
         return ActionResult(ok=False, error="unsupported action")
     ok, why = _at_dock(universe, pid)
     if not ok:
-        return ActionResult(ok=False, error=why or "that door is at StarDock")
+        return ActionResult(ok=False, error=why or K.stardock_gate_reason(universe, "that door is at StarDock"))
     if not _confirmed((action.args or {}).get("confirm")):
         return ActionResult(ok=True, turns_spent=0)
     player = universe.players[pid]
