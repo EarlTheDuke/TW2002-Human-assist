@@ -51,6 +51,21 @@ def _open(page, host, width: int, height: int):
     return page
 
 
+def _move_p2(host, sid: int) -> None:
+    """Move P2 and refresh its observation: v3.11 draws StarDock's sector, so Terra (1) is elsewhere."""
+    from tw2k.engine.observation import build_observation
+
+    u = host.runner.state.universe
+    me = u.players["P2"]
+    u.sectors[me.sector_id].occupant_ids.remove("P2")
+    me.sector_id = sid
+    u.sectors[sid].occupant_ids.append("P2")
+    me.known_sectors.add(sid)
+    for agent in host.runner.state.agents:
+        if getattr(agent, "player_id", None) == "P2" and getattr(agent, "current_observation", None) is not None:
+            agent.current_observation = build_observation(u, "P2")
+
+
 @pytest.fixture()
 def browser():
     sync_api = pytest.importorskip("playwright.sync_api")
@@ -75,6 +90,7 @@ def test_terra_gear_rankings_and_a_tokenless_seat(browser, tmp_path) -> None:
                 assert u.terra_colonists and u.terra_colonists > 0
                 ctx = browser.new_context()
                 page = ctx.new_page()
+                _move_p2(host, K.stardock_sector_of(u))
                 _open(page, host, 1280, 800)
 
                 page.get_by_role("button", name="Shipyards").click()
@@ -83,6 +99,7 @@ def test_terra_gear_rankings_and_a_tokenless_seat(browser, tmp_path) -> None:
                 assert receipt.startswith("We'll give you ")
                 assert "Holds " in receipt and "go with the old ship" in receipt
                 page.keyboard.press("Escape")
+                _move_p2(host, K.STARDOCK_SECTOR)  # Terra is sector 1
 
                 def _terra(width: int, height: int, stem: str) -> None:
                     page.set_viewport_size({"width": width, "height": height})
@@ -125,6 +142,7 @@ def test_terra_gear_rankings_and_a_tokenless_seat(browser, tmp_path) -> None:
                     timeout=20_000,
                 )
                 u.players["P2"].credits = 300
+                _move_p2(host, K.stardock_sector_of(u))
                 _my_move(page)
                 page.set_viewport_size({"width": 1280, "height": 800})
                 page.get_by_role("button", name="StarDock: buy gear").click()

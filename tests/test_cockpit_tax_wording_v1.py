@@ -97,7 +97,7 @@ def _warn(page, host, width, height, stem):
     u = host.runner.state.universe
     me = u.players["P2"]
     me.planet_landed = None
-    me.sector_id = int(K.STARDOCK_SECTOR)
+    me.sector_id = K.stardock_sector_of(u)  # v3.11 draws StarDock's sector
     me.credits = 90_000
     me.bank_balance = 50_000
     _show(page, host)
