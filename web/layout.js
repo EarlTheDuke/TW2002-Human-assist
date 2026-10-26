@@ -8,7 +8,7 @@
 (function () {
   "use strict";
   const PANELS = [
-    ["viewport", "Viewport"],
+    ["sectorReport", "Sector report"],
     ["nav", "Nav computer"],
     ["ship", "Ship"],
     ["context", "Here"],
@@ -70,10 +70,12 @@
   function sanitize(data) {
     const next = blank();
     if (!data || data.v !== 1) return next;
-    const order = Array.isArray(data.order) ? data.order.filter((id) => ORDER.indexOf(id) >= 0) : [];
+    const incoming = Array.isArray(data.order) ? data.order.map((id) => (id === "viewport" ? "sectorReport" : id)) : [];
+    const order = incoming.filter((id) => ORDER.indexOf(id) >= 0);
     ORDER.forEach((id) => { if (order.indexOf(id) < 0) order.push(id); });
     next.order = order.slice(0, ORDER.length);
-    next.hidden = ORDER.filter((id) => Array.isArray(data.hidden) && data.hidden.indexOf(id) >= 0);
+    const hidden = Array.isArray(data.hidden) ? data.hidden.map((id) => (id === "viewport" ? "sectorReport" : id)) : [];
+    next.hidden = ORDER.filter((id) => hidden.indexOf(id) >= 0);
     if (next.hidden.length >= ORDER.length) next.hidden = next.hidden.slice(0, ORDER.length - 1);
     next.cols = clampTracks(data.cols, DEFAULT_COLS);
     next.rows = clampTracks(data.rows, DEFAULT_ROWS);

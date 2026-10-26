@@ -270,8 +270,8 @@ def test_custom_layout_three_viewports(tmp_path: Path, monkeypatch) -> None:
             assert phone.locator("#term").is_visible()
             assert phone_back["boost"] == "0"
             assert abs(phone_back["h"] - phone_fresh["h"]) < 24
-            phone.locator("[data-testid=show-viewport]").uncheck()
-            phone.wait_for_function("() => document.getElementById('viewport').hidden")
+            phone.locator("[data-testid=show-sectorReport]").uncheck()
+            phone.wait_for_function("() => document.getElementById('sectorReport').hidden")
             phone.locator("[data-testid=layout-close]").click()
             assert phone.locator("[data-testid=layout-open]").is_visible()
             _fits(phone)

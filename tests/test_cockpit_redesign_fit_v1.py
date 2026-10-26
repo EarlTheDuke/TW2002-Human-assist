@@ -13,7 +13,7 @@ TOK = "fit-e2e-token-p2-000000000000000"
 INSIDE = """
 () => {
   const vh = window.innerHeight;
-  const ids = ["viewport", "nav", "ship", "context", "term", "keys"];
+  const ids = ["sectorReport", "nav", "ship", "context", "term", "keys"];
   const boxes = {};
   for (const id of ids) {
     const r = document.getElementById(id).getBoundingClientRect();

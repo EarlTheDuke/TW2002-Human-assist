@@ -22,14 +22,14 @@ body{display:flex;flex-direction:column;height:100vh;overflow:hidden}
 #cmdline:has(#turnsLeftToday:not([hidden])):has(#dayEnds:not([hidden])){margin-bottom:3em}
 @keyframes blink{50%{border-color:var(--br);color:var(--br)}}
 select{background:#000;color:var(--c);border:1px solid var(--dc);font:inherit;margin-left:auto}
-#deck{display:grid;gap:8px;padding:8px;min-height:0;flex:1;position:relative;grid-template-columns:1.15fr 1fr 0.95fr;grid-template-rows:minmax(0,1.35fr) minmax(110px,0.7fr);grid-template-areas:"view nav ship" "here here term"}
+#deck{display:grid;gap:8px;padding:8px;min-height:0;min-width:0;flex:1;position:relative;grid-template-columns:minmax(0,1.15fr) minmax(0,1fr) minmax(0,0.95fr);grid-template-rows:minmax(0,1.35fr) minmax(110px,0.7fr);grid-template-areas:"view nav ship" "here here term"}
 .panel{border:1px solid var(--b);background:#000;position:relative;min-width:0;min-height:0;overflow:auto}
 .panel>h2{margin:0;padding:4px 8px;font-size:13px;font-weight:normal;color:var(--w);background:linear-gradient(90deg,#0000aa,#000 70%);letter-spacing:1px}
-#viewport{grid-area:view}#nav{grid-area:nav;display:flex;flex-direction:column;overflow:hidden}#ship{grid-area:ship;display:flex;flex-direction:column;overflow:hidden}#context{grid-area:here}#term{grid-area:term}
+#sectorReport{grid-area:view;display:flex;flex-direction:column;overflow:auto;min-width:0}#nav{grid-area:nav;display:flex;flex-direction:column;overflow:hidden}#ship{grid-area:ship;display:flex;flex-direction:column;overflow:hidden}#context{grid-area:here}#term{grid-area:term}
 #vpScreen{position:relative;height:100%;min-height:0;overflow:hidden;background:#000}
 #sceneImg{width:100%;height:100%;object-fit:cover;filter:saturate(1.1) contrast(1.05)}
 .scan{position:absolute;inset:0;background:repeating-linear-gradient(0deg,rgba(0,0,0,.18) 0 2px,transparent 2px 4px);pointer-events:none}
-#sectorText{position:absolute;left:0;right:0;bottom:0;padding:10px 14px;background:linear-gradient(transparent,rgba(0,0,0,.92) 30%);font-size:15px;white-space:pre-wrap}
+#sectorText{position:static;min-width:0;max-width:100%;padding:10px 14px;background:none;font-size:15px;white-space:pre-wrap;overflow-wrap:anywhere}
 #sceneTag{position:absolute;top:8px;left:10px;color:var(--y);background:rgba(0,0,0,.6);padding:2px 6px;font-size:12px}
 #map{width:100%;flex:1 1 auto;height:auto;min-height:0;display:block;background:radial-gradient(#000016,#000)}
 #map .lane{stroke:var(--dc);stroke-width:1.2;opacity:.55}
@@ -47,7 +47,10 @@ select{background:#000;color:var(--c);border:1px solid var(--dc);font:inherit;ma
 #warps{flex:0 0 auto;padding:6px 10px;border-top:1px solid var(--b)}
 #warps button,.verb,#keys button{font:inherit;background:#000;border:1px solid var(--dc);color:var(--c);padding:4px 10px;margin:2px;cursor:pointer}
 #warps button:hover,.verb:hover,#keys button:hover{background:var(--b);color:var(--w)}
-#shipSvg{width:100%;height:auto;aspect-ratio:400/260;flex:0 0 auto;max-height:140px;display:block;background:radial-gradient(ellipse at 72% 78%,rgba(22,52,96,.45),transparent 46%),radial-gradient(ellipse at 18% 20%,rgba(72,28,96,.28),transparent 38%),radial-gradient(ellipse at 50% 45%,#0c2040,#000 72%);overflow:hidden;cursor:grab;touch-action:pan-y;box-shadow:inset 0 0 28px 8px rgba(0,0,0,.45)}
+.stage-stack{position:relative;flex:0 0 auto;min-width:0}
+#stageFx{position:absolute;inset:0;z-index:4;pointer-events:none}
+#stageTell{position:absolute;inset:0;width:100%;height:100%;display:block;pointer-events:none}
+#shipSvg{position:relative;z-index:1;width:100%;height:auto;aspect-ratio:400/260;flex:0 0 auto;max-height:140px;display:block;background:radial-gradient(ellipse at 72% 78%,rgba(22,52,96,.45),transparent 46%),radial-gradient(ellipse at 18% 20%,rgba(72,28,96,.28),transparent 38%),radial-gradient(ellipse at 50% 45%,#0c2040,#000 72%);overflow:hidden;cursor:grab;touch-action:pan-y;box-shadow:inset 0 0 28px 8px rgba(0,0,0,.45)}
 /* 1280x800 leaves the cargo row 5px past the card, and the fleet legend adds another 9px. A 124px picture keeps both inside. */
 @media (max-height:820px) and (min-height:781px) and (min-width:701px){#shipSvg{max-height:124px;height:124px}}
 @media (min-height:900px){#shipSvg{max-height:164px}}
@@ -58,6 +61,7 @@ select{background:#000;color:var(--c);border:1px solid var(--dc);font:inherit;ma
 @media (prefers-reduced-motion:reduce){#shipSvg .hull-float{animation:none}}
 @media (max-width:700px){#shipSvg .hull-float{animation:none}}
 body.cu-seat #shipSvg .hull-float{animation:none}
+#shipSvg[data-dip="gas"] .hull-float{animation:none}
 #shipSvg.is-drag{cursor:grabbing}
 #fighterRow,#shipStats,#holds{flex:0 0 auto}
 #shipStats{padding:6px 10px;display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,11em),1fr));gap:2px 14px;font-size:13px}
@@ -100,7 +104,7 @@ body.deck-tuned #commsCard>h2,body.deck-tuned #activityCard>h2{font-size:var(--c
 #menu .row{padding:2px 0}#menu .row kbd{color:var(--y);font:inherit}
 #menu input{background:#000;color:var(--y);border:1px solid var(--c);font:inherit;padding:4px 8px}
 @media (max-width:1366px) and (min-width:701px){#cmdline{flex-wrap:nowrap;gap:2px 8px;padding:4px 8px}.title-frame{font-size:9px;line-height:1.05;padding:0 4px}.stat b{font-size:14px}.stat i{font-size:9px;margin-right:3px}.prompt{font-size:12px}.manual-link{margin-left:0}}
-@media (max-width:1100px){#deck{grid-template-columns:1fr 1fr;grid-template-areas:"view nav" "ship here" "term term"}}
+@media (max-width:1100px){#deck{grid-template-columns:minmax(0,1fr) minmax(0,1fr);grid-template-areas:"view nav" "ship here" "term term"}}
 @media (max-width:700px){body{font-size:12px;overflow:hidden;height:100vh}.hide-s{display:none}
  .title-frame{font-size:9px;line-height:1.02;padding:0 3px}
  #cmdline{gap:1px 6px;padding:2px 4px;flex:0 0 auto}.stat b{font-size:13px}.prompt{font-size:11px}
@@ -131,6 +135,7 @@ body.busy{cursor:progress}body.busy #keys,body.busy #here{opacity:.6}
 #viewport.fx-warp #sceneImg{animation:warp .7s ease-out}#viewport.fx-trade #scene{animation:trade .6s}
 @keyframes warp{0%{transform:scale(1.25);filter:blur(6px) brightness(2) hue-rotate(60deg)}100%{transform:none;filter:none}}
 #warpClip{position:absolute;inset:0;z-index:4;background:#000;overflow:hidden;pointer-events:none}
+#warpClip[data-stage-skip="1"]{background:transparent;inset:auto;top:auto;left:auto;right:8px;bottom:8px;width:auto;height:auto;overflow:visible;z-index:6}
 #warpSvg{width:100%;height:100%;display:block;background:radial-gradient(ellipse at 42% 50%,color-mix(in srgb,var(--warp-flash,#9ecbff) 26%,#071428),#000 72%)}
 #warpVideo{position:absolute;inset:0;z-index:5;width:100%;height:100%;object-fit:cover;background:#000}
 #warpSkip{position:absolute;right:8px;bottom:8px;z-index:6;pointer-events:auto;font:inherit;background:#000;color:var(--y);border:1px solid var(--dc);padding:2px 8px}
