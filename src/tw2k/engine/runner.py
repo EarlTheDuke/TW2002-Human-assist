@@ -2982,7 +2982,7 @@ def _handle_buy_ship(universe: Universe, pid: str, action: Action) -> ActionResu
         if wants_spare(action):  # SHIP_FLEET.md fl4: buy without trade-in (legacy ignores the arg)
             return buy_spare(universe, pid, str(action.args.get("ship_class") or ""))
     if int(player.sector_id) != int(K.stardock_sector_of(universe)):
-        return ActionResult(ok=False, error="must be at StarDock")
+        return ActionResult(ok=False, error=K.stardock_gate_reason(universe))
     class_key = action.args.get("ship_class")
     spec = K.ship_specs().get(class_key or "")
     if spec is None:
@@ -3224,7 +3224,7 @@ def _buy_planet_scanner(universe: Universe, pid: str, qty: int) -> ActionResult:
         return ActionResult(ok=False, error="unknown item 'planet_scanner'")
     player = universe.players[pid]
     if int(player.sector_id) != int(K.stardock_sector_of(universe)):
-        return ActionResult(ok=False, error="must be at StarDock")
+        return ActionResult(ok=False, error=K.stardock_gate_reason(universe))
     if qty != 1:
         return ActionResult(ok=False, error="a ship carries one planet scanner (qty 1)")
     if getattr(player.ship, "planet_scanner", False):
@@ -3277,7 +3277,7 @@ def _handle_corp_create(universe: Universe, pid: str, action: Action) -> ActionR
     if player.corp_ticker is not None:
         return ActionResult(ok=False, error="already in a corporation")
     if int(player.sector_id) != int(K.stardock_sector_of(universe)):
-        return ActionResult(ok=False, error="must be at StarDock")
+        return ActionResult(ok=False, error=K.stardock_gate_reason(universe))
     if player.credits < K.CORP_FORMATION_COST:
         return ActionResult(ok=False, error=f"need {K.CORP_FORMATION_COST} cr to incorporate")
     ticker = (action.args.get("ticker") or "").upper().strip()[:3]

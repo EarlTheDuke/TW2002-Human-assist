@@ -109,6 +109,17 @@ def stardock_sector_of(universe) -> int:
     return int(stored)
 
 
+def stardock_gate_reason(universe, lead: str = "must be at StarDock") -> str:
+    """Why a StarDock service is closed from this sector.
+
+    The trader is at StarDock when their sector is the one that holds the
+    dock. That is sector 1 until STARDOCK_LOCATION_MODE, or the v311 profile,
+    moves it. Standing in that sector is the whole gate. There is no second
+    entered or docked flag.
+    """
+    return f"{lead} (sector {int(stardock_sector_of(universe))})"
+
+
 def fedspace_sectors_of(universe=None) -> set[int]:
     """Sectors 1-10, plus the StarDock sector when that sector is outside 1-10."""
     base = set(FEDSPACE_SECTORS)

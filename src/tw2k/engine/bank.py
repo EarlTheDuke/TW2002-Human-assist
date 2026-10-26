@@ -30,7 +30,7 @@ def guard(universe: Universe, player: Player) -> str | None:
     if player.planet_landed is not None:
         return "lift off first"
     if int(player.sector_id) != int(K.stardock_sector_of(universe)):
-        return "the bank is at StarDock"
+        return K.stardock_gate_reason(universe, "the bank is at StarDock")
     return None
 
 

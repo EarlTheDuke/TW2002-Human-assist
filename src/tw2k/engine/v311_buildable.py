@@ -74,7 +74,7 @@ def _hall_block(universe: Universe) -> dict[str, Any]:
 def federation_hall_spec(universe: Universe, player_id: str) -> tuple[bool, str | None, dict]:
     player = universe.players[player_id]
     if int(player.sector_id) != int(K.stardock_sector_of(universe)):
-        return False, "must be at StarDock", {}
+        return False, K.stardock_gate_reason(universe), {}
     if player.planet_landed is not None:
         return False, "lift off first", {}
     return True, None, {"hall": _hall_block(universe)}
@@ -85,7 +85,7 @@ def handle_federation_hall(universe: Universe, pid: str, action: Action) -> Acti
         return ActionResult(ok=False, error="unsupported action")
     ok, why, _params = federation_hall_spec(universe, pid)
     if not ok:
-        return ActionResult(ok=False, error=why or "must be at StarDock")
+        return ActionResult(ok=False, error=why or K.stardock_gate_reason(universe))
     player = universe.players[pid]
     hall = _hall_block(universe)
     universe.emit(
