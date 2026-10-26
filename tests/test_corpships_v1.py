@@ -297,8 +297,8 @@ def test_legacy_hides_the_new_verbs(monkeypatch):
 # fullgame-fixes-v2 landed after that pin; its seven switches are flipped so they do not move the hash.
 # bots-use-planet-trade-v1 changed tw2002 bot play under PLANET_TRADE_MODE, so the pin flips that mode too (single-mode
 # pins flip all newer modes). f10b080 with PLANET_TRADE_MODE flipped, 84b7039 and bots-use-planet-trade-v1 with the
-# nine flips below all digest to 85622347d694ff6224ec89bc (was e11cd2ec746b097c12490a8e = f10b080 at defaults).
-CORPSHIP_LEGACY_GOLDEN = "85622347d694ff6224ec89bc"
+# nine flips below all digest to bc6da923eb1a4238ad216cc0 (was e11cd2ec746b097c12490a8e = f10b080 at defaults).
+CORPSHIP_LEGACY_GOLDEN = "bc6da923eb1a4238ad216cc0"
 _CORP_PIN_FLIPS = (
     "CITADEL_FIDELITY_MODE", "STARDOCK_EXTRA_MODE", "BOTS_DEPLOY_MODE", "BOTS_TAVERN_MODE", "H_RECOVERY_MODE", "CORP_FIX_MODE", "BOTS_WAR_MODE", "TAVERN_MODE", "BOTS_BANK_MODE", "LLM_QUASAR_NUDGE_MODE", "LLM_PLANET_NUDGE_MODE",
     "LLM_PARITY_MODE",

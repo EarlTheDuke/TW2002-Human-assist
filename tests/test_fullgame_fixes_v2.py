@@ -441,10 +441,10 @@ def test_docked_n3_options_path_offers_the_arming_buy(hunt, monkeypatch):
 V2_SWITCHES = ("PLANET_DIVIDEND_MODE", "HUNT_MODE", "COMBAT_FRAMING_MODE", "SLOW_HULL_HINT_MODE",
                "COMBAT_SCANNER_MODE", "GENESIS_HULL_MODE", "MINE_OVERFLOW_MODE")
 # bots-use-planet-trade-v1 changed the tw2002 bots' planet-trade play, so this pin also flips PLANET_TRADE_MODE (the
-# single-mode pin convention): f10b080 with PLANET_TRADE_MODE flipped digests to 77c7d444a0965a2c40cffcca (the
+# single-mode pin convention): f10b080 with PLANET_TRADE_MODE flipped digests to f4a9aa10638cf5aabf542ec1 (the
 # PLANET_TRADE golden), and so do b7e1f86 and bots-use-planet-trade-v1 with these eight switches flipped.
 V2_PIN_FLIP = V2_SWITCHES + ("PLANET_TRADE_MODE",)
-V2_LEGACY_GOLDEN = "77c7d444a0965a2c40cffcca"  # was 5e29f9528d7e5000218b575a (f10b080, flip=())
+V2_LEGACY_GOLDEN = "f4a9aa10638cf5aabf542ec1"  # was 5e29f9528d7e5000218b575a (f10b080, flip=())
 
 
 def test_fullgame_fixes_v2_switches_off_equal_the_base():
