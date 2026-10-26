@@ -84,6 +84,15 @@ def _open_yard(page) -> str:
     return page.locator('[data-yard="deal"]').inner_text()
 
 
+def _to_stardock(u) -> None:
+    """Move P2 onto the universe's StarDock: v3.11 draws its sector, so it is not always 1."""
+    p2, sid = u.players["P2"], K.stardock_sector_of(u)
+    u.sectors[p2.sector_id].occupant_ids.remove("P2")
+    p2.sector_id = sid
+    u.sectors[sid].occupant_ids.append("P2")
+    p2.known_sectors.add(sid)
+
+
 def _list_box(page) -> list[dict]:
     # A native drop-down does not show in a screenshot, so the shot opens it as a list.
     page.evaluate("""() => { const s = document.querySelector('#formSlot select[data-n="ship_class"]');
@@ -115,7 +124,7 @@ def test_v311_cockpit_yard_turns_day_roll_and_citadel(browser, tmp_path) -> None
                 u = host.runner.state.universe
                 assert float(K.TURN_REGEN_DAY_SECONDS) == DAY_S
                 page = _page(browser, host)
-                _wait_then(page, lambda: setattr(u.players["P2"], "credits", 40_000))
+                _wait_then(page, lambda: (_to_stardock(u), setattr(u.players["P2"], "credits", 40_000)))
                 _my_move(page)
 
                 # Items 5 and 6: the v3.11 roster from the server, every hull, the unaffordable grey.
