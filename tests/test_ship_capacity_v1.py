@@ -76,23 +76,29 @@ def test_chart_numbers_are_the_cited_cells() -> None:
         assert int(spec["max_photons"]) == row["photons"], key
 
 
-def test_merchant_and_iss_are_unlimited_when_the_switch_is_off(monkeypatch) -> None:
+def test_merchant_and_iss_keep_the_roster_caps_when_the_switch_is_off(monkeypatch) -> None:
+    """Off is the play before #163: the roster's own max_mines / max_genesis / max_photons."""
     monkeypatch.setattr(K, "SHIP_CAPACITY_MODE", "legacy")
     merchant = _world()
     _seat(merchant)
-    assert _buy(merchant, "armid_mines", 51).ok
-    assert _buy(merchant, "genesis", 6).ok
+    assert _buy(merchant, "armid_mines", 50).ok
+    assert _buy(merchant, "limpet_mines", 1).error == "exceeds ship mine capacity"
+    assert _buy(merchant, "genesis", 5).ok
+    assert _buy(merchant, "genesis", 1).error == "exceeds ship genesis capacity"
     photon = _buy(merchant, "photon_missiles", 1)
     assert photon.ok is False
     assert photon.error == "only Missile Frigate or Imperial StarShip may buy photons"
 
+    spec = K.hull_spec("imperial_starship")
     iss = _world()
     seat = _seat(iss, ship=Ship(ship_class=ShipClass.IMPERIAL_STARSHIP, holds=20, fighters=0))
-    assert _buy(iss, "armid_mines", 126).ok
-    assert _buy(iss, "genesis", 11).ok
-    assert _buy(iss, "photon_missiles", 6).ok
-    assert seat.ship.photon_missiles == 6
-    assert seat.ship.genesis == 11
+    assert _buy(iss, "armid_mines", int(spec["max_mines"])).ok
+    assert _buy(iss, "armid_mines", 1).error == "exceeds ship mine capacity"
+    assert _buy(iss, "genesis", int(spec["max_genesis"])).ok
+    assert _buy(iss, "genesis", 1).error == "exceeds ship genesis capacity"
+    assert _buy(iss, "photon_missiles", int(spec["max_photons"])).ok
+    assert _buy(iss, "photon_missiles", 1).error == "exceeds ship photon capacity"
+    assert seat.ship.photon_missiles == int(spec["max_photons"])
 
 
 def test_merchant_and_iss_stop_at_the_chart_when_the_switch_is_on(monkeypatch) -> None:

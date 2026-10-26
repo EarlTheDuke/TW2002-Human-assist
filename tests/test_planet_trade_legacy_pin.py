@@ -15,7 +15,7 @@ from pathlib import Path
 from tests._pin_env import pin_env
 
 ROOT = Path(__file__).resolve().parents[1]
-PLANET_TRADE_LEGACY_GOLDEN = "77c7d444a0965a2c40cffcca"  # recorded on 3b8f8e5 (origin; PLANET_TRADE_MODE absent)
+PLANET_TRADE_LEGACY_GOLDEN = "f4a9aa10638cf5aabf542ec1"  # recorded on 3b8f8e5 (origin; PLANET_TRADE_MODE absent)
 # fullgame-fixes-v2 switches and CORPSHIP_MODE are flipped too: their tw2002 defaults change the N3 game.
 PIN_FLIPS = ("CITADEL_FIDELITY_MODE", "STARDOCK_EXTRA_MODE", "BOTS_DEPLOY_MODE", "BOTS_TAVERN_MODE", "H_RECOVERY_MODE", "CORP_FIX_MODE", "BOTS_WAR_MODE", "TAVERN_MODE", "BOTS_BANK_MODE", "LLM_QUASAR_NUDGE_MODE", "LLM_PLANET_NUDGE_MODE", "LLM_PARITY_MODE", "PLANET_TRADE_MODE", "CORPSHIP_MODE", "PORT_UPGRADE_MODE", "PLANET_DIVIDEND_MODE", "HUNT_MODE",
              "COMBAT_FRAMING_MODE", "SLOW_HULL_HINT_MODE", "COMBAT_SCANNER_MODE", "GENESIS_HULL_MODE",

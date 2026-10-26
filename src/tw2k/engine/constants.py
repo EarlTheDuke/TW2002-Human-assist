@@ -1417,11 +1417,10 @@ def equip_room(class_key: str, item: str, have: int) -> int | None:
         return max(0, hardware_v2_cap(class_key, item) - int(have))
     if item == "genesis" and planet_class_live() and class_key == "merchant_freighter":
         return max(0, 1 - int(have))
-    if item in ("armid_mines", "limpet_mines", "atomic_mines", "genesis", "photon_missiles"):
-        # GAP 3.15. Off, these stay unlimited (the stored buy). On, the chart.
-        # Holds are not in this gate: max_holds on the tw2002 roster already caps them.
-        if not ship_capacity_live():
-            return None
+    if item in ("armid_mines", "limpet_mines", "atomic_mines", "genesis", "photon_missiles") and ship_capacity_live():
+        # GAP 3.15. On, the chart. Off, fall through to the roster's own caps below,
+        # as before #163: the tw2002 roster caps these, a roster without the field
+        # leaves them unlimited. Holds are not in this gate: max_holds already caps them.
         return chart_capacity_room(class_key, item, have)
     spec = hull_spec(class_key) or {}
     field = _EQUIP_CAP_FIELD.get(item)

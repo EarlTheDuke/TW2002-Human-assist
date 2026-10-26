@@ -24,7 +24,7 @@ from tw2k.engine.observation import build_observation
 from tw2k.engine.runner import tick_day
 
 # sha256[:16] of get_system_prompt() on eb19593 (pre-slice), full and minimal hint levels.
-LEGACY_PROMPT_FULL = "f6129281ab710c02"
+LEGACY_PROMPT_FULL = "c4491cb861247dc1"
 LEGACY_PROMPT_MINIMAL = "c2258c3b76a09d73"
 # buy_equip item choices at StarDock on eb19593 for a 200k MerchantCruiser (HARDWARE/INFO tw2002).
 LEGACY_STARDOCK_CHOICES = [

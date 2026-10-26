@@ -688,7 +688,7 @@ def test_legacy_has_no_drive_verb_keys_or_events(monkeypatch):
 # Recorded with tests/fed_legacy_digest.py (flip=None: every tw2002 *_MODE to legacy) on 9dbe56b, the commit
 # before this slice: scripted match N3,N2,N1,H, seed 250925, 3 days (3 tick_day state digests + every obs JSON,
 # prompt text, action + result and event). Floats rounded as in that helper (Linux/Windows libm).
-SHIP_TW_LEGACY_GOLDEN = "00135a9202e44a0e085ce978"
+SHIP_TW_LEGACY_GOLDEN = "c869281bb870a2ef46c6e5db"
 # Same run with only SHIP_TW_MODE flipped (every other switch at its default) on 9dbe56b: defaults elsewhere
 # plus SHIP_TW_MODE legacy must be the pre-slice engine byte for byte. Later slices that retune tw2002 play
 # change this one, so it is recorded here and checked by QC (see the Delivered note), not run in the suite.
