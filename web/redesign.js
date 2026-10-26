@@ -383,44 +383,7 @@
   }
 
   function paintScene() {
-    const img = $("sceneStill");
-    if (!img || !S) return;
-    const ship = S.ship || {};
-    let key = "sector_deep";
-    if (ship.class === "escape_pod") key = "in_pod";
-    else if (S.planet_landed != null) {
-      const owned = (S.owned_planets || []).some((p) => Number(p.id) === Number(S.planet_landed));
-      key = owned ? "planet_own" : "planet_foreign";
-    } else {
-      const sector = S.sector || {};
-      const port = sector.port;
-      if (port && /stardock/i.test(String(port.name || ""))) key = "sector_stardock";
-      else if (sector.terra) key = "sector_terra";
-      else if (port && port.class_id != null) key = "sector_port_" + port.class_id;
-      else if (sector.is_fedspace) key = "sector_fedspace";
-      else if (Number(sector.id) === stardockSectorId()) key = "sector_stardock";
-    }
-    const draw = (table) => {
-      let current = key;
-      const seen = new Set();
-      let file = "";
-      while (current && current !== "canvas" && !seen.has(current)) {
-        seen.add(current);
-        const entry = table[current];
-        if (!entry) { current = String(current).indexOf("sector_port_") === 0 ? "docked_port" : "sector_deep"; continue; }
-        if (entry.file) { file = entry.file; break; }
-        current = entry.fallback || "canvas";
-      }
-      if (!file) { img.hidden = true; return; }
-      img.alt = key;
-      img.hidden = false;
-      img.src = "/static/media/" + file;
-    };
-    if (sceneTable) { draw(sceneTable); return; }
-    fetch("/static/media/manifest.json").then((r) => r.json()).then((data) => {
-      sceneTable = data.keys || {};
-      draw(sceneTable);
-    }).catch(() => { img.hidden = true; });
+    // P2: viewport stills retired. The stage paints idle, port, and planet.
   }
 
   function fighterPlan(n) {
@@ -635,7 +598,7 @@
     const phone = window.matchMedia && window.matchMedia("(max-width: 700px)").matches;
     const cu = document.body && document.body.classList.contains("cu-seat");
     if (phone) return "static";
-    if (reduce || cu) return "still";
+    if (reduce || cu || stageMode() === "stills") return "still";
     return "drift";
   }
   function shipFit(motion, markers, hull) {
@@ -712,6 +675,7 @@
   function drawShipFrame(now, canonical) {
     if (shipScene.mode !== "solid" || !shipScene.polys.length) return;
     const pose = shipPose(now, canonical);
+    pose.pitch += stagePitchAdd();
     const svg = $("shipSvg");
     const body = svg && svg.querySelector("[data-testid=ship-body]");
     const back = svg && svg.querySelector("[data-testid=fighter-back]");
@@ -732,9 +696,10 @@
         near.setAttribute("transform", "translate(" + dx.toFixed(1) + " " + (-dy).toFixed(1) + ")");
       }
     }
-    const beat = (canonical || shipScene.hold || shipScene.paused || shipScene.motion !== "drift")
+    let beat = (canonical || shipScene.hold || shipScene.paused || shipScene.motion !== "drift")
       ? 1
       : (0.62 + 0.38 * Math.sin((now || 0) / 170));
+    if (stageFx.tell === "port") beat = 1;
     const drawn = [];
     shipScene.faces.forEach((face, index) => {
       const cam = cameraFace(face, pose.yaw, pose.pitch, shipScene.fit, 200, 124, shipScene.damage || 0, beat);
@@ -777,6 +742,11 @@
         shipScene.shield.setAttribute("stroke-width", (1 + sp * 1.6).toFixed(1));
         shipScene.shield.setAttribute("opacity", (0.35 + sp * 0.4).toFixed(2));
         body.appendChild(shipScene.shield);
+        if (stageFx.tell === "combat" && stageFx.flare) {
+          const amp = Math.sin(Math.max(0, Math.min(1, stageFx.phase)) * Math.PI);
+          shipScene.shield.setAttribute("opacity", Math.min(1, 0.35 + amp * 0.7).toFixed(2));
+          shipScene.shield.setAttribute("stroke-width", (1.4 + amp * 2.4).toFixed(1));
+        }
       } else {
         shipScene.shield.style.display = "none";
       }
@@ -809,7 +779,7 @@
       const y2 = oy - ahead[1] * sAhead;
       (here[2] >= 0 ? front : back).appendChild(mark);
       const rot = Math.atan2(y2 - y, x2 - x) * 180 / Math.PI + 90;
-      const scale = Math.max(0.55, Math.min(1.15, sHere / 2.15));
+      const scale = Math.max(0.55, Math.min(1.15, sHere / 2.15)) * stageMarkerScale();
       mark.setAttribute("transform", "translate(" + x.toFixed(1) + " " + y.toFixed(1) + ") rotate(" + rot.toFixed(1) + ") scale(" + scale.toFixed(2) + ")");
     });
   }
@@ -1056,6 +1026,7 @@
     svg.setAttribute("data-marker-rule", "n<1 none; else max(1, ceil(n/100)); each marker = 100 fighters");
     renderShipScene(sh, def, plan);
     ensureShipChrome(sh, def);
+    applyStageDressing();
     const row = $("fighterRow");
     row.title = "Each marker stands for 100 fighters. The stat line keeps the exact bay. A last marker may be a partial hundred.";
     if (plan.triangles > 0) {
@@ -1137,10 +1108,56 @@
     if (root) root.setAttribute("data-yaw", pose.yaw.toFixed(3));
     return api.hullMarkup(frame.sample, frame.def, pose.yaw, pose.pitch, pose.fit, 200, 130);
   }
+  function keepInStage(x, y) {
+    const cx = 200;
+    const cy = 130;
+    const dx = x - cx;
+    const dy = y - cy;
+    const k = Math.max(Math.abs(dx) / 186, Math.abs(dy) / 114, 1);
+    return { x: cx + dx / k, y: cy + dy / k };
+  }
+  function paintWarpFighters(elapsed) {
+    const group = document.querySelector("#warpSvg [data-testid=warp-fighters]");
+    const frame = warpFrame;
+    if (!group || !frame) return;
+    const n = fighterPlan(frame.sample && frame.sample.fighters).triangles;
+    const faces = frame.faces || [];
+    if (!n || !faces.length) {
+      if (group.innerHTML) group.innerHTML = "";
+      return;
+    }
+    if (stageFx.tell === "warp" && stagePlays()) {
+      const ms = Number(stageFx.dur) || 2000;
+      stageFx.phase = Math.max(0, Math.min(1, (Number(elapsed) || 0) / ms));
+    }
+    const pose = warpPose(frame.style, elapsed);
+    const slots = fighterSlots(n, faces, pose.fit);
+    const park = stageMarkerScale();
+    let html = "";
+    slots.forEach((slot) => {
+      const here = rotPoint([slot.x * pose.fit, slot.y * pose.fit, slot.z * pose.fit], pose.yaw, pose.pitch);
+      const ahead = rotPoint([(slot.x + 8) * pose.fit, slot.y * pose.fit, slot.z * pose.fit], pose.yaw, pose.pitch);
+      const sHere = 900 / (430 - here[2]);
+      const sAhead = 900 / (430 - ahead[2]);
+      const rawX = 200 + here[0] * sHere;
+      const rawY = 130 - here[1] * sHere;
+      const kept = keepInStage(rawX, rawY);
+      const rot = Math.atan2((130 - ahead[1] * sAhead) - rawY, (200 + ahead[0] * sAhead) - rawX) * 180 / Math.PI + 90;
+      const scale = Math.max(0.4, Math.min(1.05, sHere / 2.15)) * park;
+      html += '<path data-testid="warp-fighter" d="' + FIGHTER_DART
+        + '" fill="#ff2a2a" stroke="#ff8888" stroke-width="0.4" transform="translate('
+        + kept.x.toFixed(1) + " " + kept.y.toFixed(1) + ") rotate(" + rot.toFixed(1)
+        + ") scale(" + scale.toFixed(2) + ')"/>';
+    });
+    if (group.getAttribute("data-html") !== html) {
+      group.setAttribute("data-html", html);
+      group.innerHTML = html;
+    }
+  }
   function applyWarpHull(elapsed) {
     const body = document.querySelector("#warpSvg [data-testid=warp-body]");
-    if (!body || body.getAttribute("data-model") !== "solid") return;
-    body.innerHTML = warpHullHtml(elapsed);
+    if (body && body.getAttribute("data-model") === "solid") body.innerHTML = warpHullHtml(elapsed);
+    paintWarpFighters(elapsed);
   }
   function startWarpSpin() {
     stopWarpSpin();
@@ -1278,7 +1295,18 @@
     if (video) {
       try { video.pause(); } catch (e) { /* already quiet */ }
     }
-    if (root) root.hidden = true;
+    if (root) {
+      root.hidden = true;
+      root.removeAttribute("data-stage-skip");
+    }
+    if (stageFx.tell === "warp") {
+      stopStageLoop();
+      const next = stageFx.afterWarp;
+      stageFx.afterWarp = null;
+      stageFx.tell = "idle";
+      if (typeof next === "function") next();
+      else paintStageRest();
+    }
   }
   function skipWarp() {
     clearWarpTimers();
@@ -1297,7 +1325,7 @@
     if (style && style.plume) painted.plume = style.plume;
     const api = warpMesh();
     const faces = api ? api.buildHullFaces(sample, painted) : [];
-    warpFrame = { sample: sample, def: painted, style: style || null };
+    warpFrame = { sample: sample, def: painted, style: style || null, faces: faces };
     if (!shipSolidOn() || !api) {
       const angle = style ? (style.yaw * 36).toFixed(1) : "0";
       return {
@@ -1313,11 +1341,20 @@
     const html = api.hullMarkup(sample, painted, pose.yaw, pose.pitch, pose.fit, 200, 130);
     return { model: "solid", mesh: "panel", source: api.source, faces: faces.length, xform: "", html: html };
   }
-  function warpMotion() {
+  function stageMode() {
+    const host = $("ship") || $("viewport");
+    const mode = host && host.getAttribute("data-mode");
+    if (mode === "live" || mode === "stills" || mode === "off") return mode;
+    return "live";
+  }
+  function motionHeld() {
     const reduce = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-    const mode = ($("viewport") && $("viewport").getAttribute("data-mode")) || "live";
-    if (mode === "off") return "off";
-    if (reduce || mode === "stills") return "still";
+    const cu = document.body && document.body.classList.contains("cu-seat");
+    return !!(reduce || cu || stageMode() === "stills");
+  }
+  function warpMotion() {
+    if (stageMode() === "off") return "off";
+    if (motionHeld()) return "still";
     return "play";
   }
   function warpStars() {
@@ -1350,6 +1387,11 @@
         try { video.pause(); } catch (e) { /* already quiet */ }
       }
       root.hidden = true;
+      root.removeAttribute("data-stage-skip");
+      if (stageFx.tell === "warp") {
+        stageFx.tell = "idle";
+        paintStageRest();
+      }
       return;
     }
     const sh = (S && S.ship) || {};
@@ -1404,7 +1446,8 @@
     svg.innerHTML = field + flash
       + '<g class="warp-rig"><g class="warp-ship" data-testid="warp-ship"><g data-testid="warp-body" data-model="'
       + drawn.model + '"' + drawn.xform + ">"
-      + drawn.html + "</g></g></g>";
+      + drawn.html + "</g></g></g>"
+      + '<g data-testid="warp-fighters"></g>';
     svg.querySelectorAll(".warp-ship, .streaks, .warp-stars, .warp-rig, .warp-flash").forEach((el) => {
       el.style.animationDuration = ms + "ms";
     });
@@ -1439,6 +1482,9 @@
     }
     const generic = document.getElementById("vpClip");
     if (generic) generic.hidden = true;
+    root.removeAttribute("data-stage-skip");
+    noteWarpShown(ms);
+    paintWarpFighters(motion === "play" ? 0 : ms);
     warpPlays += 1;
     root.setAttribute("data-plays", String(warpPlays));
     clearWarpTimers();
@@ -1481,6 +1527,14 @@
       const to = f.to != null ? Number(f.to) : (f.target != null ? Number(f.target) : NaN);
       return to !== from;
     }
+    if (ev.kind === "ship_transwarp" || ev.kind === "retreat") {
+      const f = ev.facts || {};
+      return f.from != null && f.to != null && Number(f.from) !== Number(f.to);
+    }
+    if (ev.kind === "planet_transwarp") {
+      const f = ev.facts || {};
+      return f.from_sector != null && f.to_sector != null && Number(f.from_sector) !== Number(f.to_sector);
+    }
     if (ev.kind === "autopilot") {
       const f = ev.facts || {};
       return !!f.executed && Number(f.hops_done || 0) >= 1;
@@ -1502,6 +1556,619 @@
     chosen.playback = "move";
     showWarpClip(chosen);
     return true;
+  }
+
+  // P2 stage. Six states, one at a time: combat, warp, mine, planet, port, idle.
+  // Transients read the live batch only. History paints the resting observation.
+  const STAGE_PLANETS = {
+    M: { limb: "#0c3a6e", body: "#1a6b3a", band: "#f4fbff", kind: "earth" },
+    K: { limb: "#6a3a14", body: "#c47a2a", band: "#e7c48a", kind: "desert" },
+    H: { limb: "#2a1210", body: "#3a1814", band: "#ff4a1a", kind: "volcanic" },
+    O: { limb: "#063e44", body: "#0a6e78", band: "#b8fff2", kind: "ocean" },
+    L: { limb: "#3a3e48", body: "#6e7380", band: "#e8eef5", kind: "mountain" },
+    C: { limb: "#4e86a8", body: "#d7f4ff", band: "#7eb8d4", kind: "glacial" },
+    U: { limb: "#3a2048", body: "#6a3a78", band: "#c9a24a", kind: "gas" },
+  };
+  const stageFx = {
+    tell: "idle",
+    phase: 1,
+    flare: false,
+    pulse: false,
+    liftoff: false,
+    afterWarp: null,
+    onDone: null,
+    timer: 0,
+    raf: 0,
+    dur: 1,
+    started: 0,
+    mineKind: "armid",
+    mineQty: 0,
+    planet: "",
+    port: null,
+  };
+  function stagePlays() {
+    if (stageMode() !== "live") return false;
+    if (motionHeld()) return false;
+    if (shipMotion() === "static") return false;
+    return true;
+  }
+  function stageTransient() {
+    return !!(stageFx.raf || stageFx.timer || stageFx.liftoff
+      || stageFx.tell === "warp" || stageFx.tell === "combat" || stageFx.tell === "mine");
+  }
+  function stagePitchAdd() {
+    if (stageFx.tell === "port") return 0.08;
+    if (stageFx.tell === "planet") {
+      const t = Math.max(0, Math.min(1, stageFx.phase));
+      return 0.08 * (stageFx.liftoff ? (1 - t) : t);
+    }
+    return 0;
+  }
+  function stageMarkerScale() {
+    if (stageFx.tell === "warp") {
+      const phase = Math.max(0, Math.min(1, stageFx.phase));
+      const tucked = Math.max(0, Math.min(1, phase / 0.2));
+      const release = Math.max(0, Math.min(1, (phase - 0.8) / 0.2));
+      const park = 0.45 + 0.55 * release;
+      return 1 - tucked * (1 - park);
+    }
+    if (stageFx.tell === "combat" && stageFx.pulse) {
+      return 1 + 0.35 * Math.sin(Math.max(0, Math.min(1, stageFx.phase)) * Math.PI);
+    }
+    return 1;
+  }
+  function markStage(tell) {
+    const ship = $("ship");
+    const fx = $("stageFx");
+    if (ship) ship.setAttribute("data-stage", tell || "idle");
+    if (fx) fx.setAttribute("data-tell", tell || "idle");
+  }
+  let stageGen = 0;
+  function stopStageLoop() {
+    stageGen += 1;
+    if (stageFx.raf) cancelAnimationFrame(stageFx.raf);
+    stageFx.raf = 0;
+  }
+  function clearStageTimer() {
+    if (stageFx.timer) clearTimeout(stageFx.timer);
+    stageFx.timer = 0;
+  }
+  function showStageSkip(on) {
+    const root = $("warpClip");
+    if (!root) return;
+    if (!on) {
+      if (root.getAttribute("data-stage-skip") === "1") {
+        root.hidden = true;
+        root.removeAttribute("data-stage-skip");
+      }
+      return;
+    }
+    const svg = $("warpSvg");
+    const video = $("warpVideo");
+    if (svg) svg.hidden = true;
+    if (video) video.hidden = true;
+    root.hidden = false;
+    root.setAttribute("data-stage-skip", "1");
+  }
+  function stageCam() {
+    return { yaw: 0.82, pitch: 0.5 + stagePitchAdd(), fit: shipScene.fit || 1 };
+  }
+  function projectStage(p, cam) {
+    const w = rotPoint([p[0] * cam.fit, p[1] * cam.fit, p[2] * cam.fit], cam.yaw, cam.pitch);
+    const s = 900 / (430 - w[2]);
+    return { x: 200 + w[0] * s, y: 124 - w[1] * s };
+  }
+  function planetLetter(raw) {
+    const text = String(raw || "").trim().toUpperCase();
+    if (!text) return "";
+    if (STAGE_PLANETS[text]) return text;
+    const letter = text.charAt(0);
+    return STAGE_PLANETS[letter] ? letter : "";
+  }
+  function planetClassOf(ev) {
+    const fromEvent = planetLetter(ev && ev.facts && ev.facts.class);
+    if (fromEvent) return fromEvent;
+    const landed = landedPlanet();
+    return planetLetter(landed && landed.class);
+  }
+  function portLook() {
+    const sector = (S && S.sector) || {};
+    const port = sector.port;
+    if (atStarDockSector(sector)) return { kind: "stardock", bay: "#d7e4f5", pit: "#1c2430", lamp: "#d7e4f5" };
+    if (sector.terra && !(port && port.class_id != null)) return { kind: "terra", bay: "#d7e4f5", pit: "#1c2430", lamp: "#d7e4f5" };
+    if (!port) return null;
+    if (Number(port.class_id) === 0) return { kind: "fed", bay: "#24344a", pit: "#121820", lamp: "#9eb6d8" };
+    return { kind: "work", bay: "#3a3428", pit: "#1a140c", lamp: "#e0b15a" };
+  }
+  function onPlanetNow() {
+    return !!(S && S.planet_landed != null) || !!surface;
+  }
+  function restingTell() {
+    if (onPlanetNow()) {
+      const planet = planetClassOf(null);
+      if (planet) return { tell: "planet", planet: planet, port: null };
+      return { tell: "idle", planet: "", port: null };
+    }
+    const port = portLook();
+    if (port) return { tell: "port", planet: "", port: port };
+    return { tell: "idle", planet: "", port: null };
+  }
+  function dressNode() {
+    const svg = $("shipSvg");
+    if (!svg) return null;
+    let dress = svg.querySelector("[data-testid=stage-dress]");
+    const hull = svg.querySelector("[data-testid=ship-hull]");
+    if (!dress) {
+      dress = document.createElementNS(SVGNS, "g");
+      dress.setAttribute("data-testid", "stage-dress");
+      if (hull && hull.parentNode) hull.parentNode.insertBefore(dress, hull);
+      else svg.appendChild(dress);
+    } else if (hull && dress.parentNode === hull.parentNode && dress.nextSibling !== hull) {
+      hull.parentNode.insertBefore(dress, hull);
+    }
+    return dress;
+  }
+  function portMarkup(port) {
+    if (!port) return "";
+    return '<g data-testid="port-bay" data-port="' + port.kind + '">'
+      + '<rect x="0" y="0" width="400" height="260" fill="' + port.pit + '"/>'
+      + '<rect x="0" y="148" width="400" height="112" fill="' + port.bay + '" opacity="0.92"/>'
+      + '<rect data-testid="port-upright" x="48" y="28" width="14" height="176" fill="' + port.lamp + '" opacity="0.88"/>'
+      + '<rect data-testid="port-upright" x="338" y="28" width="14" height="176" fill="' + port.lamp + '" opacity="0.88"/>'
+      + '<rect x="48" y="28" width="304" height="8" fill="' + port.lamp + '" opacity="0.55"/>'
+      + "</g>";
+  }
+  function planetMarkup(letter, opacity) {
+    const planet = STAGE_PLANETS[letter];
+    if (!planet) return "";
+    const cx = 118;
+    const cy = 168;
+    const r = 86;
+    let extra = "";
+    if (planet.kind === "earth") {
+      extra = '<ellipse cx="' + (cx - 8) + '" cy="' + (cy - 6) + '" rx="34" ry="16" fill="' + planet.body + '" opacity="0.95"/>'
+        + '<ellipse cx="' + (cx + 6) + '" cy="' + (cy + 10) + '" rx="46" ry="9" fill="' + planet.band + '" opacity="0.8"/>';
+    } else if (planet.kind === "desert") {
+      extra = '<ellipse cx="' + cx + '" cy="' + (cy + 8) + '" rx="50" ry="10" fill="' + planet.band + '" opacity="0.55"/>';
+    } else if (planet.kind === "volcanic") {
+      extra = '<path d="M' + (cx - 40) + " " + (cy - 8) + " L" + (cx - 24) + " " + (cy + 16) + " L" + (cx - 8) + " " + (cy - 2) + '" fill="none" stroke="' + planet.band + '" stroke-width="2.2"/>';
+    } else if (planet.kind === "ocean") {
+      extra = '<circle cx="' + cx + '" cy="' + cy + '" r="' + (r - 8) + '" fill="none" stroke="' + planet.band + '" stroke-width="3" opacity="0.85"/>';
+    } else if (planet.kind === "mountain") {
+      extra = '<ellipse cx="' + cx + '" cy="' + (cy - 28) + '" rx="36" ry="14" fill="' + planet.band + '" opacity="0.9"/>';
+    } else if (planet.kind === "glacial") {
+      extra = '<ellipse cx="' + (cx - 10) + '" cy="' + (cy + 4) + '" rx="28" ry="12" fill="#ffffff" opacity="0.55"/>';
+    } else if (planet.kind === "gas") {
+      extra = '<ellipse cx="' + cx + '" cy="' + (cy - 22) + '" rx="70" ry="8" fill="' + planet.band + '" opacity="0.85"/>'
+        + '<ellipse cx="' + cx + '" cy="' + cy + '" rx="74" ry="7" fill="' + planet.limb + '" opacity="0.9"/>'
+        + '<ellipse cx="' + cx + '" cy="' + (cy + 22) + '" rx="64" ry="8" fill="' + planet.band + '" opacity="0.7"/>';
+    }
+    return '<g data-testid="planet-disc" data-planet="' + letter + '" opacity="' + opacity + '">'
+      + '<circle cx="' + cx + '" cy="' + cy + '" r="' + r + '" fill="' + planet.limb + '"/>'
+      + '<circle cx="' + cx + '" cy="' + cy + '" r="' + (r - 10) + '" fill="' + planet.body + '"/>'
+      + extra
+      + "</g>";
+  }
+  function gearMarkup() {
+    if (stageFx.tell !== "planet" || !stageFx.planet) return "";
+    const cam = stageCam();
+    const pairs = [[[-6, -14, -8], [-6, -26, -8]], [[16, -14, 8], [16, -26, 8]]];
+    const dip = stageFx.planet === "U" ? 10 : 0;
+    return pairs.map((pair) => {
+      const a = projectStage(pair[0], cam);
+      const b = projectStage(pair[1], cam);
+      return '<line data-testid="landing-gear" x1="' + a.x.toFixed(1) + '" y1="' + (a.y + dip).toFixed(1)
+        + '" x2="' + b.x.toFixed(1) + '" y2="' + (b.y + dip).toFixed(1) + '" stroke="#c5d4ea" stroke-width="1.6" stroke-linecap="round"/>';
+    }).join("");
+  }
+  function mineMarkup() {
+    if (stageFx.tell !== "mine") return "";
+    const qty = Math.max(0, Math.floor(Number(stageFx.mineQty) || 0));
+    const shown = Math.min(6, qty);
+    const cam = stageCam();
+    const parts = [];
+    let sx = 0;
+    let sy = 0;
+    let n = 0;
+    for (let i = 0; i < shown; i++) {
+      const spread = (i - (shown - 1) / 2) * 7;
+      const end = [-64, 16 - (i % 2) * 7, spread];
+      const start = [-28, 10, spread * 0.35];
+      const t = Math.max(0, Math.min(1, stageFx.phase));
+      const p = [
+        start[0] + (end[0] - start[0]) * t,
+        start[1] + (end[1] - start[1]) * t,
+        start[2] + (end[2] - start[2]) * t,
+      ];
+      const c = projectStage(p, cam);
+      sx += c.x;
+      sy += c.y;
+      n += 1;
+      if (stageFx.mineKind === "limpet") {
+        const ring = [];
+        for (let k = 0; k < 10; k++) {
+          const a = (k / 10) * Math.PI * 2;
+          const q = projectStage([p[0] + Math.cos(a) * 3.6, p[1], p[2] + Math.sin(a) * 3.6], cam);
+          ring.push(q.x.toFixed(1) + "," + q.y.toFixed(1));
+        }
+        parts.push('<polygon data-testid="mine-limpet" points="' + ring.join(" ") + '" fill="#8a5a18" stroke="#e0b15a" stroke-width="0.7" opacity="0.95"/>');
+      } else {
+        let spikes = "";
+        for (let k = 0; k < 8; k++) {
+          const a = (k / 8) * Math.PI * 2;
+          const q = projectStage([p[0] + Math.cos(a) * 4.2, p[1] + Math.sin(a) * 4.2, p[2]], cam);
+          spikes += '<line x1="' + c.x.toFixed(1) + '" y1="' + c.y.toFixed(1) + '" x2="' + q.x.toFixed(1) + '" y2="' + q.y.toFixed(1) + '" stroke="#e0b15a" stroke-width="0.8"/>';
+        }
+        parts.push('<g data-testid="mine-armid">' + spikes + '<circle cx="' + c.x.toFixed(1) + '" cy="' + c.y.toFixed(1) + '" r="2.5" fill="#8a5a18" stroke="#e0b15a" stroke-width="0.6"/></g>');
+      }
+    }
+    const label = '<text data-testid="mine-qty" x="' + (n ? (sx / n).toFixed(1) : "200") + '" y="'
+      + (n ? Math.min(246, Math.max(14, sy / n - 16)).toFixed(1) : "40")
+      + '" text-anchor="middle" fill="#e0b15a" font-size="13" font-family="ui-sans-serif, system-ui, sans-serif">'
+      + qty + " " + (stageFx.mineKind || "armid") + "</text>";
+    return parts.join("") + label;
+  }
+  function combatMarkup() {
+    if (stageFx.tell !== "combat") return "";
+    const amp = Math.sin(Math.max(0, Math.min(1, stageFx.phase)) * Math.PI);
+    const opacity = (stagePlays() ? amp : 1).toFixed(2);
+    return '<g data-testid="battle-streak" opacity="' + opacity + '">'
+      + '<line x1="36" y1="48" x2="364" y2="214" stroke="#ff7a2a" stroke-width="7" stroke-linecap="round"/>'
+      + '<line x1="36" y1="48" x2="364" y2="214" stroke="#fff6e8" stroke-width="2.2" stroke-linecap="round"/>'
+      + "</g>";
+  }
+  function paintStageFrame() {
+    const dress = dressNode();
+    const tell = $("stageTell");
+    let back = "";
+    if (stageFx.tell === "planet" && stageFx.planet) {
+      const fade = stageFx.liftoff
+        ? (1 - Math.max(0, Math.min(1, stageFx.phase)))
+        : Math.max(0, Math.min(1, stageFx.phase));
+      back = planetMarkup(stageFx.planet, fade.toFixed(2));
+    } else if (stageFx.tell === "port" && stageFx.port) {
+      back = portMarkup(stageFx.port);
+    } else if (!stageTransient()) {
+      const rest = restingTell();
+      if (rest.tell === "planet") back = planetMarkup(rest.planet, "1");
+      else if (rest.tell === "port") back = portMarkup(rest.port);
+    }
+    if (stageFx.tell !== "planet" && stageFx.tell !== "warp") {
+      const rest = restingTell();
+      if (!back && rest.tell === "port") back = portMarkup(rest.port);
+      else if (!back && rest.tell === "planet") back = planetMarkup(rest.planet, "1");
+    }
+    if (dress) dress.innerHTML = back;
+    if (tell) {
+      const front = gearMarkup() + mineMarkup() + combatMarkup();
+      if (tell.dataset.html !== front) {
+        tell.dataset.html = front;
+        tell.innerHTML = front;
+      }
+    }
+    const svg = $("shipSvg");
+    const dipping = stageFx.tell === "planet" && stageFx.planet === "U" && (stageFx.liftoff ? stageFx.phase < 1 : stageFx.phase > 0);
+    if (svg) {
+      if (dipping) svg.setAttribute("data-dip", "gas");
+      else svg.removeAttribute("data-dip");
+      const hull = svg.querySelector("[data-testid=ship-hull]");
+      if (hull) {
+        if (dipping) hull.setAttribute("transform", "translate(0 10)");
+        else hull.removeAttribute("transform");
+      }
+    }
+    const fx = $("stageFx");
+    if (fx) {
+      fx.setAttribute("data-tell", stageFx.tell);
+      if (stageFx.planet) fx.setAttribute("data-planet", stageFx.planet);
+      else fx.removeAttribute("data-planet");
+      if (stageFx.tell === "mine") fx.setAttribute("data-mine", stageFx.mineKind || "");
+      else fx.removeAttribute("data-mine");
+    }
+  }
+  function paintStageRest() {
+    stopStageLoop();
+    clearStageTimer();
+    stageFx.onDone = null;
+    stageFx.afterWarp = null;
+    stageFx.flare = false;
+    stageFx.pulse = false;
+    stageFx.liftoff = false;
+    showStageSkip(false);
+    const rest = restingTell();
+    stageFx.tell = rest.tell;
+    stageFx.phase = 1;
+    stageFx.planet = rest.planet || "";
+    stageFx.port = rest.port || null;
+    markStage(rest.tell);
+    paintStageFrame();
+    if (shipScene.mode === "solid" && shipScene.polys && shipScene.polys.length) {
+      drawShipFrame(0, shipScene.hold || shipScene.motion !== "drift");
+    }
+  }
+  function applyStageDressing() {
+    if (!stageTransient()) {
+      const rest = restingTell();
+      stageFx.tell = rest.tell;
+      stageFx.phase = 1;
+      stageFx.planet = rest.planet || "";
+      stageFx.port = rest.port || null;
+      stageFx.liftoff = false;
+      stageFx.flare = false;
+      stageFx.pulse = false;
+      markStage(rest.tell);
+    }
+    paintStageFrame();
+  }
+  function startStageLoop() {
+    if (stageFx.raf) return;
+    const gen = stageGen;
+    const step = (now) => {
+      if (gen !== stageGen) return;
+      const dur = stageFx.dur || 1;
+      stageFx.phase = Math.max(0, Math.min(1, (now - stageFx.started) / dur));
+      if (stageFx.tell !== "warp") paintStageFrame();
+      const shipRunning = shipScene.raf && shipScene.motion === "drift" && !shipScene.hold && !shipScene.paused;
+      if (!shipRunning && shipScene.mode === "solid" && shipScene.polys && shipScene.polys.length) {
+        drawShipFrame(now, true);
+      }
+      if (stageFx.phase >= 1 && stageFx.tell !== "warp") {
+        stageFx.raf = 0;
+        finishStage();
+        return;
+      }
+      stageFx.raf = requestAnimationFrame(step);
+    };
+    stageFx.raf = requestAnimationFrame(step);
+  }
+  function finishStage() {
+    stopStageLoop();
+    const done = stageFx.onDone;
+    stageFx.onDone = null;
+    clearStageTimer();
+    if (typeof done === "function") done();
+    else paintStageRest();
+  }
+  function armStage(tell, ms, onDone) {
+    stopStageLoop();
+    clearStageTimer();
+    stageFx.tell = tell;
+    stageFx.onDone = onDone || null;
+    stageFx.dur = Math.max(1, ms || 1);
+    stageFx.started = performance.now();
+    stageFx.phase = stagePlays() ? 0 : 1;
+    markStage(tell);
+    showStageSkip(tell !== "warp" && tell !== "idle" && tell !== "port");
+    paintStageFrame();
+    if (shipScene.mode === "solid" && shipScene.polys && shipScene.polys.length) {
+      drawShipFrame(performance.now(), !stagePlays() || shipScene.hold || shipScene.motion !== "drift");
+    }
+    if (!stagePlays()) {
+      const linger = tell === "mine" ? 400 : (tell === "combat" ? 180 : 0);
+      stageFx.timer = setTimeout(finishStage, linger);
+      return;
+    }
+    startStageLoop();
+  }
+  function beginCombat(ev, done) {
+    const f = (ev && ev.facts) || {};
+    stageFx.flare = Number(f.shield_losses || 0) > 0 || Number(f.planet_shields_lost || 0) > 0
+      || ev.kind === "photon_hit" || ev.kind === "mine_detonated" || ev.kind === "atomic_detonation";
+    stageFx.pulse = Number(f.attacker_losses || 0) > 0 || Number(f.defender_losses || 0) > 0
+      || Number(f.planet_fighters_lost || 0) > 0 || ev.kind === "ship_destroyed";
+    armStage("combat", 450, done);
+  }
+  function beginMine(ev, done) {
+    const f = (ev && ev.facts) || {};
+    stageFx.mineKind = String(f.kind || "armid");
+    stageFx.mineQty = Math.max(0, Math.floor(Number(f.qty) || 0));
+    armStage("mine", 900, () => {
+      stageFx.phase = 1;
+      paintStageFrame();
+      stageFx.timer = setTimeout(() => { if (done) done(); else paintStageRest(); }, stagePlays() ? 1600 : 280);
+    });
+  }
+  function beginPlanet(ev) {
+    const letter = planetClassOf(ev);
+    stageFx.planet = letter;
+    stageFx.liftoff = false;
+    stageFx.port = null;
+    if (!letter) {
+      paintStageRest();
+      return;
+    }
+    armStage("planet", 400, () => {
+      stageFx.tell = "planet";
+      stageFx.phase = 1;
+      stageFx.liftoff = false;
+      showStageSkip(false);
+      markStage("planet");
+      paintStageFrame();
+    });
+  }
+  function beginLiftoff() {
+    const letter = planetClassOf(null);
+    stageFx.planet = letter;
+    stageFx.liftoff = true;
+    if (!letter) {
+      paintStageRest();
+      return;
+    }
+    armStage("planet", 700, () => {
+      stageFx.liftoff = false;
+      stageFx.planet = "";
+      paintStageRest();
+    });
+  }
+  function selfActor(ev) {
+    return !!(ev && S && ev.actor_id === S.self_id);
+  }
+  function namedSeat(ev) {
+    if (!selfActor(ev) && ev && S) {
+      const f = ev.facts || {};
+      const id = S.self_id;
+      return f.attacker === id || f.defender === id || f.victim === id;
+    }
+    return selfActor(ev);
+  }
+  function isStageCombat(ev) {
+    if (!ev || !namedSeat(ev)) return false;
+    if (ev.kind === "photon_fired" || ev.kind === "photon_hit" || ev.kind === "mine_detonated"
+      || ev.kind === "atomic_detonation" || ev.kind === "ferrengi_attack" || ev.kind === "ferrengi_encounter"
+      || ev.kind === "ship_destroyed") return true;
+    if (ev.kind !== "combat") return false;
+    const f = ev.facts || {};
+    const kind = f.exchange_kind;
+    const vs = f.vs;
+    if (vs === "fighter_sector" || vs === "planet" || vs === "port") return true;
+    if (kind === "ship_vs_ship" || kind === "ferrengi_vs_ship" || kind === "alien_vs_ship"
+      || kind === "ship_vs_unmanned" || kind === "planet_siege" || kind === "port"
+      || kind === "special_port" || kind === "offensive_clash") return true;
+    return f.attacker === S.self_id || f.defender === S.self_id || f.victim === S.self_id || ev.actor_id === S.self_id;
+  }
+  function isStageMine(ev) {
+    if (!selfActor(ev) || ev.kind !== "deploy_mines") return false;
+    const kind = String((ev.facts || {}).kind || "");
+    return kind === "armid" || kind === "limpet";
+  }
+  function isStageLand(ev) {
+    return selfActor(ev) && ev.kind === "land_planet";
+  }
+  function isStageLiftoff(ev) {
+    return selfActor(ev) && ev.kind === "liftoff";
+  }
+  function playStage(live, playedHull) {
+    const batch = Array.isArray(live) ? live : [];
+    const combatEv = batch.find(isStageCombat) || null;
+    const mineEv = batch.find(isStageMine) || null;
+    const landEv = batch.find(isStageLand) || null;
+    const liftEv = batch.find(isStageLiftoff) || null;
+    const off = stageMode() === "off";
+    const restAfter = () => {
+      if (off) { paintStageRest(); return; }
+      if (landEv && onPlanetNow()) beginPlanet(landEv);
+      else if (liftEv) beginLiftoff();
+      else paintStageRest();
+    };
+    if (off) {
+      stageFx.afterWarp = null;
+      stageFx.onDone = null;
+      if (stageFx.tell === "warp") hideWarp();
+      else paintStageRest();
+      return;
+    }
+    if (!batch.length && !playedHull) {
+      if (!stageTransient()) paintStageRest();
+      return;
+    }
+    if (combatEv && (playedHull || stageFx.tell === "warp")) {
+      stageFx.afterWarp = () => beginCombat(combatEv, restAfter);
+      markStage("warp");
+      return;
+    }
+    if (combatEv) {
+      beginCombat(combatEv, () => {
+        if (landEv && onPlanetNow()) beginPlanet(landEv);
+        else paintStageRest();
+      });
+      return;
+    }
+    if (playedHull) {
+      stageFx.afterWarp = restAfter;
+      markStage("warp");
+      return;
+    }
+    if (batch.some(isRealMove)) {
+      paintStageRest();
+      return;
+    }
+    if (mineEv) {
+      beginMine(mineEv, paintStageRest);
+      return;
+    }
+    if (landEv && onPlanetNow()) {
+      beginPlanet(landEv);
+      return;
+    }
+    if (liftEv) {
+      beginLiftoff();
+      return;
+    }
+    if (!stageTransient()) paintStageRest();
+  }
+  function skipStage() {
+    const root = $("warpClip");
+    const warpUp = !!(root && !root.hidden && root.getAttribute("data-stage-skip") !== "1");
+    if (warpUp || stageFx.tell === "warp") {
+      skipWarp();
+      return;
+    }
+    stageFx.onDone = null;
+    stageFx.afterWarp = null;
+    paintStageRest();
+  }
+  function noteWarpShown(ms) {
+    stopStageLoop();
+    clearStageTimer();
+    showStageSkip(false);
+    stageFx.tell = "warp";
+    stageFx.dur = Math.max(1, Number(ms) || 2000);
+    stageFx.started = performance.now();
+    stageFx.phase = stagePlays() ? 0 : 1;
+    markStage("warp");
+    const root = $("warpClip");
+    if (root) root.removeAttribute("data-stage-skip");
+    if (stagePlays()) startStageLoop();
+    else if (shipScene.mode === "solid" && shipScene.polys && shipScene.polys.length) drawShipFrame(0, true);
+  }
+  function loadStageMode() {
+    const params = new URLSearchParams(location.search);
+    const query = params.get("viewport");
+    let saved = "";
+    try { saved = localStorage.getItem("tw2k.viewport") || ""; } catch (err) { saved = ""; }
+    if (query === "live" || query === "stills" || query === "off") return query;
+    if (saved === "live" || saved === "stills" || saved === "off") return saved;
+    return "live";
+  }
+  function setStageMode(mode, persist) {
+    if (mode !== "live" && mode !== "stills" && mode !== "off") return;
+    const reduce = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    const cu = document.body && document.body.classList.contains("cu-seat");
+    const shown = ((reduce || cu) && mode === "live") ? "stills" : mode;
+    if (persist) {
+      try { localStorage.setItem("tw2k.viewport", mode); } catch (err) { /* the click still applies */ }
+    }
+    const host = $("ship");
+    if (host) host.setAttribute("data-mode", shown);
+    document.querySelectorAll("#vpControls [data-vp-mode]").forEach((button) => {
+      button.setAttribute("aria-pressed", button.getAttribute("data-vp-mode") === shown ? "true" : "false");
+    });
+    if (shown === "off") {
+      stageFx.afterWarp = null;
+      stageFx.onDone = null;
+      const root = $("warpClip");
+      if (root && !root.hidden && root.getAttribute("data-stage-skip") !== "1") hideWarp();
+      else {
+        stopStageLoop();
+        clearStageTimer();
+        showStageSkip(false);
+      }
+    }
+    if (S && S.ship) {
+      const def = SHIPS[S.ship.class] || { name: S.ship.class || "ship", kind: "arrow", len: 150, beam: 48, engines: 2, accent: "#7aa2ff", detail: "bridge" };
+      paintShipView(S.ship, def);
+    } else if (shown === "off") {
+      paintStageRest();
+    }
+  }
+  function bindStageModes() {
+    setStageMode(loadStageMode(), false);
+    document.querySelectorAll("#vpControls [data-vp-mode]").forEach((button) => {
+      button.addEventListener("click", (ev) => {
+        setStageMode(button.getAttribute("data-vp-mode"), true);
+        if (ev.currentTarget && ev.currentTarget.blur) ev.currentTarget.blur();
+      });
+    });
   }
 
   const known = (id) => !!((S.known_warps || {})[id] || (S.known_warps || {})[String(id)]);
@@ -2490,8 +3157,6 @@
       const price = avg ? '<div class="dk" data-paid="' + k + '">paid ' + fmt(avg) + " cr</div>" : "";
       return '<div class="hold"><b>' + row[0] + "</b><br>" + fmt((sh.cargo || {})[k]) + price + "</div>";
     }).join("");
-    const root = $("viewport");
-    if (root && window.TW2KViewport) window.TW2KViewport.update(S);
   }
 
   function tradeWhy(commodity, stock, ship, side) {
@@ -6621,6 +7286,7 @@
     const hist = catchingUp ? fresh.filter((ev) => ev.seq <= state.mediaHistoryUntil) : [];
     const live = catchingUp ? fresh.filter((ev) => ev.seq > state.mediaHistoryUntil) : fresh;
     const playedHull = await playWarpClips(live);
+    playStage(live, playedHull);
     if (window.TW2KMedia && fresh.length) {
       if (hist.length) window.TW2KMedia.onEvents(clipEvents(hist), S, { history: true });
       const liveMedia = clipEvents(live).filter((ev) => {
@@ -6846,7 +7512,6 @@
     if (over && S.game_over_panel) showEndPanel(S.game_over_panel);
     chip.className = "chip" + (state.awaiting && !outOfTurns() && !over ? "" : " idle");
     document.querySelector("[data-testid=prompt-line]").textContent = "Command [TL=" + fmt(S.turns_remaining) + "] (?=Help) :";
-    paintScene();
     paintLog();
     paintComms();
     paintAttackAlert();
@@ -7096,8 +7761,9 @@
   if (warpSkip) warpSkip.addEventListener("click", (ev) => {
     ev.preventDefault();
     ev.stopPropagation();
-    skipWarp();
+    skipStage();
   });
+  bindStageModes();
   ensureWarpManifest();
   $("mapZoomIn").addEventListener("click", () => zoomMap(1.25));
   $("mapZoomOut").addEventListener("click", () => zoomMap(1 / 1.25));

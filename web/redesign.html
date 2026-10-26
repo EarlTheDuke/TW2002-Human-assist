@@ -32,28 +32,8 @@
 <p id="err" class="r" data-testid="error" hidden></p>
 
 <main id="deck">
-  <section id="viewport" class="panel" data-testid="viewport" aria-label="Viewport" data-hull="hauler" data-mode="live">
-    <div id="vpScreen" role="img" aria-label="View from the cockpit">
-      <canvas id="vpStars" class="vp-stars" data-testid="viewport-stars" aria-hidden="true"></canvas>
-      <img id="sceneStill" data-testid="scene-still" alt="" hidden />
-      <div id="warpClip" data-testid="warp-clip" data-plays="0" hidden>
-        <svg id="warpSvg" data-testid="warp-svg" viewBox="0 0 400 260" role="img" aria-label="Warp"></svg>
-        <video id="warpVideo" data-testid="warp-video" muted playsinline hidden></video>
-        <button type="button" id="warpSkip" data-testid="warp-skip">Skip</button>
-      </div>
-      <div class="scan"></div>
-      <div id="sectorText" class="ansi"></div>
-      <div id="sceneTag" class="ansi"></div>
-    </div>
-    <div id="vpCaption" class="vp-caption" data-testid="viewport-caption">Deep space</div>
-    <div class="vp-controls" id="vpControls">
-      <button type="button" id="vpSkip" data-testid="viewport-skip">Skip</button>
-      <div class="vp-modes" role="group" aria-label="Viewport">
-        <button type="button" data-vp-mode="live" data-testid="viewport-mode-live" aria-pressed="true">Live</button>
-        <button type="button" data-vp-mode="stills" data-testid="viewport-mode-stills" aria-pressed="false">Stills</button>
-        <button type="button" data-vp-mode="off" data-testid="viewport-mode-off" aria-pressed="false">Off</button>
-      </div>
-    </div>
+  <section id="sectorReport" class="panel" data-testid="sector-report" aria-label="Sector report">
+    <div id="sectorText" class="ansi"></div>
   </section>
 
   <section id="nav" class="panel">
@@ -69,9 +49,26 @@
     <div id="warps" class="ansi" data-testid="warps"></div>
   </section>
 
-  <section id="ship" class="panel" data-testid="ship-board">
+  <section id="ship" class="panel" data-testid="ship-board" data-mode="live">
     <h2 class="ansi"><span class="c">◄</span> <span id="shipName">SHIP</span> <span class="dim" id="shipCls" data-testid="ship-class">—</span></h2>
-    <svg id="shipSvg" data-testid="ship-view" viewBox="0 0 400 260" role="img" aria-label="Ship in space"></svg>
+    <div class="stage-stack">
+      <svg id="shipSvg" data-testid="ship-view" viewBox="0 0 400 260" role="img" aria-label="Ship in space"></svg>
+      <div id="stageFx" data-testid="stage-fx">
+        <svg id="stageTell" data-testid="stage-tell" viewBox="0 0 400 260" aria-hidden="true"></svg>
+        <div id="warpClip" data-testid="warp-clip" data-plays="0" hidden>
+          <svg id="warpSvg" data-testid="warp-svg" viewBox="0 0 400 260" role="img" aria-label="Warp"></svg>
+          <video id="warpVideo" data-testid="warp-video" muted playsinline hidden></video>
+          <button type="button" id="warpSkip" data-testid="warp-skip">Skip</button>
+        </div>
+      </div>
+    </div>
+    <div class="vp-controls" id="vpControls">
+      <div class="vp-modes" role="group" aria-label="Stage">
+        <button type="button" data-vp-mode="live" data-testid="viewport-mode-live" aria-pressed="true">Live</button>
+        <button type="button" data-vp-mode="stills" data-testid="viewport-mode-stills" aria-pressed="false">Stills</button>
+        <button type="button" data-vp-mode="off" data-testid="viewport-mode-off" aria-pressed="false">Off</button>
+      </div>
+    </div>
     <div id="fighterRow" class="fighters" data-testid="fighter-row"></div>
     <div id="shipStats" class="ansi"></div>
     <div id="holds" class="holds" data-testid="ship-cargo"></div>
@@ -138,7 +135,6 @@
 </div>
 <script src="/static/media-resolver.js"></script>
 <script src="/static/media-player.js"></script>
-<script src="/static/viewport.js"></script>
 <script src="/static/hull-meshes.js"></script>
 <script src="/static/warp-variants.js"></script>
 <script src="/static/warp-video.js"></script>

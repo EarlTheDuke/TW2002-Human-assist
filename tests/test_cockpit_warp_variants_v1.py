@@ -220,7 +220,7 @@ def test_variants_play_on_a_real_move_only(tmp_path: Path, monkeypatch) -> None:
 
             wide.locator("[data-testid=viewport-mode-stills]").click()
             wide.wait_for_function(
-                "() => document.querySelector('#viewport').getAttribute('data-mode') === 'stills'",
+                "() => document.querySelector('#ship').getAttribute('data-mode') === 'stills'",
                 timeout=10_000,
             )
             still_id = _warp_once(wide)
@@ -230,7 +230,7 @@ def test_variants_play_on_a_real_move_only(tmp_path: Path, monkeypatch) -> None:
 
             wide.locator("[data-testid=viewport-mode-off]").click()
             wide.wait_for_function(
-                "() => document.querySelector('#viewport').getAttribute('data-mode') === 'off'",
+                "() => document.querySelector('#ship').getAttribute('data-mode') === 'off'",
                 timeout=10_000,
             )
             off_here = _sector(wide)
@@ -270,7 +270,7 @@ def test_variants_play_on_a_real_move_only(tmp_path: Path, monkeypatch) -> None:
                 assert page.evaluate(
                     """() => {
                       const a = document.querySelector('#warpClip').getBoundingClientRect();
-                      const b = document.querySelector('#viewport').getBoundingClientRect();
+                      const b = document.querySelector('#ship').getBoundingClientRect();
                       return a.width > 40 && a.top >= b.top - 1 && a.bottom <= b.bottom + 1
                         && a.left >= b.left - 1 && a.right <= b.right + 1;
                     }"""

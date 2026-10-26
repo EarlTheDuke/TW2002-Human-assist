@@ -25,7 +25,12 @@ def test_default_bot_is_the_old_page(tmp_path: Path, monkeypatch) -> None:
     assert "NAV COMPUTER" not in old
     assert "ship-board" not in old
     assert "NAV COMPUTER" in asked
-    assert 'data-testid="scene-still"' in asked
+    assert 'data-testid="stage-fx"' in asked
+    assert 'data-testid="sector-report"' in asked
+    assert 'id="sectorText"' in asked
+    assert 'id="warpClip"' in asked
+    assert 'data-testid="scene-still"' not in asked
+    assert 'id="viewport"' not in asked
     assert 'data-testid="ship-board"' in bot2
     assert 'data-testid="command-keys"' in bot2
     assert "onclick=\"form(" not in asked
@@ -56,7 +61,10 @@ def test_screens_and_a_wait(tmp_path: Path, monkeypatch) -> None:
                     "() => { const el = document.querySelector('[data-testid=ship-class]'); return el && el.textContent && !el.textContent.includes('\\u2014'); }",
                     timeout=20_000,
                 )
-                assert page.locator("[data-testid=scene-still]").count() == 1
+                assert page.locator("[data-testid=scene-still]").count() == 0
+                assert page.locator("[data-testid=stage-fx]").count() == 1
+                assert page.locator("#sectorReport #sectorText").count() == 1
+                assert page.locator("#ship #warpClip").count() == 1
                 assert page.locator("[data-testid=fighter-row]").count() == 1
                 assert page.locator("[data-testid=ship-cargo] .hold").count() == 4
                 page.screenshot(path=str(SHOTS / f"{width}.png"), full_page=True)
