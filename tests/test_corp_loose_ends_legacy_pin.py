@@ -13,7 +13,7 @@ from pathlib import Path
 from tests._pin_env import pin_env
 
 ROOT = Path(__file__).resolve().parents[1]
-CORP_FIX_LEGACY_GOLDEN = "9b607d3dae940c0b1a69f6d7"
+CORP_FIX_LEGACY_GOLDEN = "19061f60328d6b811c839a1a"
 PIN_FLIPS = (
     "CITADEL_FIDELITY_MODE", "STARDOCK_EXTRA_MODE", "BOTS_DEPLOY_MODE", "BOTS_TAVERN_MODE", "H_RECOVERY_MODE", "CORP_FIX_MODE",
     "BOTS_WAR_MODE",

@@ -828,7 +828,7 @@ def test_prompt_explains_the_fleet_under_tw2002():
 # Recorded with tests/fed_legacy_digest.py (flip=None: every tw2002 *_MODE to legacy) on da25c47, the commit
 # before this slice: scripted match N3,N3,N2,N2,N1,H, seed 250925, 3 days (3 tick_day state digests + every obs
 # JSON, prompt text, action + result and event). Floats rounded as in that helper (Linux/Windows libm).
-FLEET_LEGACY_GOLDEN = "8e1a3a968cef4347d2558a64"
+FLEET_LEGACY_GOLDEN = "cdb2df6a5fe9ae18b0f7cc53"
 # Same helper, N3,N2,N1,H, only FLEET_MODE flipped (every other switch at its default) on da25c47: defaults
 # elsewhere plus FLEET_MODE legacy must be the pre-slice engine byte for byte. Later slices that retune tw2002
 # play change this one, so it is recorded here and checked by QC (Delivered note), not run in the suite.

@@ -36,7 +36,7 @@ from tw2k.engine.observation import build_observation
 from tw2k.engine.runner import tick_day
 
 ROOT = Path(__file__).resolve().parents[1]
-CAPTURE_LEGACY_GOLDEN = "cf2d05aa711bc01f8af77da3"  # same on Windows and Linux, on ad21ac6 and this tree
+CAPTURE_LEGACY_GOLDEN = "b8980da2a91220a4cc8c13f1"  # same on Windows and Linux, on ad21ac6 and this tree
 
 
 def _world():

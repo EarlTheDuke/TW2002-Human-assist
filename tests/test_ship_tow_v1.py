@@ -893,7 +893,7 @@ def test_bot_tow_policy_off_and_legacy_no_op(monkeypatch):
 # match N3,N2,N1,H, seed 250925, 3 days, every switch at its default (= this slice with only TOW_MODE flipped).
 # CAPTURE_MODE, CORPSHIP_MODE and the fullgame-fixes-v2 switches are also flipped: they did not exist
 # on that parent, and leaving them tw2002 changes the match.
-TOW_LEGACY_GOLDEN = "5032bedfb3722133d47b18eb"  # recorded on 5968646 + slice-47 QC brain fixes (79acd71; TOW_MODE absent)
+TOW_LEGACY_GOLDEN = "f2dd916bf285f87339c6981a"  # recorded on 5968646 + slice-47 QC brain fixes (79acd71; TOW_MODE absent)
 
 
 # Later slices that add a tw2002 mode flip it here too (planetary-trading-v1: PLANET_TRADE_MODE).

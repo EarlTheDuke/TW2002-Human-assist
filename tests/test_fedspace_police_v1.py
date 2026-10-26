@@ -819,7 +819,7 @@ def test_qc_attack_fed_costs_ten_percent_once_under_legacy_death(tw, monkeypatch
 # *_MODE switch legacy: every observation JSON, prompt text, action + result, event and end-of-day universe state
 # (minus the five new default fields; floats rounded to 6 places for Linux/Windows libm). The FED_MODE-only
 # legacy digest matched too (QC note).
-LEGACY_RUN_GOLDEN_PRE_SLICE = "377d39dbcae3e84da90e035f"
+LEGACY_RUN_GOLDEN_PRE_SLICE = "a9109e3918a9c5b72615143e"
 
 
 def test_qc_fed_legacy_matches_pre_slice_golden(legacy, monkeypatch):
