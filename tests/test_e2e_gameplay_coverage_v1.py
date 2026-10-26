@@ -296,7 +296,7 @@ def test_sdp201_buy_disruptor_at_stardock(monkeypatch, tmp_path, profile) -> Non
     """SD-P2-01. Case text is not in the repo. Read as buying a disruptor at StarDock."""
     _profile(monkeypatch, profile)
     u, (alice, _bob) = _world(9908)
-    _move(u, alice, 1)
+    _move(u, alice, K.stardock_sector_of(u))  # random under the v3.11 profile (GAP 1.5)
     price = int(K.disruptor_cost())
     alice.credits = price + 1000
     bought = _act(u, "A", ActionKind.BUY_EQUIP, item="mine_disruptor", qty=1)
@@ -581,7 +581,7 @@ def test_lhd_two_pods_then_destroyed_until_the_next_day(monkeypatch, tmp_path, p
     assert pods[0][1] == "escape_pod" and pods[0][2] == 1
     assert pods[1][1] == "escape_pod" and pods[1][2] == 2
     assert alice.ship.ship_class is ShipClass.SCOUT_MARAUDER
-    assert alice.sector_id == K.STARDOCK_SECTOR
+    assert alice.sector_id == K.stardock_sector_of(u)
     assert locked
     if profile:
         # The live day does not refill turns. The clock does. The scout is already at StarDock.

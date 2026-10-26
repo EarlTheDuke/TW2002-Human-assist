@@ -57,7 +57,7 @@ COCKPIT_KINDS = frozenset({
 })
 
 READS = ("observation", "reference", "events", "status")
-STARDOCK_SECTOR = 1
+STARDOCK_SECTOR = 1  # stored games; GAP 1.5 v3.11 games send sector.stardock_sector
 COMMODITIES = ("fuel_ore", "organics", "equipment")
 DEFAULT_BASE = {"fuel_ore": 26, "organics": 56, "equipment": 102}
 REFERENCE_BASE_ROWS = {"Fuel ore, base": "fuel_ore", "Organics, base": "organics", "Equipment, base": "equipment"}
@@ -871,7 +871,7 @@ class SeatBrain:
         dist, first = self._dists(edges, here)
         last_day = day >= self.days
 
-        if here == STARDOCK_SECTOR:
+        if here == stardock_of(obs):
             self.dock_trip = False
         holds = self._buy_holds(obs, here, day, credits, ship)
         if holds is not None:
@@ -886,8 +886,9 @@ class SeatBrain:
                 return sale
         carried = [name for name in COMMODITIES if cargo.get(name, 0) > 0]
         if warp.get("legal") and turns >= warp_t:
-            if self.dock_trip and STARDOCK_SECTOR in dist:
-                return self._go(obs, warp, STARDOCK_SECTOR, first, "on the way to StarDock for holds")
+            dock = stardock_of(obs)
+            if self.dock_trip and dock in dist:
+                return self._go(obs, warp, dock, first, "on the way to StarDock for holds")
             dock = self._stardock_trip(obs, dist, here, carried, credits, turns, warp_t)
             if dock is not None:
                 self.dock_trip = True
@@ -1046,7 +1047,7 @@ class SeatBrain:
         return "wait", {}, "no answer is open"
 
     def _buy_holds(self, obs: dict[str, Any], here: int, day: int, credits: int, ship: dict[str, Any]):
-        if here != STARDOCK_SECTOR or day > self.days - 2:
+        if here != stardock_of(obs) or day > self.days - 2:
             return None
         shop = _legal(obs, "buy_equip") or {}
         if not shop.get("legal"):
@@ -1207,11 +1208,12 @@ class SeatBrain:
         """Go back for holds when the credits clearly cover five more."""
         ship = obs.get("ship") or {}
         holds = int(ship.get("holds") or 0)
-        if carried or here == STARDOCK_SECTOR or int(obs.get("day") or 0) > self.days - 2:
+        dock = stardock_of(obs)
+        if carried or here == dock or int(obs.get("day") or 0) > self.days - 2:
             return None
         if holds >= int(ship.get("hold_cap") or holds):
             return None
-        hops = dist.get(STARDOCK_SECTOR)
+        hops = dist.get(dock)
         if hops is None or hops > 4 or hops * warp_t > turns:
             return None
         price = self.hold_price or 0
@@ -1221,7 +1223,7 @@ class SeatBrain:
             self.gap("hold_curve")
         if credits < 4 * int(5 * price * 1.15) + (holds + 5) * 70:
             return None
-        return STARDOCK_SECTOR, f"back to StarDock for holds (about {price} cr each)"
+        return dock, f"back to StarDock for holds (about {price} cr each)"
 
     def _explore(self, obs, edges, dist, here):
         adjacent = {int(row.get("id") or 0): row for row in (obs.get("adjacent") or [])}
@@ -1235,8 +1237,9 @@ class SeatBrain:
                      if sid != here and any(n not in self.visited for n in edges.get(sid, ())))
         if far:
             return far[0][1], f"head toward unexplored space at sector {far[0][1]}"
-        if here != STARDOCK_SECTOR:
-            return STARDOCK_SECTOR, "back to StarDock"
+        dock = stardock_of(obs)
+        if here != dock:
+            return dock, "back to StarDock"
         return None, "nothing left to explore"
 
 
@@ -1264,10 +1267,24 @@ def _tradeable(obs: dict[str, Any], sid: int) -> bool:
     return False
 
 
+def stardock_of(obs: dict[str, Any]) -> int:
+    """StarDock's sector as the cockpit paints it.
+
+    A v3.11 game places StarDock at random (GAP 1.5) and the observation then names it in
+    sector.stardock_sector, the field the redesign cockpit reads. A stored game leaves it
+    out and StarDock is sector 1.
+    """
+    raw = (obs.get("sector") or {}).get("stardock_sector")
+    try:
+        return int(raw) if raw is not None else STARDOCK_SECTOR
+    except (TypeError, ValueError):
+        return STARDOCK_SECTOR
+
+
 def leave_stardock(obs: dict[str, Any]) -> tuple[str, dict[str, Any]]:
     """Warp to a neighbor whose port can trade today, else one with a port, else the first warp."""
     sector = obs.get("sector") or {}
-    if int(sector.get("id") or 0) != STARDOCK_SECTOR:
+    if int(sector.get("id") or 0) != stardock_of(obs):
         raise CockpitSeatError("day 1 starts at StarDock")
     warp = _legal(obs, "warp")
     if not warp or not warp.get("legal"):

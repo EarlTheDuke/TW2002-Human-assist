@@ -24,11 +24,12 @@ def _buy(monkeypatch, profile, cargo, new="scout_marauder"):
     for c, n in cargo.items():
         ship.cargo[c] = n
     p = Player(id="P9", name="P9", ship=ship, credits=2_000_000)
-    p.sector_id = 1
+    dock = K.stardock_sector_of(u)  # random under the v3.11 profile (GAP 1.5)
+    p.sector_id = dock
     p.turns_per_day = 1000
     p.turns_today = 0
     u.players["P9"] = p
-    u.sectors[1].occupant_ids.append("P9")
+    u.sectors[dock].occupant_ids.append("P9")
     r = apply_action(u, "P9", Action(kind=ActionKind.BUY_SHIP, args={"ship_class": new}))
     assert r.ok, r.error
     return p.ship
