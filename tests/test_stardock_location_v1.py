@@ -107,7 +107,7 @@ def test_on_places_an_ordinary_sector_and_fedspace_includes_it(monkeypatch) -> N
         assert not K.in_fedspace(universe, other)
         assert int(universe.terra_colonists or 0) > 0
         player = Player(id="A", name="A", sector_id=1)
-        assert bank_guard(universe, player) == "the bank is at StarDock"
+        assert bank_guard(universe, player) == f"the bank is at StarDock (sector {dock})"
         player.sector_id = dock
         assert bank_guard(universe, player) is None
         rows = {row["slot"]: row["sector"] for row in menu_rows(universe, player)}

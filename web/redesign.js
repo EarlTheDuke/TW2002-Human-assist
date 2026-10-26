@@ -398,7 +398,7 @@
       else if (sector.terra) key = "sector_terra";
       else if (port && port.class_id != null) key = "sector_port_" + port.class_id;
       else if (sector.is_fedspace) key = "sector_fedspace";
-      else if (Number(sector.id) === 1) key = "sector_stardock";
+      else if (Number(sector.id) === stardockSectorId()) key = "sector_stardock";
     }
     const draw = (table) => {
       let current = key;
@@ -1903,6 +1903,27 @@
     const id = port.class_id != null ? Number(port.class_id) : NaN;
     return id === 8 || /stardock/i.test(code) || /stardock/i.test(name);
   }
+  // The dock sector is 1 until the game stores another. Standing there is
+  // StarDock. Sector 1 stays Terra when the dock has moved, and it does not
+  // open the shipyard or the bank.
+  function stardockSectorId() {
+    const named = Number(((S && S.sector) || {}).stardock_sector);
+    return named > 0 ? named : 1;
+  }
+  function atStarDockSector(sector) {
+    const s = sector || (S && S.sector) || {};
+    if (Number(s.id) === stardockSectorId()) return true;
+    return !!(s.port && /stardock/i.test(String(s.port.name || "")));
+  }
+  function starDockCourseButton() {
+    const dock = stardockSectorId();
+    const here = Number(((S && S.sector) || {}).id);
+    if (!dock || here === dock) return null;
+    const b = button("Plot course to StarDock (sector " + dock + ")", () => loadCourse(dock));
+    b.dataset.kind = "stardock_course";
+    b.title = "Shipyards, the bank, and the other StarDock services are in that sector.";
+    return b;
+  }
   function portClassShown(port) {
     // NOTE 97 CV-e. The live class map labels StarDock 9. The stored id stays 8.
     if (starDockPort(port) && stardockClass != null) return String(stardockClass);
@@ -2729,10 +2750,10 @@
         confirmWords("Land", landLine(p), () => act("land_planet", { planet_id: p.id }, "land on " + p.name));
       }));
     });
-    if (Number(s.id) === 1 || (s.port && /stardock/i.test(String(s.port.name || "")))) {
-      // NOTE 71. The three StarDock buttons stay in this order. One that
-      // cannot be used is grey, with its reason, and is never removed.
-      box.appendChild(reasonButton("buy_equip", "StarDock: buy gear", () => openForm("buy_equip")));
+    const dockHere = atStarDockSector(s);
+    const terraHere = Number(s.id) === 1;
+    const terraButton = () => {
+      // Terra stays in sector 1 after GAP 1.5 moves the dock.
       const terra = LA("terra_colonists") || {};
       const terraBtn = button("Load colonists (Terra)", () => {
         if (!terra.legal) { setResult(plainReason(terra.reason || "Terra colonists unavailable here"), true); return; }
@@ -2743,7 +2764,14 @@
         terraBtn.classList.add("dim");
         terraBtn.title = plainReason(terra.reason || "Terra colonists unavailable here");
       }
-      box.appendChild(terraBtn);
+      return terraBtn;
+    };
+    if (dockHere) {
+      // NOTE 71. The three StarDock buttons stay in this order. One that
+      // cannot be used is grey, with its reason, and is never removed.
+      // They are drawn only in the sector that holds the dock.
+      box.appendChild(reasonButton("buy_equip", "StarDock: buy gear", () => openForm("buy_equip")));
+      if (terraHere) box.appendChild(terraButton());
       box.appendChild(reasonButton("buy_ship", "Shipyards", () => openForm("buy_ship")));
       box.appendChild(reasonButton("ship_rename", "Change registration", () => openForm("ship_rename")));
       const bankLegal = legal("bank_deposit") || legal("bank_withdraw");
@@ -2760,6 +2788,12 @@
       } else bankBtn.addEventListener("click", () => bankForm());
       box.appendChild(bankBtn);
       box.appendChild(dockBox());
+    } else if (terraHere) {
+      // Sol still sells gear. The shipyard and the bank are at the dock.
+      box.appendChild(terraButton());
+      if (LA("buy_equip")) box.appendChild(reasonButton("buy_equip", "Buy gear", () => openForm("buy_equip")));
+      const course = starDockCourseButton();
+      if (course) box.appendChild(course);
     }
     box.appendChild(spaceBox());
     box.appendChild(defenseBox());

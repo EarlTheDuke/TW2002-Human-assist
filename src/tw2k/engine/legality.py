@@ -263,6 +263,7 @@ def legal_actions(universe: Universe, player_id: str) -> list[LegalAction]:
     release_stale_landing(universe, player)
     landed = player.planet_landed is not None
     at_stardock = int(player.sector_id) == int(K.stardock_sector_of(universe))
+    dock_reason = K.stardock_gate_reason(universe)
     in_fedspace = K.in_fedspace(universe, player.sector_id)
     port = sector.port
     from .port_build import docks_closed
@@ -780,10 +781,10 @@ def legal_actions(universe: Universe, player_id: str) -> list[LegalAction]:
     at_special = class0_tw2002() and special_port_at(universe, player.sector_id) is not None
     can_buy, buy_where_err = class0_buy_ok(universe, player_id)
     if not can_buy:
-        reason = buy_where_err if class0_tw2002() else "must be at StarDock (sector 1)"
+        reason = buy_where_err if class0_tw2002() else dock_reason
         if not class0_tw2002() and K.FED_OUTPOST_BUY_REASON in buy_where_err:  # t25: name the outpost
             reason = f"{reason}; {K.FED_OUTPOST_BUY_REASON}"
-        out.append(_la(ActionKind.BUY_SHIP, legal=False, reason="must be at StarDock (sector 1)",
+        out.append(_la(ActionKind.BUY_SHIP, legal=False, reason=dock_reason,
                        params={"ship_class": {"type": "str", "required": True, "choices": []}}))
         out.append(_la(ActionKind.BUY_EQUIP, legal=False, reason=reason,
                        params={"item": {"type": "str", "required": True, "choices": []},
@@ -791,7 +792,7 @@ def legal_actions(universe: Universe, player_id: str) -> list[LegalAction]:
     else:
         # buy_ship only at StarDock
         if not at_stardock:
-            out.append(_la(ActionKind.BUY_SHIP, legal=False, reason="must be at StarDock (sector 1)",
+            out.append(_la(ActionKind.BUY_SHIP, legal=False, reason=dock_reason,
                            params={"ship_class": {"type": "str", "required": True, "choices": []}}))
         else:
             from .corpships import exmember_tradein_block
@@ -1037,7 +1038,7 @@ def legal_actions(universe: Universe, player_id: str) -> list[LegalAction]:
     elif player.corp_ticker is not None:
         reason = "already in a corporation"
     elif not at_stardock:
-        reason = "must be at StarDock (sector 1)"
+        reason = dock_reason
     elif player.credits < K.CORP_FORMATION_COST:
         reason = f"need {K.CORP_FORMATION_COST} cr to incorporate (have {player.credits})"
     else:

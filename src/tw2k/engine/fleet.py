@@ -225,7 +225,7 @@ def new_spare_ship(class_key: str) -> Ship:
 def buy_spare(universe: Universe, pid: str, class_key: str) -> ActionResult:
     player = universe.players[pid]
     if int(player.sector_id) != int(K.stardock_sector_of(universe)):
-        return ActionResult(ok=False, error="must be at StarDock")
+        return ActionResult(ok=False, error=K.stardock_gate_reason(universe))
     why = spare_blocked(universe, pid, class_key)
     if why is not None:
         if why in ("corporation-only",):
@@ -273,7 +273,7 @@ def handle_sell_ship(universe: Universe, pid: str, action: Action) -> ActionResu
         return ActionResult(ok=False, error="unsupported action")
     player = universe.players[pid]
     if int(player.sector_id) != int(K.stardock_sector_of(universe)):
-        return ActionResult(ok=False, error="must be at StarDock")
+        return ActionResult(ok=False, error=K.stardock_gate_reason(universe))
     sid = _parse_id(action.args.get("ship_id"))
     if sid is None:
         return ActionResult(ok=False, error="sell_ship requires ship_id")
@@ -750,7 +750,7 @@ def legal_specs(universe: Universe, pid: str) -> list[tuple[str, bool, str | Non
     sell = sellable(universe, pid)
     credit_by = {str(p.id): sell_credit(p) for p in sell}
     if int(player.sector_id) != int(K.stardock_sector_of(universe)):
-        why = "must be at StarDock (sector 1)"
+        why = K.stardock_gate_reason(universe)
     elif not sell:
         why = "no ship of yours in orbit at StarDock"
     else:

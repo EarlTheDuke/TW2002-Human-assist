@@ -571,7 +571,7 @@ def ship_rename_spec(universe: Universe, pid: str) -> tuple[bool, str | None, di
     if not K.ship_rename_live():
         return False, "unsupported action", params
     if player is None or int(player.sector_id) != int(K.stardock_sector_of(universe)):
-        return False, "must be at StarDock (sector 1)", params
+        return False, K.stardock_gate_reason(universe), params
     cost = int(K.SHIP_RENAME_COST)
     if int(player.credits) < cost:
         return False, f"insufficient credits ({player.credits} < {cost})", params
@@ -587,7 +587,7 @@ def handle_ship_rename(universe: Universe, pid: str, action: Action) -> ActionRe
         return ActionResult(ok=False, error="unsupported action")
     player = universe.players[pid]
     if int(player.sector_id) != int(K.stardock_sector_of(universe)):
-        return ActionResult(ok=False, error="must be at StarDock (sector 1)")
+        return ActionResult(ok=False, error=K.stardock_gate_reason(universe))
     cleaned, why = clean_ship_name((action.args or {}).get("name"))
     if why or cleaned is None:
         return ActionResult(ok=False, error=why or "name the ship")
