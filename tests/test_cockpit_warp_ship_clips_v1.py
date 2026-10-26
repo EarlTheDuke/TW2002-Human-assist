@@ -50,7 +50,7 @@ def _quiet(page, plays: str) -> None:
 
 
 def _shot(page, name: str) -> None:
-    page.locator("#viewport").evaluate("el => el.scrollIntoView({block: 'start', inline: 'nearest'})")
+    page.locator("#ship").evaluate("el => el.scrollIntoView({block: 'start', inline: 'nearest'})")
     path = SHOTS / name
     page.screenshot(path=str(path))
     assert path.stat().st_size > 5000, path
@@ -184,11 +184,9 @@ def test_warp_clip_matches_the_hull(tmp_path: Path, monkeypatch) -> None:
                 """(here) => {
                   const sec = (document.querySelector('#pSector').textContent || '').trim();
                   const root = document.querySelector('#warpClip');
-                  const still = document.querySelector('[data-testid=viewport-clip-still]');
-                  const src = (still && still.getAttribute('src')) || '';
                   const shown = document.querySelector('[data-testid=viewport-clip]:not([hidden])');
                   return sec && sec !== here && root && root.hidden && root.getAttribute('data-plays') === '0'
-                    && !!shown && /move_warp|warp_out/.test(src);
+                    && !shown && !document.getElementById('viewport');
                 }""",
                 arg=departed,
                 timeout=20_000,
@@ -226,7 +224,7 @@ def test_warp_clip_matches_the_hull(tmp_path: Path, monkeypatch) -> None:
             assert wide.evaluate(
                 """() => {
                   const a = document.querySelector('#warpClip').getBoundingClientRect();
-                  const b = document.querySelector('#viewport').getBoundingClientRect();
+                  const b = document.querySelector('#ship').getBoundingClientRect();
                   return a.width > 40 && a.top >= b.top - 1 && a.bottom <= b.bottom + 1
                     && a.left >= b.left - 1 && a.right <= b.right + 1;
                 }"""
