@@ -7,14 +7,11 @@ rules doc; qc_bridge/transwarp_artifacts records which test caught each plant.
 
 from __future__ import annotations
 
-import subprocess
-import sys
 from pathlib import Path
 
 import pytest
 
 import tw2k.engine.constants as K
-from tests._pin_env import pin_env
 from tw2k.agents.heuristic import HeuristicAgent
 from tw2k.agents.prompts import format_observation, get_system_prompt
 from tw2k.agents.seat_brain import SeatBrain
@@ -687,25 +684,10 @@ def test_legacy_has_no_drive_verb_keys_or_events(monkeypatch):
     assert "transwarp_drive" not in fresh and "arrived_by_transwarp" not in fresh
 
 
-# Recorded with tests/fed_legacy_digest.py (flip=None: every tw2002 *_MODE to legacy) on 9dbe56b, the commit
-# before this slice: scripted match N3,N2,N1,H, seed 250925, 3 days (3 tick_day state digests + every obs JSON,
-# prompt text, action + result and event). Floats rounded as in that helper (Linux/Windows libm).
-SHIP_TW_LEGACY_GOLDEN = "c869281bb870a2ef46c6e5db"
 # Same run with only SHIP_TW_MODE flipped (every other switch at its default) on 9dbe56b: defaults elsewhere
 # plus SHIP_TW_MODE legacy must be the pre-slice engine byte for byte. Later slices that retune tw2002 play
 # change this one, so it is recorded here and checked by QC (see the Delivered note), not run in the suite.
 SHIP_TW_ONLY_LEGACY_ON_9DBE56B = "85fb398575b2a69e92e0bc17"
-
-
-def test_ship_tw_legacy_is_unchanged():
-    code = (
-        "import sys; from pathlib import Path; sys.path.insert(0, 'src'); sys.path.insert(0, 'tests');"
-        "from fed_legacy_digest import legacy_run_digest; print(legacy_run_digest(Path('.'), 'N3,N2,N1,H', 3))"
-    )
-    env = pin_env()
-    out = subprocess.run([sys.executable, "-c", code], cwd=ROOT, env=env, capture_output=True, text=True,
-                         timeout=900, check=True)
-    assert out.stdout.strip().splitlines()[-1] == SHIP_TW_LEGACY_GOLDEN
 
 
 # ---- tw6 bots ----------------------------------------------------------------------

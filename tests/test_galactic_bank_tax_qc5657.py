@@ -168,7 +168,8 @@ def test_qc_legacy_has_no_bank_anywhere(monkeypatch):
 def test_qc_death_credits_matrix_by_cause():
     from tw2k.engine.combat import _destroy_ship
     for reason, by_other, killer, paid in (
-        ("combat", True, "O0", True), ("captured", True, "O0", True),
+        # RULINGS Addendum A: a death destroys the cash; no cause pays the killer.
+        ("combat", True, "O0", False), ("captured", True, "O0", False),
         ("mines", False, None, False), ("sector_fighters", False, "O0", False),
         ("surrender", False, "O0", False), ("quasar", False, "O0", False),
         ("federal", True, None, False), ("navhaz", False, None, False),

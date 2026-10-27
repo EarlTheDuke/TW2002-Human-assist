@@ -8,14 +8,11 @@ qc_bridge/fleet_artifacts records which test caught each plant.
 from __future__ import annotations
 
 import copy
-import subprocess
-import sys
 from pathlib import Path
 
 import pytest
 
 import tw2k.engine.constants as K
-from tests._pin_env import pin_env
 from tw2k.agents.prompts import format_observation, get_system_prompt
 from tw2k.agents.seat_brain import SeatBrain, tw_reserve_view
 from tw2k.engine import Action, ActionKind, GameConfig, apply_action, generate_universe
@@ -827,26 +824,10 @@ def test_prompt_explains_the_fleet_under_tw2002():
         assert word in text
 
 
-# Recorded with tests/fed_legacy_digest.py (flip=None: every tw2002 *_MODE to legacy) on da25c47, the commit
-# before this slice: scripted match N3,N3,N2,N2,N1,H, seed 250925, 3 days (3 tick_day state digests + every obs
-# JSON, prompt text, action + result and event). Floats rounded as in that helper (Linux/Windows libm).
-FLEET_LEGACY_GOLDEN = "cdb2df6a5fe9ae18b0f7cc53"
 # Same helper, N3,N2,N1,H, only FLEET_MODE flipped (every other switch at its default) on da25c47: defaults
 # elsewhere plus FLEET_MODE legacy must be the pre-slice engine byte for byte. Later slices that retune tw2002
 # play change this one, so it is recorded here and checked by QC (Delivered note), not run in the suite.
 FLEET_ONLY_LEGACY_ON_DA25C47 = "b9a52b96095f12c7c453151b"
-
-
-def test_fleet_legacy_is_unchanged():
-    code = (
-        "import sys; from pathlib import Path; sys.path.insert(0, 'src'); sys.path.insert(0, 'tests');"
-        "from fed_legacy_digest import legacy_run_digest;"
-        "print(legacy_run_digest(Path('.'), 'N3,N3,N2,N2,N1,H', 3))"
-    )
-    env = pin_env()
-    out = subprocess.run([sys.executable, "-c", code], cwd=ROOT, env=env, capture_output=True, text=True,
-                         timeout=900, check=True)
-    assert out.stdout.strip().splitlines()[-1] == FLEET_LEGACY_GOLDEN
 
 
 # ---- bots ---------------------------------------------------------------------------------------

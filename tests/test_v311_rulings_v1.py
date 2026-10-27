@@ -7,7 +7,7 @@ Plants:
   pb1 - the offensive wave is sized 1 x (max fighters + max shields) instead of 1.25 x.
   pb2 - recover_turns pays its own 250/86400 next to refresh_offline_turns (double regen).
 NOTE 59 (v311-kill-cash-addendum-v1) plants:
-  pb3 - kill_cash_held() drops `or v311_profile()`, so a kill under the profile pays the killer.
+  pb3 - (retired with KILL_CASH_MODE in Phase 2: no path pays the killer any more.)
   pb4 - the pod top-up is skipped, so the pod after a kill holds 0 credits instead of 25.
 """
 
@@ -64,8 +64,6 @@ def test_defaults_stay_legacy() -> None:
     assert K.TAX_RULE_MODE == "legacy"
     assert K.tax_v311() is False
     assert K.tax_terms() == (5, 100_000, 0)
-    assert K.KILL_CASH_MODE == "legacy"
-    assert K.kill_cash_held() is False
     assert K.POD_CASH_MODE == "legacy"
     assert K.pod_cash_live() is False
     assert K.DEATH_CREDITS_ON_HAND == "lost"
@@ -306,11 +304,9 @@ def test_addendum_a_kill_pays_the_killer_nothing_and_the_pod_has_25(monkeypatch)
     from a logged-off victim, and the victim's on-hand cash is destroyed (the pod has 25 credits)";
     "the killer took the victim's 7 extra holds ("7 empty"). Keep the holds-salvage path."
     """
-    u, killer, victim = _kill(monkeypatch, 59001)  # profile off: the old game pays the killer
-    assert killer.credits == 300 + 10_000 and victim.credits == 0
     _on(monkeypatch)
-    assert K.kill_cash_held() and K.pod_cash_live()
-    assert K.KILL_CASH_MODE == "legacy" and K.POD_CASH_MODE == "legacy"
+    assert K.pod_cash_live()
+    assert K.POD_CASH_MODE == "legacy"
     assert K.DEATH_CREDITS_ON_HAND == "lost"
     u, killer, victim = _kill(monkeypatch, 59001)
     assert killer.credits == 300  # "Killer paid 0 (300 -> 300)"

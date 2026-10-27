@@ -70,5 +70,6 @@ def test_every_cited_switch_exists() -> None:
     text = V6.read_text(encoding="utf-8")
     names = sorted(set(_SWITCH.findall(text)))
     assert names, "the regrade should name the switches it found"
-    missing = [name for name in names if not hasattr(K, name)]
+    # A switch retired in Phase 2 is the only rule now; the regrade still cites it.
+    missing = [name for name in names if not hasattr(K, name) and name not in K.V311_RETIRED_SWITCHES]
     assert missing == []

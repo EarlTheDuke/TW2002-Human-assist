@@ -607,13 +607,8 @@ def test_fuzz_random_deaths_all_sixteen_hulls() -> None:
         reason, by_other = REASONS[rng.randrange(len(REASONS))]
         _destroy_ship(u, p.id, reason=reason, killer_id=players[0].id, by_other=by_other)
         assert p.alive
-        # gb13-gb14: cash is lost. A real hull killed by another pilot pays that pilot, including
-        # the odd case where the fuzz picks the killer as the victim and the credits come back.
-        real_hull = hull_name not in ("escape_pod", "scout_marauder")
-        if by_other and real_hull and p.id == players[0].id:
-            assert p.credits == before[0] >= 0
-        else:
-            assert p.credits == 0
+        # gb13: cash is lost. Nobody is paid (RULINGS Addendum A).
+        assert hull_name and p.credits == 0
         assert 0 <= p.experience <= before[1]
         assert abs(p.alignment) <= before[2]
         assert p.deaths == before[3] + 1

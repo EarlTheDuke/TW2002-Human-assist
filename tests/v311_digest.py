@@ -1,7 +1,7 @@
 """R-4 v3.11 pins: digest of a scripted match played on the stored defaults (V311_PROFILE "v311").
 
-The legacy pins (tests/fed_legacy_digest.py) guard "an all-legacy run stays what it was". These
-guard the game players now get: removing a legacy code path must leave every digest here
+The legacy digest pins guarded "an all-legacy run stays what it was" until Phase 2 removed
+legacy paths. These guard the game players now get: removing a legacy code path must leave every digest here
 byte-identical, because a v3.11 game never ran that path.
 
 Hashes the system prompt, every observation JSON and its prompt text, every action + result,

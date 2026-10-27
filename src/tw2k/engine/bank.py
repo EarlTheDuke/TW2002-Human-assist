@@ -266,22 +266,13 @@ def on_ship_lost(universe: Universe, player: Player, killer_id: str | None, by_o
     if lost <= 0:
         return 0
     player.credits = 0
-    recovered = 0
     real_hull = hull not in _POD_SCOUT
     killer = universe.players.get(str(killer_id or ""))
-    if by_other and real_hull and K.DEATH_CREDITS_TO_KILLER == "player_ship_kill" and killer is not None and not K.kill_cash_held():
-        recovered = lost * int(K.DEATH_CREDITS_RECOVER_PCT) // 100
-        killer.credits = int(killer.credits) + recovered
-        universe.emit(
-            EventKind.CREDITS_RECOVERED, actor_id=killer.id, sector_id=killer.sector_id,
-            payload={"from_player": player.id, "credits_recovered": recovered},
-            summary=f"Recovered {recovered}cr",
-        )
-    elif by_other and real_hull and killer is None and K.DEATH_CREDITS_FERRENGI == "to_ferrengi":
+    # RULINGS Addendum A: a player killer is paid nothing; the victim's cash is destroyed.
+    if by_other and real_hull and killer is None and K.DEATH_CREDITS_FERRENGI == "to_ferrengi":
         ship = (getattr(universe, "ferrengi", None) or {}).get(killer_id)
         if ship is not None and hasattr(ship, "credits"):
             ship.credits = int(ship.credits) + lost
-            recovered = lost
     return lost
 
 

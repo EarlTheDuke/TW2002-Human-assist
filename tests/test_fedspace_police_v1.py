@@ -13,7 +13,6 @@ from pathlib import Path
 import pytest
 
 import tw2k.engine.constants as K
-from tests._pin_env import pin_env
 from tw2k.agents.prompts import format_observation
 from tw2k.engine import Action, ActionKind, GameConfig, apply_action, generate_universe
 from tw2k.engine.fed import (
@@ -377,8 +376,8 @@ def test_f19_claim(tw):
     _move(u, "C", 1)
     u.players["C"].alignment = 10
     r = _act(u, "C", ActionKind.CLAIM_REWARD)
-    # 1,000 still aboard + 1,000 recovered from the real hull (gb14) + the 3,000 reward.
-    assert r.ok and u.players["C"].credits == 5000
+    # 1,000 still aboard + the 3,000 reward. The kill pays nothing (RULINGS Addendum A).
+    assert r.ok and u.players["C"].credits == 4000
     r2 = _act(u, "C", ActionKind.CLAIM_REWARD)
     assert not r2.ok
 
@@ -814,29 +813,6 @@ def test_qc_attack_fed_costs_ten_percent_once_under_legacy_death(tw, monkeypatch
     _fed(u, "Nelson").sector_id = 1
     assert _act(u, "A", ActionKind.ATTACK, target="fed:Nelson", qty=10).ok
     assert u.players["A"].alignment == 90 and u.players["A"].experience == 450 and u.players["A"].deaths == 1
-
-
-# Recorded with tests/fed_legacy_digest.py on the engine WITHOUT this slice: 4a2200a + bc868c6 (class0 terra QC
-# fixes) cherry-picked, i.e. origin minus fedspace-police-v1. Scripted match seats N2,H, seed 250925, 2 days, every
-# *_MODE switch legacy: every observation JSON, prompt text, action + result, event and end-of-day universe state
-# (minus the five new default fields; floats rounded to 6 places for Linux/Windows libm). The FED_MODE-only
-# legacy digest matched too (QC note).
-LEGACY_RUN_GOLDEN_PRE_SLICE = "a9109e3918a9c5b72615143e"
-
-
-def test_qc_fed_legacy_matches_pre_slice_golden(legacy, monkeypatch):
-    """FED_MODE legacy is byte-identical to the pre-slice engine (spec: LEGACY_GOLDEN pattern)."""
-    import subprocess
-    import sys
-
-    code = (
-        "import sys; from pathlib import Path; sys.path.insert(0, 'src'); sys.path.insert(0, 'tests');"
-        "from fed_legacy_digest import legacy_run_digest; print(legacy_run_digest(Path('.'), 'N2,H', 2))"
-    )
-    env = pin_env()
-    out = subprocess.run([sys.executable, "-c", code], cwd=ROOT, env=env, capture_output=True, text=True,
-                         timeout=600, check=True)
-    assert out.stdout.strip().splitlines()[-1] == LEGACY_RUN_GOLDEN_PRE_SLICE
 
 
 # ---- rows the rules table names but 58acec8 never defined (QC) ----

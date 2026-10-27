@@ -386,13 +386,6 @@ def test_pb24_a_rival_planet_stock_stays_out_of_the_hint():
     assert "424242" not in get_system_prompt()
 
 
-def test_pb25_the_legacy_pin_turns_the_route_notice_off():
-    from pathlib import Path
-    text = Path("tests/test_llm_parity_legacy_pin.py").read_text(encoding="utf-8")
-    assert "K.LLM_ROUTE_NOTICE = False" in text
-    assert "K.LLM_NEW_DAY_GOAL_NOTICE = False" in text
-
-
 def test_pb26_prompt_growth_stays_inside_the_budget(monkeypatch):
     from tw2k.agents.prompts import get_system_prompt
     monkeypatch.setattr(K, "LLM_PARITY_MODE", "legacy")
