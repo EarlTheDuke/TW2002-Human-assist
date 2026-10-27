@@ -685,6 +685,11 @@ class HeuristicAgent(BaseAgent):
             return None
         if int(obs.credits) <= max(self._h_keep(obs), 50_000):
             return None
+        from ..engine.constants import BOT_BANK_DAY1_DEPOSIT
+        if int(getattr(obs, "day", 1) or 1) <= 1 and int(getattr(obs, "bank_balance", 0) or 0) >= int(BOT_BANK_DAY1_DEPOSIT):
+            # Day 1 banks one nest stage (deposit_amount caps it). Coming back for more
+            # deposited the same 10,000 each trip: dock, one hop out, plot home, five times over.
+            return None
         legal = self._legal(obs)
         if not (legal.get("plot_course") or {}).get("legal") or not (legal.get("warp") or {}).get("legal"):
             return None
