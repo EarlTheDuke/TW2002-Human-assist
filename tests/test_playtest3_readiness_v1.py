@@ -592,7 +592,9 @@ def _drive(sync, origin: str, lobby, notes: dict[str, str], played: dict[str, st
                     page.bring_to_front()
                     time.sleep(0.25)
             else:
-                if not all(_day_done(row) for row in goals.values()):
+                # The bot fight may carry over to day 2 (_day2_fight): since #438 the
+                # code bot trades away from StarDock on day 1, and a chase can outlast this.
+                if not all(_day1_done(row) for row in goals.values()):
                     _progress(f"STOP goals={goals} ai={_ai_tail(lobby, gid)}")
                     tail = (SHOTS / "progress.txt").read_text(encoding="utf-8")[-1500:]
                     raise AssertionError(f"day 1 did not finish: {goals}\n{tail}")
@@ -606,6 +608,7 @@ def _drive(sync, origin: str, lobby, notes: dict[str, str], played: dict[str, st
             _wait_day(p2, "2")
             p1.screenshot(path=str(SHOTS / "13-day-2.png"))
             notes["day"] = "day 2 after the playtest clock moved one day length"
+            _day2_fight(pages, goals, lobby, gid, notes)
             _day2_move(pages, notes)
 
             p1.bring_to_front()
@@ -684,6 +687,46 @@ def _fresh() -> dict[str, bool]:
 
 def _day_done(row: dict[str, bool]) -> bool:
     return row["trade"] and row["warp"] and row["dock"] and row["gear"] and row["fight"]
+
+
+def _day1_done(row: dict[str, bool]) -> bool:
+    """Every goal but the bot fight, which may finish on day 2."""
+    return row["trade"] and row["warp"] and row["dock"] and row["gear"]
+
+
+def _day2_fight(pages: dict, goals: dict, lobby, gid: str, notes: dict[str, str]) -> None:
+    """A seat that did not catch the code bot on day 1 keeps chasing it on day 2.
+
+    The playtest plays two days, and a human hunting a bot that trades around the
+    map can take that long. The fight is still required: it must land by day 2.
+    """
+    deadline = time.time() + DAY1_BUDGET_S
+    last_move = time.time()
+    while time.time() < deadline and not all(_day_done(row) for row in goals.values()):
+        if time.time() - last_move > DAY1_STALL_S:
+            chips = {seat: _chip(page) for seat, page in pages.items()}
+            raise AssertionError(f"day 2 fight stalled: no human move for {DAY1_STALL_S}s; chips={chips} goals={goals}")
+        moved = False
+        for seat, page in pages.items():
+            if _chip(page) != "YOUR MOVE":
+                continue
+            last_move = time.time()
+            page.bring_to_front()
+            if _day_done(goals[seat]):
+                before = _result(page)
+                _pass(page)
+                _settle(page, before, 8)
+            else:
+                _step(page, seat, goals[seat], lobby, gid, notes)
+                if goals[seat]["fight"]:
+                    notes[f"{seat}-fight-day"] = "2"
+            moved = True
+            break
+        if not moved:
+            time.sleep(0.25)
+    if not all(_day_done(row) for row in goals.values()):
+        _progress(f"STOP day 2 goals={goals} ai={_ai_tail(lobby, gid)}")
+        raise AssertionError(f"no bot fight by the end of day 2: {goals}")
 
 
 def _has_text(page, selector: str, text: str) -> bool:
