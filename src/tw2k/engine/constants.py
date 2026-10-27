@@ -430,7 +430,6 @@ def haggle_table_tenths(commodity: str | None, mcic: int) -> int | None:
     return None
 
 
-
 # "legacy": the hidden room is 110% to 149% of the first offer, by MCIC.
 # "live": a one-shot counter is taken only inside the band seen on TWGS
 # v3.34b. A sell may ask up to +8%. A buy may bid down to -8% (the same
@@ -4136,8 +4135,8 @@ def tw2002_live_profile() -> bool:
     return TW2002_LIVE_PROFILE == "live"
 
 
-# port-attack-defense-v1. Off, an attack aimed at "port" is still "target not found".
-# On, the attack asks first. Yes costs 5 alignment and the fighters you send.
+# port-attack-defense-v1. An attack aimed at "port" asks first. Yes costs 5
+# alignment and the fighters you send.
 # The class maps are measured samples, not the only rating a live port of that
 # class can have. Ven GameA (TW Test Game 2, Slot A, TW2002 v3.34b) on
 # 2026-10-24 recorded different defs inside one class (Peleus 86, Anaxagoras
@@ -4152,7 +4151,6 @@ def tw2002_live_profile() -> bool:
 # Engine class 8 is StarDock. Canonical class 8 Vergil Minor (def 99 / laser
 # 954) and the Fed prior (def 91 / laser 701) stay on the sample list and are
 # not written into these maps. Class 0 and StarDock were BLOCKED in that capture.
-PORT_ATTACK_MODE = "legacy"  # "legacy" | "live"
 PORT_ATTACK_ALIGNMENT = -5
 PORT_DEFENSE_RATING = {
     1: 46,   # H'Catha @478. Leipzig @708 was 49.
@@ -4246,10 +4244,6 @@ PORT_ATTACK_GAMEA_SAMPLES: tuple[dict, ...] = (
 )
 
 
-def port_attack_live() -> bool:
-    return PORT_ATTACK_MODE == "live" or tw2002_live_profile() or v311_profile()
-
-
 def _port_attack_gamea_row(class_id: int, sector_id: int | None, name: str | None) -> dict | None:
     """The captured port, when this attack names it or an unnamed port sits on its sector.
 
@@ -4286,8 +4280,7 @@ def port_attack_sample(
     primary sample for the class, not the only value live TWGS can print.
     Classes 2, 3, and 5 carry the 2026-10-25 lasers. Engine class 8 is not
     in those maps.
-    The live attack path is the caller. PORT_ATTACK_MODE stays legacy, and
-    that path is not entered while the switch is off.
+    The port attack path is the caller.
     """
     row = _port_attack_gamea_row(class_id, sector_id, name)
     if row is not None:
@@ -4813,20 +4806,6 @@ def rival_strength_live() -> bool:
     return RIVAL_STRENGTH_MODE == "live" or tw2002_live_profile() or v311_profile()
 
 
-# combat-clarity-v1. Legacy keeps today's kill: the killer is paid the victim's
-# cash on hand (DEATH_CREDITS_RECOVER_PCT, currently 100) through bank.on_ship_lost.
-# tw2002 pays the killer nothing. Holds salvage is a different path and stays.
-# v311-kill-cash-addendum-v1 (NOTE 59): V311_PROFILE turns it on. RULINGS_v311.md
-# Addendum A, live v3.34b: "in normal play the killer gets nothing from a logged-off
-# victim, and the victim's on-hand cash is destroyed (the pod has 25 credits)".
-KILL_CASH_MODE = "legacy"  # "legacy" | "tw2002"
-
-
-def kill_cash_held() -> bool:
-    """True when a kill does not hand the victim's cash to the killer."""
-    return KILL_CASH_MODE == "tw2002" or tw2002_live_profile() or v311_profile()
-
-
 # hazards-scans-v1. Legacy keeps today's landing: a rival planet whose
 # fighters are not defending is claimed by landing, fighters included.
 # tw2002 fights the planet's fighters and shields first and claims it
@@ -5044,7 +5023,6 @@ V311_PROFILE_HELPERS: dict[str, tuple[str, str]] = {
     "citadel_perk_live": ("CITADEL_PERK_MODE", "MASTER_PLAN yes"),
     "exp_score_live": ("EXP_SCORE_MODE", "MASTER_PLAN yes, Ben confirm"),
     "death_pod_live": ("DEATH_POD_MODE", "MASTER_PLAN yes"),
-    "port_attack_live": ("PORT_ATTACK_MODE", "MASTER_PLAN yes"),
     "haggle_live": ("HAGGLE_LIVE_MODE", "MASTER_PLAN yes"),
     "discovery_exp_live": ("DISCOVERY_EXP_MODE", "MASTER_PLAN yes"),
     "fed_ships_live": ("FED_SHIPS_MODE", "MASTER_PLAN yes"),
@@ -5075,9 +5053,7 @@ V311_PROFILE_HELPERS: dict[str, tuple[str, str]] = {
     "ferrengi_engage_on": ("FERRENGI_ENGAGE_MODE", "MASTER_PLAN yes"),
     "siege_report_on": ("SIEGE_REPORT_MODE", "MASTER_PLAN yes"),
     "planet_growth_tw2002": ("PLANET_GROWTH_MODE", "MASTER_PLAN yes"),
-    "kill_cash_held": ("KILL_CASH_MODE", "RULINGS Addendum A (killer not paid)"),
     "pod_cash_live": ("POD_CASH_MODE", "RULINGS Addendum A (the pod has 25 credits)"),
-    "yard_stats_on": ("YARD_STATS_MODE", "RULINGS s4 (the yard shows the s4 roster figures)"),
     "citadel_table_fix_live": ("CITADEL_TABLE_FIX_MODE", "S1 section VII (class U citadel L3 colonists)"),
     "home_planet_live": ("HOME_PLANET_MODE", "REVISION.TXT 1558 and the new-character transcript (45/65/81 thousand)"),
     "class_m_nw_units": ("CLASS_M_NW_MODE", "S1 / NOTE 19 (class M net worth is thousands, not people)"),
@@ -5208,10 +5184,6 @@ V311_PROFILE_HELPERS: dict[str, tuple[str, str]] = {
     "planet_collision_live": (
         "PLANET_COLLISION_MODE",
         "NOTE 102 GAP 6.6: an overloaded sector can lose two planets at Extern",
-    ),
-    "planet_bust_exp_live": (
-        "PLANET_BUST_EXP_MODE",
-        "NOTE 102 GAP 14.3: the owner can create and destroy a planet for 75 experience",
     ),
     "bot_bank_float_live": (
         "BOT_BANK_FLOAT_MODE",
@@ -5444,6 +5416,20 @@ V311_PROFILE_HELPERS: dict[str, tuple[str, str]] = {
 }
 
 
+# Phase 2 legacy removal (after R-4). These switches had a legacy path that is gone:
+# the v3.11 rule is the only rule. switch -> (the helper it replaced, why it was in
+# the profile). The manual and the reference page still list them, always on.
+V311_RETIRED_SWITCHES: dict[str, tuple[str, str]] = {
+    "PORT_ATTACK_MODE": ("port_attack_live", "MASTER_PLAN yes"),
+    "KILL_CASH_MODE": ("kill_cash_held", "RULINGS Addendum A (killer not paid)"),
+    "YARD_STATS_MODE": ("yard_stats_on", "RULINGS s4 (the yard shows the s4 roster figures)"),
+    "PLANET_BUST_EXP_MODE": (
+        "planet_bust_exp_live",
+        "NOTE 102 GAP 14.3: the owner can create and destroy a planet for 75 experience",
+    ),
+}
+
+
 # NOTE 151 GAP 12.4. Cabal twgs.html and the modern manual print 30 days until an
 # inactive user is deleted. Gypsy's v2.03 sample prints 7. Off, nobody is deleted
 # for a quiet stretch. On, Extern deletes a trader with no successful action for
@@ -5536,18 +5522,6 @@ def day_seconds_from_env() -> float | None:
 
     raw = (os.environ.get(TURN_REGEN_DAY_SECONDS_ENV) or "").strip()
     return parse_day_seconds(raw) if raw else None
-
-
-# v311-daylen-and-yard-v1 (NOTE 60) item 5. Legacy sends no hull figures with buy_ship and the
-# cockpit reads its own table. "live" adds stats_by (name, cost, trade-in, holds, fighters,
-# shields, turns per warp, odds) from ship_specs(), so the yard shows the roster in play
-# (RULINGS_v311.md s4 under SHIP_ROSTER_MODE live). Appended so later slices can rebase cleanly.
-YARD_STATS_MODE = "legacy"  # "legacy" | "live"
-
-
-def yard_stats_on() -> bool:
-    """True when buy_ship carries each hull's figures from the server's ship list."""
-    return YARD_STATS_MODE == "live" or tw2002_live_profile() or v311_profile()
 
 
 def colonist_drop_room(class_id: str, pools: dict, total: int) -> int | None:
@@ -6721,19 +6695,6 @@ PLANET_COLLISION_PCT_PER_EXCESS = 10
 def planet_collision_live() -> bool:
     """True when Extern can collide planets in an overloaded sector."""
     return PLANET_COLLISION_MODE == "live" or tw2002_live_profile() or v311_profile()
-
-
-# NOTE 102 GAP 14.3. Cabal glossary: one create-and-destroy loop is 75
-# experience. Genesis already pays 25 and the destroy pays 50 (XP_AWARDS_TW2002),
-# which is 75 and not more. The missing step is that the owner was refused
-# ("planet is friendly"), so the loop could not be finished. This switch
-# lets the owner destroy that planet. It does not add a third award.
-PLANET_BUST_EXP_MODE = "legacy"  # "legacy" | "live"
-
-
-def planet_bust_exp_live() -> bool:
-    """True when the owner may destroy a planet they created."""
-    return PLANET_BUST_EXP_MODE == "live" or tw2002_live_profile() or v311_profile()
 
 
 # NOTE 105. gb15 and the MBBS manual: capturing a player takes the credits

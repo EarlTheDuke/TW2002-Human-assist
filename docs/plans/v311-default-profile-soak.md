@@ -91,3 +91,14 @@ Found by the flip, not fixed here:
 
 - Fixed on `fix-pod-cash-event`: under v3.11 the planet fuzz saw 25 credits it could not explain. The pod's 25-credit purse (POD_CASH_MODE, RULINGS Addendum A) was granted in `combat.py` without a figure on the `ship_destroyed` event; the event now carries `pod_cash`, and the fuzz runs on the stored default (5 seeds) plus `--profile legacy`.
 - `scripts/port_trade_fuzz.py` models the legacy price formula only; under v3.11 the engine quotes 24 where the formula says 27 (seed 93001).
+
+## Legacy removal, batch 1 (branch `phase2-legacy-batch1`)
+
+Retired (the v3.11 rule is the only rule; `V311_RETIRED_SWITCHES` keeps the names, and the manual and the reference page list them as always on):
+
+- `PORT_ATTACK_MODE`: an attack aimed at "port" always asks, then fights the port.
+- `KILL_CASH_MODE`: a kill or a capture destroys the victim's cash; no killer is paid (RULINGS Addendum A).
+- `YARD_STATS_MODE`: `buy_ship` always carries each hull's figures.
+- `PLANET_BUST_EXP_MODE`: the owner may destroy a planet they created.
+
+The legacy digest pins retire with this batch: a legacy run is no longer the game it recorded. `tests/fed_legacy_digest.py`, `tests/capture_legacy_pin.py`, the thirteen `*_legacy_pin.py` files and the in-module legacy digest tests are gone. The v3.11 pins (`tests/test_bots_match_v311_pin.py`) are the guard, and they did not move.

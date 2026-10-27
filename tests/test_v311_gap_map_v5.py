@@ -57,17 +57,15 @@ def test_new_switches_stay_legacy() -> None:
     assert K.EXP_SOURCES_MODE == "legacy"
     assert K.SPECIAL_PORT_DEFENCE_MODE == "legacy"
     assert K.PLANET_COLLISION_MODE == "legacy"
-    assert K.PLANET_BUST_EXP_MODE == "legacy"
     assert K.exp_sources_live() is False
     assert K.special_port_defence_live() is False
     assert K.planet_collision_live() is False
-    assert K.planet_bust_exp_live() is False
 
 
 def test_profile_turns_the_four_helpers_on(monkeypatch) -> None:
     monkeypatch.setattr(K, "V311_PROFILE", "v311")
     assert K.exp_sources_live() and K.special_port_defence_live()
-    assert K.planet_collision_live() and K.planet_bust_exp_live()
+    assert K.planet_collision_live()
     assert K.EXP_SOURCES_MODE == "legacy"
     assert K.SPECIAL_PORT_DEFENCE_MODE == "legacy"
 
@@ -106,7 +104,6 @@ def test_midnight_and_first_dock_already_run_under_the_profile(monkeypatch) -> N
 
 
 def test_special_port_off_is_not_the_huge_defence(monkeypatch) -> None:
-    monkeypatch.setattr(K, "PORT_ATTACK_MODE", "live")
     u, player = _world()
     before = player.ship.fighters
     res = _attack(u, 100)
@@ -252,17 +249,7 @@ def test_collisions_on_name_the_sector_and_may_drop_two_planets(monkeypatch) -> 
     assert len(u3.sectors[1].planet_ids) == 8
 
 
-def test_bust_off_refuses_the_owners_planet() -> None:
-    u, player = _world()
-    planet = _own_planet(u, player)
-    res = apply_action(u, "P1", Action(kind=ActionKind.PLANET_DESTROY, args={"planet_id": planet.id}))
-    assert res.ok is False
-    assert res.error == "planet is friendly"
-    assert planet.id in u.planets
-
-
 def test_bust_on_pays_75_for_the_loop_and_not_more(monkeypatch) -> None:
-    monkeypatch.setattr(K, "PLANET_BUST_EXP_MODE", "live")
     u, player = _world()
     player.experience = 0
     first = _bust_once(u, player)

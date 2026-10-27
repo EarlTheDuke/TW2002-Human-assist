@@ -86,7 +86,7 @@ def test_gb13_cash_lost_balance_kept(monkeypatch):
     from tw2k.engine.combat import _destroy_ship
     _destroy_ship(u, "A", "attack", killer_id="K", by_other=True)
     assert player.credits == 0 and player.bank_balance == 200_000
-    assert killer.credits == 100_000
+    assert killer.credits == 0  # RULINGS Addendum A: a death destroys the cash; nobody is paid
 
 
 def test_gb32_prompt_and_legacy(monkeypatch):
@@ -242,7 +242,7 @@ def test_gb15_capture():
     u, player = _world(credits=15_000)
     killer = _other(u, "K", credits=0, sector=1)
     _destroy_ship(u, "A", "captured", killer_id="K", by_other=True)
-    assert player.credits == 0 and killer.credits == 15_000 and player.bank_balance == 0
+    assert player.credits == 0 and killer.credits == 0 and player.bank_balance == 0  # RULINGS Addendum A: a death destroys the cash; nobody is paid
 
 
 def test_gb16_death_fog():
@@ -260,9 +260,9 @@ def test_gb16_death_fog():
     assert any("credits_lost" in row for row in facts(victim, "ship_destroyed"))
     assert all("credits_lost" not in row for row in facts(killer_view, "ship_destroyed"))
     assert all("credits_lost" not in row for row in facts(witness_view, "ship_destroyed"))
-    assert any(e.get("kind") == "credits_recovered" for e in killer_view["recent_events"])
+    assert not any(e.get("kind") == "credits_recovered" for e in killer_view["recent_events"])
     assert not any(e.get("kind") == "credits_recovered" for e in witness_view["recent_events"])
-    assert player.credits == 0 and killer.credits == 22_000
+    assert player.credits == 0 and killer.credits == 0  # RULINGS Addendum A: a death destroys the cash; nobody is paid
 
 
 def test_gb18_and_gb21_and_gb22(monkeypatch):

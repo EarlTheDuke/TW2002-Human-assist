@@ -6,14 +6,11 @@ docs/playtests/ships/SHIP_TOW.md rows tt1..tt32. Every rule runs through the rea
 
 from __future__ import annotations
 
-import subprocess
-import sys
 from pathlib import Path
 
 import pytest
 
 import tw2k.engine.constants as K
-from tests._pin_env import pin_env
 from tw2k.agents.prompts import get_system_prompt
 from tw2k.engine import Action, ActionKind, GameConfig, apply_action, generate_universe
 from tw2k.engine.fleet import _new_ship_id
@@ -887,34 +884,6 @@ def test_bot_tow_policy_off_and_legacy_no_op(monkeypatch):
         act = SeatBrain().decide(build_observation(u, "A").model_dump(mode="json"))
         assert act["kind"] != "tow_engage"
         monkeypatch.setattr(K, name, dict(TOW_DEFAULTS)[name])
-
-
-# ---- legacy pin ---------------------------------------------------------------------------------------
-
-# Recorded with tests/fed_legacy_digest.py on the commit before this slice (slice 50 + its follow-up): scripted
-# match N3,N2,N1,H, seed 250925, 3 days, every switch at its default (= this slice with only TOW_MODE flipped).
-# CAPTURE_MODE, CORPSHIP_MODE and the fullgame-fixes-v2 switches are also flipped: they did not exist
-# on that parent, and leaving them tw2002 changes the match.
-TOW_LEGACY_GOLDEN = "f2dd916bf285f87339c6981a"  # recorded on 5968646 + slice-47 QC brain fixes (79acd71; TOW_MODE absent)
-
-
-# Later slices that add a tw2002 mode flip it here too (planetary-trading-v1: PLANET_TRADE_MODE).
-FULLGAME_V2_SWITCHES = ("PLANET_DIVIDEND_MODE", "HUNT_MODE", "COMBAT_FRAMING_MODE", "SLOW_HULL_HINT_MODE",
-                        "COMBAT_SCANNER_MODE", "GENESIS_HULL_MODE", "MINE_OVERFLOW_MODE")
-TOW_PIN_FLIPS = ("CITADEL_FIDELITY_MODE", "STARDOCK_EXTRA_MODE", "BOTS_DEPLOY_MODE", "BOTS_TAVERN_MODE", "H_RECOVERY_MODE", "CORP_FIX_MODE", "BOTS_WAR_MODE", "TAVERN_MODE", "BOTS_BANK_MODE", "LLM_QUASAR_NUDGE_MODE", "LLM_PLANET_NUDGE_MODE", "LLM_PARITY_MODE", "TOW_MODE", "CAPTURE_MODE", "PLANET_TRADE_MODE", "CORPSHIP_MODE", "PORT_UPGRADE_MODE") + FULLGAME_V2_SWITCHES
-TOW_PIN_FLIPS += ("FED_OUTPOST_MODE", "BANK_MODE", "CORP_MODE", "ALIEN_MODE", "CORP_BOTS_MODE")
-
-
-def test_tow_legacy_is_unchanged():
-    code = (
-        "import sys; sys.path.insert(0, 'tests'); sys.path.insert(0, 'src');"
-        "from pathlib import Path; from fed_legacy_digest import legacy_run_digest;"
-        f"print(legacy_run_digest(Path('.'), 'N3,N2,N1,H', 3, 250925, flip={TOW_PIN_FLIPS!r}))"
-    )
-    env = pin_env()
-    out = subprocess.run([sys.executable, "-c", code], cwd=ROOT, env=env, capture_output=True, text=True,
-                         timeout=900, check=True)
-    assert out.stdout.strip().splitlines()[-1] == TOW_LEGACY_GOLDEN
 
 
 def test_tt11a_tt13_landing_releases_so_planet_transport_never_carries_a_towee():
