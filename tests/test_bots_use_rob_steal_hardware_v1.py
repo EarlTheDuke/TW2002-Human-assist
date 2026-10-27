@@ -17,6 +17,8 @@ from tw2k.engine import constants as K
 from tw2k.engine.models import Commodity, MineType, Player, PortClass, Ship, ShipClass
 from tw2k.engine.observation import build_observation
 
+pytestmark = pytest.mark.legacy_profile
+
 
 def _open(u, pid="A", sector=1, credits=20_000, ship=None):
     p = Player(id=pid, name=pid, credits=credits, ship=ship or Ship(), sector_id=sector)

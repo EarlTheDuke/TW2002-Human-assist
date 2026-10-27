@@ -29,6 +29,8 @@ from tw2k.engine.models import (
     ShipClass,
 )
 
+pytestmark = pytest.mark.legacy_profile
+
 ROOT = Path(__file__).resolve().parents[1]
 DOC = ROOT / "docs" / "playtests" / "scanners" / "SCANNERS_HIDDEN_INFO.md"
 BIG = 98765  # sentinel fighter count in the busy neighbour

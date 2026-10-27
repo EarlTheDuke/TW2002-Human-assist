@@ -1,10 +1,14 @@
 """own-planet-landing-fighters-v1. The owner lands only when the switch is on."""
+import pytest
+
+import tw2k.engine.constants as K
 from tw2k.engine import Action, ActionKind, GameConfig, generate_universe
 from tw2k.engine.combat import open_challenge
 from tw2k.engine.legality import legal_actions
 from tw2k.engine.models import FighterDeployment, FighterMode, Planet, PlanetClass, Player, Ship, ShipClass
 from tw2k.engine.runner import apply_action
-import tw2k.engine.constants as K
+
+pytestmark = pytest.mark.legacy_profile
 
 
 def _world():

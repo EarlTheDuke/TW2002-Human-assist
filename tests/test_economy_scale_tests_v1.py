@@ -4,6 +4,8 @@ from __future__ import annotations
 
 import math
 
+import pytest
+
 from tw2k.agents.seat_brain import SeatBrain, View
 from tw2k.engine import Action, ActionKind, GameConfig, apply_action, generate_universe
 from tw2k.engine import constants as K
@@ -11,6 +13,8 @@ from tw2k.engine.legality import legal_actions
 from tw2k.engine.models import Commodity, Player, Ship, ShipClass
 from tw2k.engine.observation import build_observation
 from tw2k.engine.runner import _record_port_intel
+
+pytestmark = pytest.mark.legacy_profile
 
 # 200 + sin(day / 87 * 2 * pi) * 40, rounded. These days stay inside 160..239,
 # so the 160 and 239 clamps do not change them. Day 22 is not in this set:

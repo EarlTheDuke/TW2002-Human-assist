@@ -4,11 +4,15 @@ Cabal haggling.html: the table percent is the most a port will consider "reasona
 to continue haggling"; past it the port says get lost and the turn is used. The measured
 TWGS rounds (HAGGLE_LIVE_MODE) close the deal inside that line. Legacy is unchanged.
 """
+import pytest
+
 import tw2k.engine.constants as K
 from tests.test_ports_haggle_v1 import _port, _seat, _trade
 from tw2k.engine.economy import port_buy_price, port_sell_price
 from tw2k.engine.models import Commodity, PortClass
 from tw2k.public.manual import render
+
+pytestmark = pytest.mark.legacy_profile
 
 FUEL = Commodity.FUEL_ORE
 

@@ -21,6 +21,8 @@ from tw2k.engine import GameConfig
 from tw2k.server.app import create_app
 from tw2k.server.runner import AgentSpec, MatchSpec
 
+pytestmark = pytest.mark.legacy_profile
+
 TOKEN = "h" * 40
 # Shortest day the clock accepts. 20s made the same check wait a minute.
 DAY_S = 10.0

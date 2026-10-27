@@ -10,10 +10,14 @@ from __future__ import annotations
 
 from pathlib import Path
 
+import pytest
+
 from tw2k.engine import Action, ActionKind, GameConfig, apply_action, generate_universe
 from tw2k.engine import constants as K
 from tw2k.engine.economy import begin_port_visit, trade_turn_cost
 from tw2k.engine.models import Commodity, Player, Port, PortClass, PortStock, Ship
+
+pytestmark = pytest.mark.legacy_profile
 
 ROOT = Path(__file__).resolve().parents[1]
 # The October 3 map cell. Not a cost this engine charges.

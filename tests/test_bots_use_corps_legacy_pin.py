@@ -14,7 +14,11 @@ import subprocess
 import sys
 from pathlib import Path
 
+import pytest
+
 from tests._pin_env import pin_env
+
+pytestmark = pytest.mark.legacy_profile
 
 ROOT = Path(__file__).resolve().parents[1]
 BOTS_USE_CORPS_LEGACY_GOLDEN = "19061f60328d6b811c839a1a"

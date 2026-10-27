@@ -16,8 +16,12 @@ from __future__ import annotations
 import importlib.util
 from pathlib import Path
 
+import pytest
+
 from tw2k.agents.seat_acceptance import aba_bounces, synthetic_obs, validate_action
 from tw2k.agents.seat_brain import SeatBrain
+
+pytestmark = pytest.mark.legacy_profile
 
 ROOT = Path(__file__).resolve().parents[1]
 

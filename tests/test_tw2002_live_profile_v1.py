@@ -1,5 +1,9 @@
 """One switch turns every live helper on. Off, each stored flag stays legacy."""
+import pytest
+
 import tw2k.engine.constants as K
+
+pytestmark = pytest.mark.legacy_profile
 
 HELPERS = (
     "avoid_live",

@@ -6,12 +6,16 @@ The switch, or V311_PROFILE "v311" alone, uses the printed cap.
 
 from __future__ import annotations
 
+import pytest
+
 import tw2k.engine.constants as K
 from tests.test_death_escape_pods_v1 import _make_universe, _park
 from tests.test_phase_abc import _first_non_fed_sector
 from tw2k.engine.combat import _destroy_ship
 from tw2k.engine.models import ShipClass
 from tw2k.public.manual import render
+
+pytestmark = pytest.mark.legacy_profile
 
 
 def _scout_loss(seed: int) -> int:

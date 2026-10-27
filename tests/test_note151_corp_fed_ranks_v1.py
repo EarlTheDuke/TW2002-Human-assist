@@ -12,12 +12,16 @@ from __future__ import annotations
 
 import logging
 
+import pytest
+
 import tw2k.engine.constants as K
 import tw2k.engine.presence as presence
 from tw2k.engine import GameConfig, generate_universe
 from tw2k.engine.models import Corporation, Player
 from tw2k.engine.runner import inactive_clock, tick_day
 from tw2k.public.manual import render
+
+pytestmark = pytest.mark.legacy_profile
 
 _DAY = 86_400.0
 

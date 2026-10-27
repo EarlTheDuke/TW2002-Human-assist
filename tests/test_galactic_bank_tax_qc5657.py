@@ -5,12 +5,16 @@ from __future__ import annotations
 import copy
 import random
 
+import pytest
+
 from tw2k.engine import Action, ActionKind, GameConfig, apply_action, generate_universe, tick_day
 from tw2k.engine import constants as K
 from tw2k.engine.legality import legal_actions
 from tw2k.engine.models import Player, Ship
 from tw2k.engine.observation import build_observation
 from tw2k.engine.victory import full_net_worth
+
+pytestmark = pytest.mark.legacy_profile
 
 VERBS = ("bank_deposit", "bank_withdraw", "bank_transfer")
 

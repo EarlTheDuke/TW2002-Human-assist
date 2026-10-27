@@ -36,6 +36,8 @@ from tw2k.engine.observation import build_observation
 from tw2k.engine.scanners import density_reading
 from tw2k.engine.ship_transwarp import hop_count
 
+pytestmark = pytest.mark.legacy_profile
+
 ROOT = Path(__file__).resolve().parents[1]
 
 

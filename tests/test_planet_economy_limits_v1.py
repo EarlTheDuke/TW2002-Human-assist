@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import pytest
+
 from tw2k.agents.seat_brain import SeatBrain
 from tw2k.engine import GameConfig, generate_universe
 from tw2k.engine import constants as K
@@ -12,6 +14,8 @@ from tw2k.engine.observation import build_observation
 from tw2k.engine.planets import _advance_planets
 from tw2k.engine.runner import _bfs_path, apply_action
 from tw2k.engine.victory import _planet_asset_value, planet_stock_unit_price
+
+pytestmark = pytest.mark.legacy_profile
 
 GOODS = (Commodity.FUEL_ORE, Commodity.ORGANICS, Commodity.EQUIPMENT)
 

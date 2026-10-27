@@ -17,12 +17,16 @@ Plants:
 
 from __future__ import annotations
 
+import pytest
+
 import tw2k.engine.constants as K
 from tw2k.engine.actions import Action, ActionKind
 from tw2k.engine.hardware import armid_detonation_hits
 from tw2k.engine.models import GameConfig, Player, Ship
 from tw2k.engine.runner import apply_action
 from tw2k.engine.universe import generate_universe
+
+pytestmark = pytest.mark.legacy_profile
 
 
 def test_default_keeps_todays_prices_and_hit():

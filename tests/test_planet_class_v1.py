@@ -1,10 +1,13 @@
 """planet-class-types-v1. The new switch stays off. The colonist conflict stays put."""
 from pathlib import Path
 
+import pytest
+
 import tw2k.engine.constants as K
-from tw2k.engine import Action, ActionKind, GameConfig, apply_action, generate_universe
-from tw2k.engine import runner
+from tw2k.engine import Action, ActionKind, GameConfig, apply_action, generate_universe, runner
 from tw2k.engine.models import Player, Ship, ShipClass
+
+pytestmark = pytest.mark.legacy_profile
 
 
 def test_flag_stays_legacy_and_the_open_colonist_count_stays() -> None:

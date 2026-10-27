@@ -15,6 +15,8 @@ from tw2k.engine.models import Player, PortClass, Ship
 from tw2k.engine.rob_steal import max_rob_credits, max_steal_holds
 from tw2k.engine.runner import tick_day
 
+pytestmark = pytest.mark.legacy_profile
+
 ROOT = Path(__file__).resolve().parents[1]
 DOC = ROOT / "docs" / "playtests" / "ports" / "ROB_STEAL.md"
 

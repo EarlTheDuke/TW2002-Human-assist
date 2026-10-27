@@ -10,6 +10,8 @@ from __future__ import annotations
 import inspect
 from pathlib import Path
 
+import pytest
+
 import tw2k.engine.constants as K
 from tw2k.engine import GameConfig, generate_universe
 from tw2k.engine.actions import Action, ActionKind
@@ -18,6 +20,8 @@ from tw2k.engine.models import Player
 from tw2k.engine.runner import apply_action, tick_day
 from tw2k.engine.ship_exit import _colonist_alignment
 from tw2k.engine.tavern import _bump_attempts
+
+pytestmark = pytest.mark.legacy_profile
 
 ROOT = Path(__file__).resolve().parents[1]
 

@@ -14,6 +14,8 @@ import tw2k.engine.constants as K
 from tw2k.public import manual
 from tw2k.public.security import parse_game_form, turns_phrase
 
+pytestmark = pytest.mark.legacy_profile
+
 
 @pytest.fixture
 def full_on(monkeypatch):

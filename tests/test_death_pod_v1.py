@@ -2,10 +2,14 @@
 
 from __future__ import annotations
 
+import pytest
+
 import tw2k.engine.constants as K
 from tests.test_phase_abc import _make_universe
 from tw2k.engine.combat import _destroy_ship
 from tw2k.engine.models import ShipClass
+
+pytestmark = pytest.mark.legacy_profile
 
 
 def _pod(mode: str):

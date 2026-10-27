@@ -6,9 +6,13 @@ The switch, or V311_PROFILE "v311" alone, uses the printed percent.
 
 from __future__ import annotations
 
+import pytest
+
 import tw2k.engine.constants as K
 from tw2k.engine.economy import haggle_bound
 from tw2k.public.manual import render
+
+pytestmark = pytest.mark.legacy_profile
 
 
 def test_haggle_table_fails_off_and_passes_on(monkeypatch) -> None:

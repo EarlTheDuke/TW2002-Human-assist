@@ -2,11 +2,15 @@
 
 Confirmed samples for the other classes live in test_gap215_port_attack_samples_v1.
 """
+import pytest
+
 import tw2k.engine.constants as K
 from tests.test_phase_abc import _first_non_fed_sector, _make_universe
 from tests.test_ship_combat_core_v1 import _act, _park
 from tw2k.engine.actions import ActionKind
 from tw2k.engine.models import EventKind, Port, PortClass
+
+pytestmark = pytest.mark.legacy_profile
 
 
 def _cruiser(seed: int):

@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import pytest
+
 from tw2k.agents.prompts import get_system_prompt
 from tw2k.agents.seat_brain import SeatBrain
 from tw2k.engine import Action, ActionKind, GameConfig, apply_action, generate_universe
@@ -11,6 +13,8 @@ from tw2k.engine.legality import legal_actions
 from tw2k.engine.models import Planet, PlanetClass, Player, Ship, Universe
 from tw2k.engine.observation import build_observation
 from tw2k.engine.tavern import note_dock, password_for
+
+pytestmark = pytest.mark.legacy_profile
 
 _TAVERN = {
     "tavern_announce", "tavern_talk", "tavern_graffiti", "tavern_order",

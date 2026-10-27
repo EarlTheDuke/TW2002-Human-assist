@@ -19,10 +19,14 @@ from __future__ import annotations
 import importlib.util
 from pathlib import Path
 
+import pytest
+
 import tw2k.engine.constants as K
 from tw2k.engine import GameConfig, generate_universe
 from tw2k.engine.economy import haggle_bound, haggle_room_pct, port_buy_price, port_sell_price
 from tw2k.engine.models import Commodity, Port, PortClass, PortStock
+
+pytestmark = pytest.mark.legacy_profile
 
 ROOT = Path(__file__).resolve().parents[1]
 FUEL = Commodity.FUEL_ORE

@@ -9,11 +9,15 @@ from __future__ import annotations
 
 from pathlib import Path
 
+import pytest
+
 import tw2k.engine.constants as K
 from tw2k.agents.prompts import get_system_prompt
 from tw2k.engine import Action, ActionKind, GameConfig, apply_action, generate_universe
 from tw2k.engine.legality import legal_actions
 from tw2k.engine.models import LimpetTrack, Player, Ship, ShipClass
+
+pytestmark = pytest.mark.legacy_profile
 
 ROOT = Path(__file__).resolve().parents[1]
 CAPTURE = ROOT / "docs" / "playtests" / "twgs-live" / "ship-rename-limpet-ven.txt"

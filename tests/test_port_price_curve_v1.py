@@ -2,9 +2,13 @@
 
 from __future__ import annotations
 
+import pytest
+
 from tw2k.engine import constants as K
 from tw2k.engine.economy import port_buy_price, port_sell_price
 from tw2k.engine.models import Commodity, Port, PortClass, PortStock
+
+pytestmark = pytest.mark.legacy_profile
 
 
 def _port(current: int, class_id: PortClass, maximum: int = 1000) -> Port:

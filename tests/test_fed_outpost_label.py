@@ -21,6 +21,8 @@ from tw2k.engine.models import Player, PortClass, Ship, ShipClass
 from tw2k.engine.observation import build_observation
 from tw2k.engine.scanners import sector_view
 
+pytestmark = pytest.mark.legacy_profile
+
 
 def _world(seed: int = 4501, size: int = 80):
     u = generate_universe(GameConfig(seed=seed, universe_size=size, enable_ferrengi=False, enable_planets=True))

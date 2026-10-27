@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import pytest
+
 from tests.test_phase_abc import _make_universe
 from tests.test_siege_path_v1 import _land, _place, _planet
 from tw2k.engine.actions import Action, ActionKind
@@ -9,6 +11,8 @@ from tw2k.engine.constants import PLANET_DEFENSE_ODDS, PLANET_OFFENSE_ODDS, TURN
 from tw2k.engine.models import EventKind
 from tw2k.engine.observation import build_observation, event_facts
 from tw2k.engine.runner import apply_action
+
+pytestmark = pytest.mark.legacy_profile
 
 
 def test_odds_constants() -> None:

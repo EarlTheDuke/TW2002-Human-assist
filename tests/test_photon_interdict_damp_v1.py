@@ -8,6 +8,8 @@ rules. The ship Interdictor Cruiser is a different well.
 
 from __future__ import annotations
 
+import pytest
+
 import tw2k.engine.constants as K
 from tw2k.engine.actions import Action, ActionKind
 from tw2k.engine.combat import hull_interdict_reason, interdictor_planet
@@ -28,6 +30,8 @@ from tw2k.engine.models import (
     Universe,
 )
 from tw2k.engine.runner import apply_action
+
+pytestmark = pytest.mark.legacy_profile
 
 
 def _world(*, wave: int, level: int = 6, shields: int = 0, fuel: int = 10_000):

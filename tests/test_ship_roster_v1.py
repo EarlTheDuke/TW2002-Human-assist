@@ -2,7 +2,11 @@
 
 from __future__ import annotations
 
+import pytest
+
 import tw2k.engine.constants as K
+
+pytestmark = pytest.mark.legacy_profile
 
 
 def test_legacy_iss_and_scout_stay_on_the_bible_chart():

@@ -21,6 +21,8 @@ from tw2k.engine.models import EventKind, Planet, PlanetClass
 from tw2k.engine.observation import build_observation
 from tw2k.engine.runner import apply_action, tick_day
 
+pytestmark = pytest.mark.legacy_profile
+
 # ---------------------------------------------------------------------------
 # (a) no staying in a held sector past the day
 # ---------------------------------------------------------------------------

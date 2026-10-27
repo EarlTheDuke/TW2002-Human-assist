@@ -26,6 +26,8 @@ from tw2k.engine.models import Commodity, Planet, PlanetClass
 from tw2k.server.broadcaster import Broadcaster
 from tw2k.server.runner import AgentSpec, MatchRunner, MatchSpec
 
+pytestmark = pytest.mark.legacy_profile
+
 ROOT = Path(__file__).resolve().parents[1]
 
 DAY_S = 120.0

@@ -2,8 +2,12 @@
 import re
 from pathlib import Path
 
-from tw2k.engine.actions import ActionKind
+import pytest
+
 from tw2k.engine import constants as K
+from tw2k.engine.actions import ActionKind
+
+pytestmark = pytest.mark.legacy_profile
 
 ROOT = Path(__file__).resolve().parents[1]
 JS = (ROOT / "web" / "bot.js").read_text(encoding="utf-8")

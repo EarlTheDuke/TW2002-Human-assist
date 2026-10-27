@@ -4,6 +4,8 @@ from __future__ import annotations
 
 from pathlib import Path
 
+import pytest
+
 import tw2k.engine.constants as K
 from tw2k.engine import Action, ActionKind, GameConfig, apply_action, generate_universe
 from tw2k.engine.fed import fedspace_hint, run_tows
@@ -11,6 +13,8 @@ from tw2k.engine.models import EventKind, Player, Ship, ShipClass
 from tw2k.engine.runner import tick_day
 from tw2k.engine.victory import is_fedsafe
 from tw2k.public.manual import render
+
+pytestmark = pytest.mark.legacy_profile
 
 ROOT = Path(__file__).resolve().parents[1]
 

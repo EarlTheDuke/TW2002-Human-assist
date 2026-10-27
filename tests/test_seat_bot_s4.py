@@ -41,6 +41,8 @@ from tw2k.engine import GameConfig
 from tw2k.server.app import create_app
 from tw2k.server.runner import AgentSpec, MatchSpec
 
+pytestmark = pytest.mark.legacy_profile
+
 ROOT = Path(__file__).resolve().parents[1]
 
 

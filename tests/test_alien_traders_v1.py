@@ -2,15 +2,14 @@
 
 from __future__ import annotations
 
+import pytest
+
 import tw2k.engine.constants as K
+from tw2k.agents.seat_brain import SeatBrain
 from tw2k.engine import Action, ActionKind, GameConfig, generate_universe
 from tw2k.engine.alien import alien_day_step, place_aliens, population
 from tw2k.engine.combat import _resolve_ship_attack_tw2002
 from tw2k.engine.legality import legal_actions
-from tw2k.agents.seat_brain import SeatBrain
-from tw2k.engine.observation import build_observation
-from tw2k.engine.runner import apply_action
-from tw2k.engine.scanners import density_reading, sector_view
 from tw2k.engine.models import (
     FighterDeployment,
     FighterMode,
@@ -20,6 +19,11 @@ from tw2k.engine.models import (
     Ship,
     ShipClass,
 )
+from tw2k.engine.observation import build_observation
+from tw2k.engine.runner import apply_action
+from tw2k.engine.scanners import density_reading, sector_view
+
+pytestmark = pytest.mark.legacy_profile
 
 
 def test_al1_population_and_legacy_places_nobody(monkeypatch):

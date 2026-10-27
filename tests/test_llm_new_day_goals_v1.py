@@ -23,6 +23,8 @@ from tw2k.engine import constants as K
 from tw2k.engine.models import Player
 from tw2k.server.runner import note_wait_streak
 
+pytestmark = pytest.mark.legacy_profile
+
 
 def _obs(day: int = 2, turns_remaining: int = 50, goals: dict | None = None):
     u = generate_universe(GameConfig(seed=7, universe_size=60, max_days=8, turns_per_day=50))

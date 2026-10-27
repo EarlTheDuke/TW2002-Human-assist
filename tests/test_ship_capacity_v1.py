@@ -13,11 +13,15 @@ Gunstar Y/16 line 10097. Hulls that print N are not in SHIP_TW_CHART_RANGE.
 
 from __future__ import annotations
 
+import pytest
+
 import tw2k.engine.constants as K
 from tw2k.engine import Action, ActionKind, GameConfig, apply_action, generate_universe
 from tw2k.engine.legality import legal_actions
 from tw2k.engine.models import Commodity, FighterDeployment, FighterMode, Player, Ship, ShipClass
 from tw2k.engine.observation import build_observation
+
+pytestmark = pytest.mark.legacy_profile
 
 
 def _world(**config):

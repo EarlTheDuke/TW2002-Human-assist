@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import pytest
+
 from tw2k.agents.bank_brain import (
     away_reserve,
     deposit_amount,
@@ -13,9 +15,12 @@ from tw2k.agents.bank_brain import (
     withdraw_amount,
 )
 
+pytestmark = pytest.mark.legacy_profile
+
 
 def test_bb22_bank_report_counts_treasury_and_losses():
     from types import SimpleNamespace
+
     from scripts.run_scripted_match import fold_bank_events
 
     def ev(kind, actor, **payload):
@@ -323,6 +328,7 @@ def test_pb20_targets_use_the_purse():
 def test_pb21_no_rival_balance():
     """The purse math reads its arguments only. It has no universe and no other seat's balance."""
     import ast
+
     import tw2k.agents.bank_brain as bank_brain
 
     tree = ast.parse(open(bank_brain.__file__, encoding="utf-8").read())
@@ -343,6 +349,7 @@ def test_pb21_no_rival_balance():
 def test_pb22_no_rng():
     """The purse math draws no random number. Same inputs, same answer, and no rng import."""
     import ast
+
     import tw2k.agents.bank_brain as bank_brain
     from tw2k.agents.bank_brain import away_reserve, nest_egg, purse, withdraw_amount
 
@@ -592,6 +599,7 @@ def test_bb8_day1_cap():
 
 def _h_obs(**overrides):
     import asyncio
+
     from tw2k.engine.observation import Observation
     base = dict(
         day=2, tick=1, max_days=10, finished=False,

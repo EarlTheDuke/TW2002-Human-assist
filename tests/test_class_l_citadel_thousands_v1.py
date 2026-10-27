@@ -11,11 +11,15 @@ while class_m_fidelity_live is on. No new profile switch.
 
 from __future__ import annotations
 
+import pytest
+
 import tw2k.engine.constants as K
 from tests.test_colonist_units_v1 import _act, _land, _take, _world
 from tw2k.engine.legality import legal_actions
 from tw2k.engine.models import Commodity, PlanetClass
 from tw2k.engine.observation import build_observation
+
+pytestmark = pytest.mark.legacy_profile
 
 _PHRASE = "400 (thousands)=400,000 people"
 

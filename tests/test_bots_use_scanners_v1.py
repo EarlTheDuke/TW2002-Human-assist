@@ -4,6 +4,8 @@ from __future__ import annotations
 
 import asyncio
 
+import pytest
+
 from tw2k.agents.heuristic import HeuristicAgent
 from tw2k.agents.prompts import SYSTEM_PROMPT
 from tw2k.agents.seat_acceptance import validate_action
@@ -14,6 +16,8 @@ from tw2k.engine.actions import Action
 from tw2k.engine.models import Ship, ShipClass
 from tw2k.engine.observation import build_observation
 from tw2k.engine.runner import apply_action
+
+pytestmark = pytest.mark.legacy_profile
 
 
 def _open(u, pid, sector=1, credits=20_000, ship=None):

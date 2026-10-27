@@ -7,10 +7,14 @@ A game that sets avg_warps keeps that average either way.
 
 from __future__ import annotations
 
+import pytest
+
 import tw2k.engine.constants as K
 from tw2k.engine.models import GameConfig
 from tw2k.engine.universe import generate_universe
 from tw2k.public.manual import render
+
+pytestmark = pytest.mark.legacy_profile
 
 _N = 100
 

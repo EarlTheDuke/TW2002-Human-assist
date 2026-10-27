@@ -2,11 +2,15 @@
 
 from __future__ import annotations
 
+import pytest
+
 from tests.test_phase_abc import _make_universe
 from tw2k.engine.actions import Action, ActionKind
 from tw2k.engine.models import Commodity, EventKind, Planet, PlanetClass
 from tw2k.engine.observation import build_observation, event_facts
 from tw2k.engine.runner import apply_action
+
+pytestmark = pytest.mark.legacy_profile
 
 
 def _sector(u):

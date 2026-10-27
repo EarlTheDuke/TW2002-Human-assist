@@ -4,11 +4,15 @@ from __future__ import annotations
 
 from pathlib import Path
 
+import pytest
+
 from tests.test_phase_abc import _make_universe
 from tw2k.agents.prompts import SYSTEM_PROMPT, get_system_prompt
 from tw2k.engine.legality import legal_actions
 from tw2k.engine.models import Commodity, Planet, PlanetClass
 from tw2k.engine.observation import build_observation
+
+pytestmark = pytest.mark.legacy_profile
 
 SECTOR = 120
 HIDDEN = ("fighters", "shields", "treasury", "stockpile", "quasar_sector_pct", "quasar_atm_pct", "has_transporter")

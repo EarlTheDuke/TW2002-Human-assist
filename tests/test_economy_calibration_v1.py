@@ -18,6 +18,8 @@ from tw2k.engine import constants as K
 from tw2k.engine.economy import haggle_bound
 from tw2k.engine.models import Commodity, Player, Port, PortClass, PortStock, Ship
 
+pytestmark = pytest.mark.legacy_profile
+
 ROOT = Path(__file__).resolve().parents[1]
 COMMODITIES = ("fuel_ore", "organics", "equipment")
 

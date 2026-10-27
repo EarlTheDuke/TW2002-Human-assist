@@ -25,6 +25,8 @@ from tw2k.engine.victory import (
     rank_level,
 )
 
+pytestmark = pytest.mark.legacy_profile
+
 ROOT = Path(__file__).resolve().parents[1]
 DOC = ROOT / "docs" / "playtests" / "ranks" / "EXPERIENCE_ALIGNMENT.md"
 

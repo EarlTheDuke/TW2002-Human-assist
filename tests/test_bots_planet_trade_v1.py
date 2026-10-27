@@ -16,6 +16,8 @@ from tw2k.engine.models import Commodity, PortClass
 from tw2k.engine.observation import build_observation
 from tw2k.engine.runner import _record_port_intel
 
+pytestmark = pytest.mark.legacy_profile
+
 ORE, ORG, EQ = Commodity.FUEL_ORE, Commodity.ORGANICS, Commodity.EQUIPMENT
 NEW_DEFAULTS = (("BOT_PLANET_TRADE_HOLD", True), ("BOT_PLANET_TRADE_GENESIS_HOPS", 2),
                 ("BOT_PLANET_TRADE_QUOTE_PCT", 90), ("BOT_PLANET_TRADE_FREE_LOT", 10))

@@ -7,11 +7,15 @@ helper on. The string "1" does not. TW2002_LIVE_PROFILE does not.
 """
 from __future__ import annotations
 
+import pytest
+
 import tw2k.engine.constants as K
 from tw2k.engine import GameConfig, generate_universe
 from tw2k.engine.bank import guard as bank_guard
 from tw2k.engine.models import Player, PortClass
 from tw2k.engine.navpoints import menu_rows, resolve_navpoint
+
+pytestmark = pytest.mark.legacy_profile
 
 
 def _legacy(monkeypatch) -> None:

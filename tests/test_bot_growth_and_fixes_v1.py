@@ -6,6 +6,8 @@ import asyncio
 import importlib.util
 from pathlib import Path
 
+import pytest
+
 import tw2k.engine.constants as K
 from tw2k.agents.heuristic import HeuristicAgent
 from tw2k.agents.seat_acceptance import synthetic_obs, validate_action
@@ -23,6 +25,8 @@ from tw2k.engine.constants import FEDSPACE_SECTORS, STARDOCK_SECTOR
 from tw2k.engine.legality import legal_actions
 from tw2k.engine.models import EventKind, Planet, PlanetClass, Player, Ship, ShipClass
 from tw2k.engine.observation import build_observation
+
+pytestmark = pytest.mark.legacy_profile
 
 ROOT = Path(__file__).resolve().parents[1]
 

@@ -13,6 +13,8 @@ from tw2k.engine import Action, ActionKind, GameConfig, generate_universe
 from tw2k.engine.models import Commodity, Planet, PlanetClass, Player, Ship, ShipClass
 from tw2k.engine.runner import apply_action, planet_tax_value, tick_day
 
+pytestmark = pytest.mark.legacy_profile
+
 
 @pytest.fixture
 def tw(monkeypatch):

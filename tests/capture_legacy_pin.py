@@ -89,6 +89,7 @@ def legacy_capture_digest() -> str:
         "GENESIS_HULL_MODE": "legacy",
         "MINE_OVERFLOW_MODE": "legacy",  # fullgame-fixes-v2
         "FED_OUTPOST_MODE": "legacy",  # class0-outpost-label
+        "V311_PROFILE": "legacy",  # R-4: the stored default is v311
     }
     prior = {}
     try:

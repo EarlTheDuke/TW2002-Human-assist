@@ -37,6 +37,8 @@ from tw2k.engine.observation import build_observation
 from tw2k.engine.runner import tick_day
 from tw2k.engine.ship_transwarp import hop_count
 
+pytestmark = pytest.mark.legacy_profile
+
 ROOT = Path(__file__).resolve().parents[1]
 TOW_DEFAULTS = (
     ("TOW_MODE", "tw2002"), ("TOW_MANNED", "any"), ("TOW_MANNED_MAX_FIGHTERS", 0), ("TOW_UNMANNED_FIGHTERS", "allow"),

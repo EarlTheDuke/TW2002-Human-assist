@@ -13,6 +13,7 @@ import re
 from pathlib import Path
 
 import httpx
+import pytest
 
 from tw2k.agents.external import ExternalAgent
 from tw2k.engine import GameConfig
@@ -20,6 +21,8 @@ from tw2k.engine.models import EventKind as EK
 from tw2k.server.app import create_app
 from tw2k.server.broadcaster import Broadcaster
 from tw2k.server.runner import AgentSpec, MatchRunner, MatchSpec
+
+pytestmark = pytest.mark.legacy_profile
 
 TOK2 = "phase-d-token-p2-0000000000"
 TOK3 = "phase-d-token-p3-0000000000"

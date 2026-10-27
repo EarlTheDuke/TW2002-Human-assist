@@ -8,9 +8,13 @@ it does not by itself change the day tick.
 
 from __future__ import annotations
 
+import pytest
+
 import tw2k.engine.constants as K
 from tw2k.engine.models import Commodity, Planet, PlanetClass
 from tw2k.engine.planets import _apply_one_day, daily_production, fighters_from_colonists
+
+pytestmark = pytest.mark.legacy_profile
 
 
 def _world(class_id: PlanetClass, **pools: int) -> Planet:

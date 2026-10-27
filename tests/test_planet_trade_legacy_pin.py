@@ -12,7 +12,11 @@ import subprocess
 import sys
 from pathlib import Path
 
+import pytest
+
 from tests._pin_env import pin_env
+
+pytestmark = pytest.mark.legacy_profile
 
 ROOT = Path(__file__).resolve().parents[1]
 PLANET_TRADE_LEGACY_GOLDEN = "f4a9aa10638cf5aabf542ec1"  # recorded on 3b8f8e5 (origin; PLANET_TRADE_MODE absent)

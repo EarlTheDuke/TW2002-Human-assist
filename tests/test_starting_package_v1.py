@@ -14,10 +14,14 @@ Plants:
 
 from __future__ import annotations
 
+import pytest
+
 import tw2k.engine.constants as K
 from tw2k.engine import GameConfig, generate_universe, tick_day
 from tw2k.engine.models import Commodity, Player
 from tw2k.engine.runner import grant_starting_planet, recover_turns
+
+pytestmark = pytest.mark.legacy_profile
 
 
 def _universe():

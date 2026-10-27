@@ -34,6 +34,8 @@ from tw2k.engine.observation import build_observation
 from tw2k.engine.runner import tick_day
 from tw2k.engine.scanners import density_reading
 
+pytestmark = pytest.mark.legacy_profile
+
 ROOT = Path(__file__).resolve().parents[1]
 DOC = ROOT / "docs" / "playtests" / "fedspace" / "FEDSPACE_POLICE.md"
 

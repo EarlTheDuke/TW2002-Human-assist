@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import pytest
+
 from tw2k.agents.seat_acceptance import validate_action
 from tw2k.agents.seat_brain import (
     CITADEL_GIFT_FIGHTERS_PER_LEVEL,
@@ -17,6 +19,8 @@ from tw2k.engine.actions import Action
 from tw2k.engine.models import Commodity, Planet, PlanetClass, Player
 from tw2k.engine.observation import build_observation
 from tw2k.engine.runner import apply_action
+
+pytestmark = pytest.mark.legacy_profile
 
 
 def test_citadel_value_is_the_credit_cost_not_a_garrison() -> None:

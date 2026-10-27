@@ -10,6 +10,8 @@ from __future__ import annotations
 import importlib.util
 from pathlib import Path
 
+import pytest
+
 import tw2k.engine.constants as K
 from tw2k.engine import Action, ActionKind, GameConfig, apply_action, generate_universe
 from tw2k.engine.legality import legal_actions
@@ -17,6 +19,8 @@ from tw2k.engine.models import Commodity, Planet, PlanetClass, Player, Ship, Shi
 from tw2k.engine.observation import build_observation
 from tw2k.engine.ship_exit import handle_jettison
 from tw2k.engine.victory import _planet_asset_value
+
+pytestmark = pytest.mark.legacy_profile
 
 ROOT = Path(__file__).resolve().parents[1]
 

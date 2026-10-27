@@ -12,9 +12,13 @@ from __future__ import annotations
 
 from pathlib import Path
 
+import pytest
+
 import tw2k.engine.constants as K
 from tw2k.engine.economy import regenerate_ports
 from tw2k.engine.models import Commodity, GameConfig, Port, PortClass, PortStock, Sector, Universe
+
+pytestmark = pytest.mark.legacy_profile
 
 ROOT = Path(__file__).resolve().parents[1]
 FUEL = Commodity.FUEL_ORE

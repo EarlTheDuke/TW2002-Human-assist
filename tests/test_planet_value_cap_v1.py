@@ -6,10 +6,14 @@ fighters out, count colonists only, or rank by experience.
 
 from __future__ import annotations
 
+import pytest
+
 import tw2k.engine.constants as K
 from tw2k.engine import GameConfig, generate_universe
 from tw2k.engine.models import Commodity, Planet, PlanetClass, Player
 from tw2k.engine.victory import check_victory, full_net_worth, planet_stock_unit_price
+
+pytestmark = pytest.mark.legacy_profile
 
 
 def _world():

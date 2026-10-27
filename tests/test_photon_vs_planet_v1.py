@@ -12,6 +12,8 @@ from tw2k.engine.models import Commodity, EventKind, Planet, PlanetClass
 from tw2k.engine.observation import event_facts
 from tw2k.engine.runner import apply_action, tick_day
 
+pytestmark = pytest.mark.legacy_profile
+
 
 @pytest.fixture(autouse=True)
 def _pin_hardware_legacy(monkeypatch):

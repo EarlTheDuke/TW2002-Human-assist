@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import pytest
+
 import tw2k.engine.constants as K
 from tests.test_citadel_class_tables_v1 import _build, _fill, _land, _plant
 from tests.test_phase_abc import _make_universe
@@ -11,6 +13,8 @@ from tw2k.engine.models import Commodity, EventKind, PlanetClass
 from tw2k.engine.observation import build_observation
 from tw2k.engine.runner import apply_action
 from tw2k.engine.victory import _planet_asset_value, planet_stock_unit_price
+
+pytestmark = pytest.mark.legacy_profile
 
 
 def _ready(u, *, class_id: PlanetClass = PlanetClass.M, level: int = 0, ore_delta: int = 0, col_delta: int = 0):

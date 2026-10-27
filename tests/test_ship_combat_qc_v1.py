@@ -8,6 +8,8 @@ from __future__ import annotations
 
 import asyncio
 
+import pytest
+
 from tests.test_phase_abc import _first_non_fed_sector
 from tests.test_ship_combat_core_v1 import _act, _brains, _challenge, _duel, _la, _last, _link
 from tw2k.agents import HeuristicAgent
@@ -16,6 +18,8 @@ from tw2k.engine.actions import Action, ActionKind
 from tw2k.engine.models import EventKind, FighterDeployment, FighterMode, ShipClass
 from tw2k.engine.observation import build_observation, event_facts
 from tw2k.engine.runner import apply_action
+
+pytestmark = pytest.mark.legacy_profile
 
 
 def _brain_step(brain, u, pid):

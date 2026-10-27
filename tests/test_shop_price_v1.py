@@ -2,7 +2,11 @@
 
 from __future__ import annotations
 
+import pytest
+
 import tw2k.engine.constants as K
+
+pytestmark = pytest.mark.legacy_profile
 
 
 def test_legacy_day1_hold_at_20_uses_the_daily_base():

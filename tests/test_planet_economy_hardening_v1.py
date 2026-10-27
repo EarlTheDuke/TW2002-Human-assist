@@ -6,6 +6,8 @@ build_observation). Each of the five holes is covered for class M, K and U.
 
 from __future__ import annotations
 
+import pytest
+
 from tw2k.agents.seat_brain import SeatBrain, SeatMemory
 from tw2k.engine import GameConfig, generate_universe
 from tw2k.engine import constants as K
@@ -15,6 +17,8 @@ from tw2k.engine.models import Commodity, Planet, PlanetClass, Player
 from tw2k.engine.observation import build_observation
 from tw2k.engine.planets import organics_consumption
 from tw2k.engine.runner import _bfs_path, apply_action, tick_day
+
+pytestmark = pytest.mark.legacy_profile
 
 CLASSES = (PlanetClass.M, PlanetClass.K, PlanetClass.U)
 GOODS = (Commodity.FUEL_ORE, Commodity.ORGANICS, Commodity.EQUIPMENT)

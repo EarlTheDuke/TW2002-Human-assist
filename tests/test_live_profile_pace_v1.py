@@ -10,9 +10,14 @@ from __future__ import annotations
 import asyncio
 from pathlib import Path
 
-from tw2k.engine import GameConfig, constants as K
+import pytest
+
+from tw2k.engine import GameConfig
+from tw2k.engine import constants as K
 from tw2k.server.broadcaster import Broadcaster
 from tw2k.server.runner import AgentSpec, MatchRunner, MatchSpec
+
+pytestmark = pytest.mark.legacy_profile
 
 
 def test_requested_turns_are_kept_and_the_switches_can_stay_off(monkeypatch) -> None:

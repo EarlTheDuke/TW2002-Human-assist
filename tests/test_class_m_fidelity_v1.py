@@ -11,12 +11,16 @@ Plants:
 
 from __future__ import annotations
 
+import pytest
+
 import tw2k.engine.constants as K
 from tests.test_citadel_class_tables_v1 import _build, _fill, _land, _plant
 from tests.test_phase_abc import _make_universe
 from tw2k.engine.models import Commodity, PlanetClass
 from tw2k.engine.observation import build_observation
 from tw2k.engine.planets import _apply_one_day
+
+pytestmark = pytest.mark.legacy_profile
 
 
 def test_switch_stays_off() -> None:

@@ -15,8 +15,12 @@ from __future__ import annotations
 
 from types import SimpleNamespace
 
+import pytest
+
 import tw2k.engine.constants as K
 from tw2k.engine.runner import _planet_odds_fight
+
+pytestmark = pytest.mark.legacy_profile
 
 
 def _player() -> SimpleNamespace:

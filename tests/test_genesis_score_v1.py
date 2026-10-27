@@ -10,9 +10,13 @@ planet makes on top of the seed still count. Colonists still count.
 
 from __future__ import annotations
 
+import pytest
+
 import tw2k.engine.constants as K
 from tw2k.engine.models import Commodity, Planet, PlanetClass
 from tw2k.engine.victory import _planet_asset_value
+
+pytestmark = pytest.mark.legacy_profile
 
 
 def _class_u(*, extra_fuel: int = 0, level: int = 0) -> Planet:

@@ -4,12 +4,16 @@ from __future__ import annotations
 
 import copy
 
+import pytest
+
 from tw2k.engine import GameConfig, generate_universe
 from tw2k.engine.actions import Action, ActionKind
 from tw2k.engine.constants import CORP_MAX_MEMBERS, hull_spec
 from tw2k.engine.legality import legal_actions
 from tw2k.engine.models import FighterDeployment, FighterMode, MineDeployment, MineType, Player
 from tw2k.engine.runner import apply_action, tick_day
+
+pytestmark = pytest.mark.legacy_profile
 
 
 def _u():

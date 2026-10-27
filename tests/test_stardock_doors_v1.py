@@ -8,6 +8,8 @@ from __future__ import annotations
 
 from pathlib import Path
 
+import pytest
+
 from tw2k.engine import Action, ActionKind, GameConfig, apply_action, generate_universe
 from tw2k.engine import constants as K
 from tw2k.engine.legality import legal_actions
@@ -23,6 +25,8 @@ from tw2k.engine.stardock_doors import (
     ferrengi_hull_lines,
     where_to_lines,
 )
+
+pytestmark = pytest.mark.legacy_profile
 
 ROOT = Path(__file__).resolve().parents[1]
 MENUS = (ROOT / "docs/playtests/twgs-live/stardock-menus.txt").read_text(encoding="utf-8")

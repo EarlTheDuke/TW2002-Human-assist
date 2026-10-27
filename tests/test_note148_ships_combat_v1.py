@@ -7,6 +7,8 @@ printed figure.
 
 from __future__ import annotations
 
+import pytest
+
 import tw2k.engine.constants as K
 from tw2k.engine.actions import Action, ActionKind
 from tw2k.engine.combat import _resolve_ship_combat_attacker_npc
@@ -23,6 +25,8 @@ from tw2k.engine.models import (
 )
 from tw2k.engine.runner import apply_action
 from tw2k.public.manual import render
+
+pytestmark = pytest.mark.legacy_profile
 
 
 def test_ferrengi_attack_fails_off_and_passes_on(monkeypatch) -> None:

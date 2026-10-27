@@ -32,6 +32,9 @@ from tw2k.engine.models import (  # noqa: E402
 from tw2k.engine.runner import apply_action, tick_day  # noqa: E402
 from tw2k.engine.universe import generate_universe  # noqa: E402
 
+# R-4: this tool checks the legacy rules; the stored V311_PROFILE default is v311 now.
+K.V311_PROFILE = "legacy"
+
 FIXED_SEEDS: tuple[int, ...] = tuple(range(93001, 93041))
 ACTIONS = 300
 MIN_OK = 12

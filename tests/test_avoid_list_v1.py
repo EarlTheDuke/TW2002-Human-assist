@@ -1,11 +1,15 @@
 """avoid-list-v1. The computer keeps a list only when the switch is on."""
+import pytest
+
+import tw2k.engine.constants as K
 from tw2k.engine.actions import Action, ActionKind
 from tw2k.engine.combat import _destroy_ship
 from tw2k.engine.models import GameConfig, Player
 from tw2k.engine.observation import build_observation
 from tw2k.engine.runner import _handle_avoid, _handle_plot_course
 from tw2k.engine.universe import generate_universe
-import tw2k.engine.constants as K
+
+pytestmark = pytest.mark.legacy_profile
 
 
 def _seat():

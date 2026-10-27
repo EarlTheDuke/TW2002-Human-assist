@@ -2,11 +2,15 @@
 
 from __future__ import annotations
 
+import pytest
+
 from tw2k.engine import Action, ActionKind, GameConfig, apply_action, generate_universe
 from tw2k.engine import constants as K
 from tw2k.engine.legality import legal_actions
 from tw2k.engine.models import Corporation, Player, Ship, ShipClass
 from tw2k.engine.observation import build_observation
+
+pytestmark = pytest.mark.legacy_profile
 
 _NEW_SHIPS = (
     "star_master",

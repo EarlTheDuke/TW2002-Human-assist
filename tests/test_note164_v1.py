@@ -9,6 +9,8 @@ from __future__ import annotations
 
 from pathlib import Path
 
+import pytest
+
 import tw2k.engine.constants as K
 from tw2k.engine.combat import _destroy_ship, fighter_report
 from tw2k.engine.corp import disband
@@ -25,6 +27,8 @@ from tw2k.engine.models import (
 )
 from tw2k.engine.universe import generate_universe
 from tw2k.public.manual import render
+
+pytestmark = pytest.mark.legacy_profile
 
 _PROFILE = Path("docs/plans/v311-profile-v1.md")
 

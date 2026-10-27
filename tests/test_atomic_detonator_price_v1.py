@@ -15,6 +15,8 @@ from __future__ import annotations
 import re
 from pathlib import Path
 
+import pytest
+
 import tw2k.engine.constants as K
 from tw2k.engine.actions import Action, ActionKind
 from tw2k.engine.legality import legal_actions
@@ -22,6 +24,8 @@ from tw2k.engine.models import GameConfig, Player, Ship
 from tw2k.engine.runner import apply_action
 from tw2k.engine.universe import generate_universe
 from tw2k.server.reference import game_reference
+
+pytestmark = pytest.mark.legacy_profile
 
 ROOT = Path(__file__).resolve().parents[1]
 CAPTURE = ROOT / "docs" / "playtests" / "twgs-live" / "twstats-costs-ven.txt"

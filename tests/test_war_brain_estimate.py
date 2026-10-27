@@ -4,8 +4,12 @@ from __future__ import annotations
 
 from types import SimpleNamespace
 
+import pytest
+
 from tw2k.agents.war_brain import armid_sector, planet_fight, threat_map
 from tw2k.engine.runner import _planet_odds_fight
+
+pytestmark = pytest.mark.legacy_profile
 
 
 def _case(seed: int) -> tuple[int, int, int, int, str, bool]:

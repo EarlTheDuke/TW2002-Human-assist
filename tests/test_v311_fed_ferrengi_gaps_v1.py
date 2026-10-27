@@ -5,6 +5,8 @@ Each switch is off by default. The stored flag stays legacy when the v3.11 profi
 
 from __future__ import annotations
 
+import pytest
+
 import tw2k.engine.constants as K
 from tests.test_ferrengi_aliens_v1 import _add_player, _world
 from tests.test_phase_abc import _first_non_fed_sector, _make_universe
@@ -22,6 +24,8 @@ from tw2k.engine.ferrengi import (
 from tw2k.engine.models import Commodity, EventKind, Planet, PlanetClass, ShipClass
 from tw2k.engine.runner import apply_action
 from tw2k.engine.ship_transwarp import handle_ship_transwarp
+
+pytestmark = pytest.mark.legacy_profile
 
 
 def _live_hulls(monkeypatch) -> None:

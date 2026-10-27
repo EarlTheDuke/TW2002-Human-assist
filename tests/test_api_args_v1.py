@@ -1,11 +1,15 @@
 """api-arg-hardening-v1. Aliases, the reject flag, and a plotted course that stays put."""
 from types import SimpleNamespace
 
+import pytest
+
+import tw2k.engine.constants as K
 from tw2k.engine import Action, ActionKind, GameConfig, generate_universe
 from tw2k.engine.models import Player, Ship, ShipClass
 from tw2k.engine.runner import apply_action
 from tw2k.server.harness import arg_error, retry_blocked, rewrite_api_args
-import tw2k.engine.constants as K
+
+pytestmark = pytest.mark.legacy_profile
 
 
 def _seat():

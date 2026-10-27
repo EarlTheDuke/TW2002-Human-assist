@@ -2,12 +2,16 @@
 
 from __future__ import annotations
 
+import pytest
+
 from tests.test_port_upgrade_build import EQ, _build, _kinds, _planet, _port, _up, _world
 from tw2k.engine import Action, ActionKind, apply_action, tick_day
 from tw2k.engine import constants as K
 from tw2k.engine.models import EventKind, Player, Ship
 from tw2k.engine.observation import build_observation, event_facts
 from tw2k.engine.port_build import port_count
+
+pytestmark = pytest.mark.legacy_profile
 
 
 def _events(u, kind):

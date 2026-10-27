@@ -7,11 +7,15 @@ import subprocess
 import sys
 from pathlib import Path
 
+import pytest
+
 from tw2k.engine import Action, ActionKind, GameConfig, apply_action, build_observation, generate_universe
 from tw2k.engine import constants as K
 from tw2k.engine.economy import port_buy_price, port_sell_price
 from tw2k.engine.legality import legal_actions
 from tw2k.engine.models import Commodity, Player, Port, PortClass, PortStock, Ship
+
+pytestmark = pytest.mark.legacy_profile
 
 ROOT = Path(__file__).resolve().parents[1]
 FUZZ = ROOT / "scripts" / "port_trade_fuzz.py"

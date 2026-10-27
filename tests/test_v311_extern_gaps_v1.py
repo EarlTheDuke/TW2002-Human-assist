@@ -22,6 +22,8 @@ from tw2k.engine.legality import legal_actions
 from tw2k.engine.models import Planet, PlanetClass, Player, Ship, ShipClass
 from tw2k.engine.runner import apply_action, tick_day
 
+pytestmark = pytest.mark.legacy_profile
+
 
 def _world(**config):
     return generate_universe(GameConfig(

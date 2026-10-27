@@ -14,11 +14,13 @@ from pathlib import Path
 import pytest
 
 from tw2k.engine import GameConfig, generate_universe
-from tw2k.engine.actions import Action, ActionKind
 from tw2k.engine import constants as K
+from tw2k.engine.actions import Action, ActionKind
 from tw2k.engine.legality import LegalAction, legal_actions
 from tw2k.engine.models import Commodity, EventKind, MineType, Player, PortClass
 from tw2k.engine.runner import apply_action
+
+pytestmark = pytest.mark.legacy_profile
 
 ROOT = Path(__file__).resolve().parents[1]
 HTML = (ROOT / "web" / "bot.html").read_text(encoding="utf-8")
@@ -395,7 +397,17 @@ def _build(kind: str, la: LegalAction, u, pid: str) -> Action:
     raise AssertionError(f"no builder for {kind}")
 
 
-@pytest.mark.parametrize("label,fx", _fixtures(), ids=lambda x: x if isinstance(x, str) else "")
+def _legacy_fixtures() -> list[tuple[str, object]]:
+    """The states are built at collection, before the legacy_profile module fixture runs."""
+    saved = K.V311_PROFILE
+    K.V311_PROFILE = "legacy"
+    try:
+        return _fixtures()
+    finally:
+        K.V311_PROFILE = saved
+
+
+@pytest.mark.parametrize("label,fx", _legacy_fixtures(), ids=lambda x: x if isinstance(x, str) else "")
 def test_every_verb_matches_engine(label: str, fx) -> None:
     pid, u = fx if isinstance(fx, tuple) else ("P1", fx)
     las = {la.kind: la for la in legal_actions(u, pid)}
