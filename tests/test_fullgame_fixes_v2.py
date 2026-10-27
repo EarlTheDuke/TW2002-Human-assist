@@ -8,7 +8,6 @@ from __future__ import annotations
 import pytest
 
 import tw2k.engine.constants as K
-from tests._pin_env import pin_env
 from tw2k.engine import Action, ActionKind, GameConfig, generate_universe
 from tw2k.engine.models import Commodity, Planet, PlanetClass, Player, Ship, ShipClass
 from tw2k.engine.runner import apply_action, planet_tax_value, tick_day
@@ -434,33 +433,3 @@ def test_docked_n3_options_path_offers_the_arming_buy(hunt, monkeypatch):
     assert brain._opt_hunt_arm(v) is not None  # offering it does not use up the day; choosing it does
     monkeypatch.setattr(K, "HUNT_MODE", "legacy")
     assert brain._opt_hunt_arm(v) is None
-
-
-# ---- legacy pin -------------------------------------------------------------------------------------
-
-# tests/fed_legacy_digest.py, scripted N3,N2,N1,H, seed 250925, 3 days, every other switch at its default:
-# f10b080 (the base) digests to this, and so does this slice with only its seven switches flipped to legacy.
-V2_SWITCHES = ("PLANET_DIVIDEND_MODE", "HUNT_MODE", "COMBAT_FRAMING_MODE", "SLOW_HULL_HINT_MODE",
-               "COMBAT_SCANNER_MODE", "GENESIS_HULL_MODE", "MINE_OVERFLOW_MODE")
-# bots-use-planet-trade-v1 changed the tw2002 bots' planet-trade play, so this pin also flips PLANET_TRADE_MODE (the
-# single-mode pin convention): f10b080 with PLANET_TRADE_MODE flipped digests to f4a9aa10638cf5aabf542ec1 (the
-# PLANET_TRADE golden), and so do b7e1f86 and bots-use-planet-trade-v1 with these eight switches flipped.
-V2_PIN_FLIP = V2_SWITCHES + ("PLANET_TRADE_MODE",)
-V2_LEGACY_GOLDEN = "f4a9aa10638cf5aabf542ec1"  # was 5e29f9528d7e5000218b575a (f10b080, flip=())
-
-
-def test_fullgame_fixes_v2_switches_off_equal_the_base():
-    import subprocess
-    import sys
-    from pathlib import Path
-    root = Path(__file__).resolve().parents[1]
-    flips = V2_PIN_FLIP + ("CITADEL_FIDELITY_MODE", "STARDOCK_EXTRA_MODE", "BOTS_DEPLOY_MODE", "BOTS_TAVERN_MODE", "H_RECOVERY_MODE", "CORP_FIX_MODE", "BOTS_WAR_MODE", "TAVERN_MODE", "BOTS_BANK_MODE", "LLM_QUASAR_NUDGE_MODE", "LLM_PLANET_NUDGE_MODE", "LLM_PARITY_MODE", "CORPSHIP_MODE", "FED_OUTPOST_MODE", "PORT_UPGRADE_MODE", "BANK_MODE", "CORP_MODE", "ALIEN_MODE", "CORP_BOTS_MODE")
-    code = (
-        "import sys; sys.path.insert(0, 'tests'); sys.path.insert(0, 'src');"
-        "from pathlib import Path; from fed_legacy_digest import legacy_run_digest;"
-        f"print(legacy_run_digest(Path('.'), 'N3,N2,N1,H', 3, 250925, flip={flips!r}))"
-    )
-    env = pin_env()
-    out = subprocess.run([sys.executable, "-c", code], cwd=root, env=env, capture_output=True, text=True,
-                         timeout=900, check=True)
-    assert out.stdout.strip().splitlines()[-1] == V2_LEGACY_GOLDEN

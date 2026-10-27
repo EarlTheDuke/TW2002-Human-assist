@@ -5,7 +5,6 @@ from __future__ import annotations
 import pytest
 
 import tw2k.engine.constants as K
-from tests._pin_env import pin_env
 from tw2k.agents.prompts import get_system_prompt
 from tw2k.engine import Action, ActionKind, GameConfig, apply_action, generate_universe
 from tw2k.engine.corpships import FAILSAFE, furb_gain
@@ -297,36 +296,3 @@ def test_legacy_hides_the_new_verbs(monkeypatch):
     assert not _act(u, "A", ActionKind.SHIP_SET_CORPORATE).ok
 
 
-# Re-pinned on f10b080 (slice 54). With CORPSHIP_MODE legacy the 10-day digest matches that parent.
-# fullgame-fixes-v2 landed after that pin; its seven switches are flipped so they do not move the hash.
-# bots-use-planet-trade-v1 changed tw2002 bot play under PLANET_TRADE_MODE, so the pin flips that mode too (single-mode
-# pins flip all newer modes). f10b080 with PLANET_TRADE_MODE flipped, 84b7039 and bots-use-planet-trade-v1 with the
-# nine flips below all digest to bc6da923eb1a4238ad216cc0 (was e11cd2ec746b097c12490a8e = f10b080 at defaults).
-CORPSHIP_LEGACY_GOLDEN = "bc6da923eb1a4238ad216cc0"
-_CORP_PIN_FLIPS = (
-    "CITADEL_FIDELITY_MODE", "STARDOCK_EXTRA_MODE", "BOTS_DEPLOY_MODE", "BOTS_TAVERN_MODE", "H_RECOVERY_MODE", "CORP_FIX_MODE", "BOTS_WAR_MODE", "TAVERN_MODE", "BOTS_BANK_MODE", "LLM_QUASAR_NUDGE_MODE", "LLM_PLANET_NUDGE_MODE",
-    "LLM_PARITY_MODE",
-    "CORPSHIP_MODE", "PLANET_DIVIDEND_MODE", "HUNT_MODE", "COMBAT_FRAMING_MODE", "SLOW_HULL_HINT_MODE",
-    "COMBAT_SCANNER_MODE", "GENESIS_HULL_MODE", "MINE_OVERFLOW_MODE", "PLANET_TRADE_MODE",
-    "FED_OUTPOST_MODE",  # class0-outpost-label (single-mode pins flip all newer modes)
-    "PORT_UPGRADE_MODE",
-    "BANK_MODE",
-    "CORP_MODE",
-    "ALIEN_MODE",
-    "CORP_BOTS_MODE",
-)
-
-
-def test_corpships_legacy_is_unchanged():
-    import subprocess
-    import sys
-    from pathlib import Path
-    code = (
-        "import sys; sys.path.insert(0, 'tests'); sys.path.insert(0, 'src');"
-        "from pathlib import Path; from fed_legacy_digest import legacy_run_digest;"
-        f"print(legacy_run_digest(Path('.'), 'N3,N3,N2,N2,N1,H', 10, 250925, flip={_CORP_PIN_FLIPS!r}))"
-    )
-    root = Path(__file__).resolve().parents[1]
-    out = subprocess.run([sys.executable, "-c", code], cwd=root, env=pin_env(),
-                         capture_output=True, text=True, timeout=1800, check=True)
-    assert out.stdout.strip().splitlines()[-1] == CORPSHIP_LEGACY_GOLDEN

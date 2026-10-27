@@ -166,11 +166,12 @@ def _return_fire(u):
     return attacker, defender
 
 
-def test_cl11_return_fire_pays_the_defender_and_a_planet_pays_its_owner(monkeypatch):
+def test_cl11_return_fire_and_a_planet_kill_pay_nobody(monkeypatch):
     from tw2k.engine.models import Planet, PlanetClass
+    # RULINGS Addendum A: the kill pays nobody, whichever way the fire went.
     attacker, defender = _return_fire(_u())
     assert attacker.credits == 0
-    assert defender.credits == 510
+    assert defender.credits == 10
     monkeypatch.setattr(K, "CORP_FIX_MODE", "legacy")
     attacker, defender = _return_fire(_u())
     assert attacker.credits == 0
@@ -192,7 +193,7 @@ def test_cl11_return_fire_pays_the_defender_and_a_planet_pays_its_owner(monkeypa
     raider.sector_id = 40
     assert _act(u, "P1", "land_planet", planet_id=planet.id).ok
     assert raider.credits == 0
-    assert owner.credits == 87
+    assert owner.credits == 7
     from tw2k.engine.combat import _resolve_ship_combat
     from tw2k.engine.models import FerrengiShip
     u3 = _u()
@@ -207,7 +208,7 @@ def test_cl11_return_fire_pays_the_defender_and_a_planet_pays_its_owner(monkeypa
     assert npc.credits == 3
 
 
-def test_cl12_corbomite_pays_a_living_owner_once():
+def test_cl12_a_corbomite_kill_pays_nobody():
     from tw2k.engine.combat import _destroy_ship
     from tw2k.engine.hardware import apply_corbomite
     u = _u()
@@ -222,9 +223,9 @@ def test_cl12_corbomite_pays_a_living_owner_once():
     killer.ship.fighters = 10
     _destroy_ship(u, "P1", reason="combat", killer_id="P2", by_other=True)
     assert owner.alive and killer.credits == 0
-    assert owner.credits == 140
+    assert owner.credits == 0  # the death destroyed the cash and the corbomite kill pays nothing
     apply_corbomite(u, "P1", "P2", 1)
-    assert owner.credits == 140
+    assert owner.credits == 0
     u2 = _u()
     gone = u2.players["P1"]
     killer2 = u2.players["P2"]

@@ -1531,14 +1531,7 @@ def _handle_attack(universe: Universe, pid: str, action: Action) -> ActionResult
     player = universe.players[pid]
     target_id = action.args.get("target")
     if str(target_id) == "port":
-        port_here = getattr(universe.sectors[player.sector_id], "port", None)
-        special = (
-            K.special_port_defence_live()
-            and port_here is not None
-            and int(port_here.class_id) in (int(PortClass.STARDOCK), int(PortClass.FEDERAL))
-        )
-        if special or K.port_attack_live():
-            return _handle_port_attack(universe, pid, action)
+        return _handle_port_attack(universe, pid, action)
     if target_id is None:
         return ActionResult(ok=False, error="attack requires target player id")
     if K.challenge_on() and live_challenge(universe, pid) is not None:

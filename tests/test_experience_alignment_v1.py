@@ -187,85 +187,6 @@ def run_rank_scenario(u, port_sid, deep, held):
     return out
 
 
-# --- legacy keeps today's numbers, byte for byte -----------------------------------------
-
-LEGACY_GOLDEN = [
-    ('start', 'A', 600, 300, 'ebcd4f643ef01595', '51c737cdd35f24aa'),
-    ('start', 'B', 3000, -2000, '675093c6c58ad7e3', '3f20d8e8881e1afa'),
-    ('start', 'C', 40, 1200, 'dac412b524ec5487', '3e530e5b85c5f123'),
-    ('start', 'D', 1500, 50, '02a64aca8eb8b505', '50847cca5e594c5a'),
-    ('fed_attack', False, 0, 'FedSpace — combat forbidden'),
-    ('fed_attack', 'A', 600, 100, 'ec514e4ea3144184', '892476b8b2f1dc2d'),
-    ('fed_attack', 'B', 3000, -2000, 'ec61c09e40ec2ad5', 'ae7c9581df3c0827'),
-    ('fed_attack', 'C', 40, 1200, '99c0e80dbc22ef80', '1b87191a3d9eb8c1'),
-    ('fed_attack', 'D', 1500, 50, 'be77f8a95c88c5f9', 'eba361025273b502'),
-    ('fed_attack_red', False, 0, 'FedSpace — combat forbidden'),
-    ('fed_attack_red', 'A', 600, -100, '8f2e80cbed0ed06a', '2df425c5560aca17'),
-    ('fed_attack_red', 'B', 3000, -2000, 'bb3e12b623ba3e92', '226132bb475b5f19'),
-    ('fed_attack_red', 'C', 40, 1200, 'fdb1749475e28ca5', 'd626edebf7911635'),
-    ('fed_attack_red', 'D', 1500, 50, '7c065c76d803755f', '374a5ceba6390b1d'),
-    ('fed_photon', False, 0, 'FedSpace forbids weapons fire'),
-    ('fed_photon', 'A', 600, -200, '0976b86e533d8691', 'e5681d1ec18396a8'),
-    ('fed_photon', 'B', 3000, -2000, '7c32667e72e7eb1f', 'f58b5ad36fb7934a'),
-    ('fed_photon', 'C', 40, 1200, '6d0893932ff6df5a', '64d1705cddff8060'),
-    ('fed_photon', 'D', 1500, 50, 'f072416d07e9c23b', '89b92882cd5b3ee8'),
-    ('trade', True, 1, ''),
-    ('trade', 'A', 601, -200, '4e340fa80f48494d', '512cafb333373c5b'),
-    ('trade', 'B', 3000, -2000, '5cb718946eb4b540', 'ac515cf9e4628da4'),
-    ('trade', 'C', 40, 1200, 'aad7d1e4c11a2ad2', 'd68bb3b02a7f50ec'),
-    ('trade', 'D', 1500, 50, 'a2611211f0c26d20', '1ef3edbe5e362bfb'),
-    ('hit_red', True, 5, ''),
-    ('hit_red', 'A', 601, -200, '55f15118878fa54c', '493848d001176a58'),
-    ('hit_red', 'B', 3000, -2000, '2cacd3404c319ce3', '7609a84bc831a76d'),
-    ('hit_red', 'C', 40, 1200, '4c3fa974e978fce2', 'cce04f07613529b9'),
-    ('hit_red', 'D', 1500, 50, '5374f746d0f3286e', 'e640640c1b4cefc6'),
-    ('kill_red', True, 5, ''),
-    ('kill_red', 'A', 801, -200, 'a40d4e4541bacc44', '62338db622adafde'),
-    ('kill_red', 'B', 2700, -2000, '3ed4f2e996bef806', '27e7a952df980062'),
-    ('kill_red', 'C', 40, 1200, '2e06bd0efe5c9914', '280842c7711f4508'),
-    ('kill_red', 'D', 1500, 50, '119c923acbe442da', 'd0cddc048f63ddd7'),
-    ('hit_blue', True, 5, ''),
-    ('hit_blue', 'A', 801, -200, '24747a09111d83ff', 'fb6478af6c19f18d'),
-    ('hit_blue', 'B', 2700, -2000, '22cc5dcf9a575e1e', 'fcd8c70d9ec202dc'),
-    ('hit_blue', 'C', 40, 1200, 'c2206ca49f32ce8c', 'f92f9deb59d83a68'),
-    ('hit_blue', 'D', 1500, 50, 'e0eb7efdce9ff5fa', '98cb9e742120f33c'),
-    ('genesis', True, 4, ''),
-    ('genesis', 'A', 901, -200, '860f18509d932639', '3ef9badaccea4884'),
-    ('genesis', 'B', 2700, -2000, 'c3185749529ab792', '12370b7e008bfdc1'),
-    ('genesis', 'C', 40, 1200, '4619c54b8ad40528', '18e885d2fbb929a7'),
-    ('genesis', 'D', 1500, 50, '0312fbcbee5c9306', '35bc154c88090ae0'),
-    ('destroy_1', True, 1, ''),
-    ('destroy_1', 'A', 901, -250, '5b831d2d6a1c9ee4', 'b11ce92e4a87cabc'),
-    ('destroy_1', 'B', 2700, -2000, '7b6ede5f97427d00', '33c270edffe4e10d'),
-    ('destroy_1', 'C', 40, 1200, '59b5e9b71972b90f', 'd3ea21b1452c54a7'),
-    ('destroy_1', 'D', 1500, 50, '039223bfca3e0570', '16fd22e5b8fc7171'),
-    ('destroy_2', True, 1, ''),
-    ('destroy_2', 'A', 901, -300, '40b31a971230a9af', '4929d4085cfe5910'),
-    ('destroy_2', 'B', 2700, -2000, 'db8b2c9c9a03a27a', 'f3411da255a2c22c'),
-    ('destroy_2', 'C', 40, 1200, '3c3babb7032c9655', '6fc8a6cef3b6a0ae'),
-    ('destroy_2', 'D', 1500, 50, '291fdabac168e83e', '1499de85748db84e'),
-    ('warp_held', True, 3, ''),
-    ('warp_held', 'A', 902, -300, 'fdd684035e84d580', '646fddd2e1ffa028'),
-    ('warp_held', 'B', 2700, -2000, 'd16f13c127eb05f0', 'fbe3449b2a9ab41f'),
-    ('warp_held', 'C', 40, 1200, '6942cac3d862f485', '6b41dc63b4d30e87'),
-    ('warp_held', 'D', 1500, 50, '6737c37aa1228c6a', '6133417ef807f5be'),
-    ('hit_figs', True, 5, ''),
-    ('hit_figs', 'A', 902, -300, 'd759b4975222f100', '83b8f112a8b0d766'),
-    ('hit_figs', 'B', 2700, -2000, 'cd8bad74938cb44f', '134a84d393c7491e'),
-    ('hit_figs', 'C', 40, 1200, 'da99e83ff3a2b205', '0a76f1dd4ed8d5a5'),
-    ('hit_figs', 'D', 1500, 50, '83d98a38c593f506', '5d51a448fcee5a7a'),
-    ('day', 'A', 902, -300, 'dfc8a322b567820f', 'eb07d2719bf540c7'),
-    ('day', 'B', 2700, -2000, 'b93844591f43c850', '65b70c891f4b237b'),
-    ('day', 'C', 40, 1200, 'dc1e3eadcfa5b572', 'd2b03c479831655c'),
-    ('day', 'D', 1500, 50, '767b6a8cb595f115', '23fa520b6aa5f384'),
-]
-
-
-def test_legacy_is_unchanged(legacy) -> None:
-    u, port_sid, deep, held = rank_world()
-    assert run_rank_scenario(u, port_sid, deep, held) == LEGACY_GOLDEN
-
-
 # --- tw2002 numbers through the same scenario ------------------------------------------------
 
 TW2002_A = [
@@ -282,7 +203,7 @@ TW2002_A = [
     ("destroy_2", 998, 1241),        # x7: +50 experience, -1 alignment
     ("warp_held", 998, 1241),        # x4: no experience for a warp
     ("hit_figs", 1001, 1261),        # x14/a3: 50 lost / 15 and 50 x 2000 / 5000 against red-owned fighters
-    ("day", 1002, 1275),             # x3 daily +1, then tax alignment on the cash still aboard
+    ("day", 1002, 1268),             # x3 daily +1, then tax alignment on the cash aboard (the kill paid nothing)
 ]
 
 

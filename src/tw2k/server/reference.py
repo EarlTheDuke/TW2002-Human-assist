@@ -221,6 +221,8 @@ def _rules_in_force(player, turns_per_day: int) -> dict[str, Any]:
     for helper, (switch, why) in K.V311_PROFILE_HELPERS.items():
         if getattr(K, helper)():
             switches.append({"name": switch, "on": True, "why": why, "source": f"src/tw2k/engine/constants.py {helper}()"})
+    for switch, (_helper, why) in K.V311_RETIRED_SWITCHES.items():
+        switches.append({"name": switch, "on": True, "why": why, "source": "src/tw2k/engine/constants.py V311_RETIRED_SWITCHES"})
     return {
         "id": "rules_in_force",
         "title": "Rules in force",

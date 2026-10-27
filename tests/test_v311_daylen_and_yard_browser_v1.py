@@ -210,39 +210,24 @@ def test_v311_cockpit_yard_turns_day_roll_and_citadel(browser, tmp_path) -> None
 
 
 def test_legacy_cockpit_keeps_the_legacy_roster_and_lines(browser, tmp_path) -> None:
-    _prior_yard_stats_mode = K.YARD_STATS_MODE
-    try:
-        assert K.V311_PROFILE != "v311"
-        with CuHost(tmp_path, TOK, max_days=3, turns_per_day=60, park_at=K.STARDOCK_SECTOR) as host:
-            u = host.runner.state.universe
-            page = _page(browser, host)
-            _wait_then(page, lambda: setattr(u.players["P2"], "credits", 40_000))
-            _my_move(page)
-            # No server figures under legacy: the HULL table is the fallback, with the legacy numbers.
-            deal = _open_yard(page)
-            assert "Holds 25, fighters 150" in deal, deal
-            assert page.evaluate("() => !!document.querySelector('#formSlot select[data-n=\"ship_class\"]')")
-            options = _list_box(page)
-            assert len(options) == len(K.ship_specs())
-            _shoot(page, "yard-list-legacy", '#formSlot select[data-n="ship_class"]')
-            # The legacy roster from the server's figures when the yard switch alone is on.
-            saved = K.YARD_STATS_MODE
-            try:
-                K.YARD_STATS_MODE = "live"
-                _wait_then(page, lambda: None)
-                _my_move(page)
-                deal = _open_yard(page)
-                assert "Holds 25, fighters 150" in deal, deal
-                _shoot(page, "scout-legacy", '[data-yard="deal"]')
-            finally:
-                K.YARD_STATS_MODE = saved
-            # Legacy keeps the old out-of-turns line (no server clock in the observation).
-            _wait_then(page, lambda: setattr(u.players["P2"], "turns_today", u.players["P2"].turns_per_day))
-            page.wait_for_function("() => document.querySelector('#tl').textContent === '0'", timeout=20_000)
-            page.keyboard.press("M")
-            line = page.locator("#lastResult").inner_text()
-            assert line.startswith("No turns left today. Day "), line
-            _shoot(page, "no-turns-legacy", "#lastResult")
-            page.close()
-    finally:
-        K.YARD_STATS_MODE = _prior_yard_stats_mode
+    assert K.V311_PROFILE != "v311"
+    with CuHost(tmp_path, TOK, max_days=3, turns_per_day=60, park_at=K.STARDOCK_SECTOR) as host:
+        u = host.runner.state.universe
+        page = _page(browser, host)
+        _wait_then(page, lambda: setattr(u.players["P2"], "credits", 40_000))
+        _my_move(page)
+        # The server's figures for the legacy roster.
+        deal = _open_yard(page)
+        assert "Holds 25, fighters 150" in deal, deal
+        assert page.evaluate("() => !!document.querySelector('#formSlot select[data-n=\"ship_class\"]')")
+        options = _list_box(page)
+        assert len(options) == len(K.ship_specs())
+        _shoot(page, "yard-list-legacy", '#formSlot select[data-n="ship_class"]')
+        # Legacy keeps the old out-of-turns line (no server clock in the observation).
+        _wait_then(page, lambda: setattr(u.players["P2"], "turns_today", u.players["P2"].turns_per_day))
+        page.wait_for_function("() => document.querySelector('#tl').textContent === '0'", timeout=20_000)
+        page.keyboard.press("M")
+        line = page.locator("#lastResult").inner_text()
+        assert line.startswith("No turns left today. Day "), line
+        _shoot(page, "no-turns-legacy", "#lastResult")
+        page.close()

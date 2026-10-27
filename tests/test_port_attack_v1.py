@@ -27,20 +27,7 @@ def _cruiser(seed: int):
     return u, pilot
 
 
-def test_flag_stays_legacy() -> None:
-    assert K.PORT_ATTACK_MODE == "legacy"
-    assert K.port_attack_live() is False
-
-
-def test_off_a_port_is_not_a_target() -> None:
-    u, pilot = _cruiser(61001)
-    res = _act(u, pilot.id, ActionKind.ATTACK, target="port", confirm=True, qty=30)
-    assert res.ok is False and "not found" in (res.error or "")
-    assert pilot.alignment == 0 and pilot.ship.fighters == 57 and pilot.deaths == 0
-
-
 def test_on_asks_before_it_fires(monkeypatch) -> None:
-    monkeypatch.setattr(K, "PORT_ATTACK_MODE", "live")
     u, pilot = _cruiser(61002)
     res = _act(u, pilot.id, ActionKind.ATTACK, target="port", qty=30)
     assert res.ok is False and res.error == K.PORT_ATTACK_CONFIRM
@@ -48,7 +35,6 @@ def test_on_asks_before_it_fires(monkeypatch) -> None:
 
 
 def test_on_class_6_barrage_kills_the_cruiser(monkeypatch) -> None:
-    monkeypatch.setattr(K, "PORT_ATTACK_MODE", "live")
     u, pilot = _cruiser(61003)
     res = _act(u, pilot.id, ActionKind.ATTACK, target="port", confirm=True, qty=30)
     assert res.ok is True
@@ -62,7 +48,6 @@ def test_on_class_6_barrage_kills_the_cruiser(monkeypatch) -> None:
 
 
 def test_on_class_2_fires_the_measured_laser(monkeypatch) -> None:
-    monkeypatch.setattr(K, "PORT_ATTACK_MODE", "live")
     u, pilot = _cruiser(61004)
     port = u.sectors[pilot.sector_id].port
     port.class_id = PortClass.CLASS_2_BSB
@@ -76,7 +61,6 @@ def test_on_class_2_fires_the_measured_laser(monkeypatch) -> None:
 
 
 def test_on_a_variance_port_does_not_borrow_the_class_laser(monkeypatch) -> None:
-    monkeypatch.setattr(K, "PORT_ATTACK_MODE", "live")
     u, pilot = _cruiser(61005)
     port = u.sectors[pilot.sector_id].port
     port.class_id = PortClass.CLASS_2_BSB
