@@ -28,6 +28,8 @@ from tw2k.engine.observation import build_observation, status_fields
 from tw2k.server.app import create_app
 from tw2k.server.runner import AgentSpec, MatchSpec
 
+pytestmark = pytest.mark.legacy_profile
+
 ROOT = Path(__file__).resolve().parents[1]
 PARITY = ROOT / "web" / "bot-parity.js"
 NODE = shutil.which("node")

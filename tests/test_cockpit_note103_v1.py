@@ -14,6 +14,8 @@ from tw2k.engine.models import EventKind
 from tw2k.engine.observation import build_observation
 from tw2k.engine.runner import _handle_hail
 
+pytestmark = pytest.mark.legacy_profile
+
 TOK = "note103-cockpit-token-p2-00000000"
 SHOTS = Path(__file__).resolve().parents[1] / "docs" / "playtests" / "note103-v1"
 

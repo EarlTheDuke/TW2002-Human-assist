@@ -9,8 +9,12 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
+import pytest
+
 from tests._cu_host import CuHost
 from tw2k.engine.observation import build_observation
+
+pytestmark = pytest.mark.legacy_profile
 
 TOK = "amz5-keys-token-p2-000000000000"
 

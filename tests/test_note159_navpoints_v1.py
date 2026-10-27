@@ -20,6 +20,8 @@ from tw2k.engine.runner import apply_action, query_route
 from tw2k.engine.universe import generate_universe
 from tw2k.public.manual import render
 
+pytestmark = pytest.mark.legacy_profile
+
 _BOT = Path(__file__).resolve().parents[1] / "web" / "bot.html"
 
 

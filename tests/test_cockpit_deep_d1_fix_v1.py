@@ -11,6 +11,8 @@ from tw2k.engine.bank import collect_daily_tax
 from tw2k.engine.models import FerrengiShip
 from tw2k.engine.observation import build_observation
 
+pytestmark = pytest.mark.legacy_profile
+
 PORT_TOK = "deep-port-token-p2-000000000000"
 TURN_TOK = "deep-turn-token-p2-000000000000"
 SHOTS = Path(__file__).resolve().parents[1] / "docs" / "playtests" / "cockpit-deep-d1-fix-v1"

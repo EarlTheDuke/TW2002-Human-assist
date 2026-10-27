@@ -9,11 +9,14 @@ from __future__ import annotations
 
 from pathlib import Path
 
+import pytest
+
 import tw2k.engine.constants as K
+from tests._cu_host import CuHost
 from tw2k.engine.bank import on_ship_lost
 from tw2k.engine.models import EventKind, ShipClass
 
-from tests._cu_host import CuHost
+pytestmark = pytest.mark.legacy_profile
 
 TOK = "combat-token-p2-000000000000000000"
 SHOTS = Path(__file__).resolve().parents[1] / "docs" / "playtests" / "cockpit-combat-clarity-v1"

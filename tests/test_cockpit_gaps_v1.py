@@ -13,6 +13,7 @@ import math
 from pathlib import Path
 
 import httpx
+import pytest
 
 import tw2k.agents.cockpit_seat as seat
 import tw2k.engine.constants as K
@@ -20,6 +21,8 @@ from tests._cu_host import CuHost
 from tests.test_cockpit_ai_seat_v2 import seat_spec
 from tests.test_external_harness_phase1 import TOK2, _app_and_client, _auth, _http_spec, _wait_until
 from tw2k.engine.models import Commodity, PortClass
+
+pytestmark = pytest.mark.legacy_profile
 
 TOK = "gaps-v1-token-p2-000000000000000000"
 SHOTS = Path(__file__).resolve().parents[1] / "docs" / "playtests" / "cockpit-gaps-v1"

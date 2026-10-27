@@ -15,9 +15,10 @@ from pathlib import Path
 import pytest
 
 import tw2k.engine.constants as K
+from tests._cu_host import CuHost
 from tw2k.engine.models import Commodity, Planet, PlanetClass
 
-from tests._cu_host import CuHost
+pytestmark = pytest.mark.legacy_profile
 
 TOK = "daylen-token-p2-0000000000000000000"
 SHOTS = Path(__file__).resolve().parents[1] / "docs" / "playtests" / "v311-daylen-and-yard-v1"

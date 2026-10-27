@@ -14,10 +14,11 @@ from pathlib import Path
 import pytest
 
 import tw2k.engine.constants as K
-from tw2k.engine.models import Commodity
-
 from tests._cu_host import CuHost
 from tests._refresh import wait_refreshes
+from tw2k.engine.models import Commodity
+
+pytestmark = pytest.mark.legacy_profile
 
 DOCK_TOK = "blank-dock-token-p2-0000000000000"
 PORT_TOK = "blank-port-token-p2-0000000000000"

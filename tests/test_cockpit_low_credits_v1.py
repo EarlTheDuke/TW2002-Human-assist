@@ -2,7 +2,11 @@
 
 from __future__ import annotations
 
+import pytest
+
 from tests._cu_host import VIEW_H, VIEW_W, CuHost
+
+pytestmark = pytest.mark.legacy_profile
 
 TOK = "low-credits-v1-token-p2-0000000000000"
 MAP_TOP = {1440: 714, 1920: 927}

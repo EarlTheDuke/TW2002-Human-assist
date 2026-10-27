@@ -12,6 +12,8 @@ import pytest
 
 from tests._cu_host import CuHost
 
+pytestmark = pytest.mark.legacy_profile
+
 ROOT = Path(__file__).resolve().parents[1]
 SHOTS = Path("/opt/cursor/artifacts/note113")
 TOK = "deck-custom-layout-v1-token-p2-000000"

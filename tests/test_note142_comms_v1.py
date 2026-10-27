@@ -33,6 +33,8 @@ from tw2k.engine.observation import build_observation
 from tw2k.engine.presence import note_poll
 from tw2k.public.manual import render
 
+pytestmark = pytest.mark.legacy_profile
+
 ROOT = Path(__file__).resolve().parents[1]
 SHOTS = Path("/opt/cursor/artifacts/note142")
 FED_TEXT = "Hello <b>there</b> & friends"

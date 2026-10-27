@@ -12,9 +12,10 @@ from pathlib import Path
 
 import pytest
 
+from tests._cu_host import CuHost
 from tw2k.engine.models import Corporation, EventKind, FighterDeployment, FighterMode, Player, Ship, ShipClass
 
-from tests._cu_host import CuHost
+pytestmark = pytest.mark.legacy_profile
 
 TOK = "note71-haggle-token-p2-000000000000"
 SHOTS = Path(__file__).resolve().parents[1] / "docs" / "playtests" / "beta-combat-haggle-v1"

@@ -8,10 +8,13 @@ from __future__ import annotations
 
 from pathlib import Path
 
+import pytest
+
 import tw2k.engine.constants as K
+from tests._cu_host import CuHost
 from tw2k.engine.models import Commodity, PortClass
 
-from tests._cu_host import CuHost
+pytestmark = pytest.mark.legacy_profile
 
 TOK = "space-token-p2-0000000000000000000"
 SHOTS = Path(__file__).resolve().parents[1] / "docs" / "playtests" / "cockpit-space-extras-v1"

@@ -34,6 +34,8 @@ from tw2k.public.manual import render
 from tw2k.server.broadcaster import Broadcaster
 from tw2k.server.runner import AgentSpec, MatchRunner, MatchSpec
 
+pytestmark = pytest.mark.legacy_profile
+
 ROOT = Path(__file__).resolve().parents[1]
 SHOTS = Path("/opt/cursor/artifacts/note131")
 CASES = ("redesign", "bot")

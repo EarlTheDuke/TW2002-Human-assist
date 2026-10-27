@@ -9,6 +9,8 @@ import pytest
 import tw2k.engine.constants as K
 from tests._cu_host import CuHost
 
+pytestmark = pytest.mark.legacy_profile
+
 PORT_TOK = "fullpass-port-token-p2-000000000000"
 DOCK_TOK = "fullpass-dock-token-p2-000000000000"
 SHOTS = Path(__file__).resolve().parents[1] / "docs" / "playtests" / "cockpit-fullpass-fix-v1"

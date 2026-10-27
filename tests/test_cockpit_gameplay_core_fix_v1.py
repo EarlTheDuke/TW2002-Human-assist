@@ -6,9 +6,10 @@ from pathlib import Path
 
 import pytest
 
+from tests._cu_host import CuHost
 from tw2k.engine.models import EventKind, FerrengiShip, MineDeployment, MineType
 
-from tests._cu_host import CuHost
+pytestmark = pytest.mark.legacy_profile
 
 DOCK_TOK = "core-dock-token-p2-000000000000"
 PORT_TOK = "core-port-token-p2-000000000000"

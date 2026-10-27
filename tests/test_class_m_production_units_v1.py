@@ -23,6 +23,8 @@ from tw2k.engine.planets import (
     planet_growth_status,
 )
 
+pytestmark = pytest.mark.legacy_profile
+
 SHOTS = Path(__file__).resolve().parents[1] / "docs" / "playtests" / "class-m-production-units-v1"
 # S1_planet_handbook_v1.01.html section VII, CITADEL ADVANCEMENT TABLES, rows L1..L6 as printed.
 S1_SECTION_VII = """

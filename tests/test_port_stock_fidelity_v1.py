@@ -22,6 +22,8 @@ from tw2k.engine.legality import legal_actions
 from tw2k.engine.models import Commodity, GameConfig, Player, PortClass
 from tw2k.engine.universe import generate_universe
 
+pytestmark = pytest.mark.legacy_profile
+
 LUMPED = "nothing you can buy or sell here right now (cargo, credits, holds or port stock)"
 SHOTS = Path(__file__).resolve().parents[1] / "docs" / "playtests" / "port-stock-and-trade-reason-v1"
 

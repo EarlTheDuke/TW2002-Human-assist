@@ -4,11 +4,14 @@ from __future__ import annotations
 
 from pathlib import Path
 
+import pytest
+
 import tw2k.engine.constants as K
+from tests._cu_host import CuHost
 from tw2k.engine.models import EventKind, FerrengiShip
 from tw2k.engine.observation import event_facts
 
-from tests._cu_host import CuHost
+pytestmark = pytest.mark.legacy_profile
 
 TOK = "d8-polish-token-p2-000000000000000"
 SHOTS = Path(__file__).resolve().parents[1] / "docs" / "playtests" / "d8-combat-polish-v1"

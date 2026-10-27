@@ -30,6 +30,8 @@ from tw2k.public.lobby import create_lobby_app
 from tw2k.server.broadcaster import Broadcaster
 from tw2k.server.runner import AgentSpec, MatchRunner, MatchSpec
 
+pytestmark = pytest.mark.legacy_profile
+
 REPO = Path(__file__).resolve().parents[1]
 SHOTS = REPO / "docs" / "playtests" / "cockpit-nav-and-map-v1"
 

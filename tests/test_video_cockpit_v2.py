@@ -17,6 +17,8 @@ import pytest
 
 from tests._cu_host import CuHost
 
+pytestmark = pytest.mark.legacy_profile
+
 ROOT = Path(__file__).resolve().parents[1]
 RESOLVER = ROOT / "web" / "media-resolver.js"
 MANIFEST = ROOT / "web" / "media" / "manifest.json"

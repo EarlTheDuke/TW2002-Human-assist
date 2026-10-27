@@ -23,6 +23,8 @@ import pytest
 import tw2k.engine.constants as K
 from tests._cu_host import RESERVED_TEST_PORTS, CuHost, allowed_test_port
 
+pytestmark = pytest.mark.legacy_profile
+
 REPO = Path(__file__).resolve().parents[1]
 PLAYER = REPO / "scripts" / "ai_cockpit_player.py"
 PACKAGE = REPO / "scripts" / "ai_cockpit"

@@ -7,11 +7,12 @@ from pathlib import Path
 import pytest
 
 import tw2k.engine.constants as K
+from tests._cu_host import CuHost
 from tw2k.agents.seat_brain import _organics_burn
 from tw2k.engine.models import Commodity, Planet, PlanetClass
 from tw2k.engine.planets import _apply_one_day, planet_growth_status
 
-from tests._cu_host import CuHost
+pytestmark = pytest.mark.legacy_profile
 
 TOK = "note49-polish-token-p2-00000000000"
 SHOTS = Path(__file__).resolve().parents[1] / "docs" / "playtests" / "note49-polish-v1"
