@@ -592,7 +592,9 @@ def _drive(sync, origin: str, lobby, notes: dict[str, str], played: dict[str, st
                     page.bring_to_front()
                     time.sleep(0.25)
             else:
-                if not all(_day_done(row) for row in goals.values()):
+                # The bot fight may carry over to day 2 (_day2_fight): since #438 the
+                # code bot trades away from StarDock on day 1, and a chase can outlast this.
+                if not all(_day1_done(row) for row in goals.values()):
                     _progress(f"STOP goals={goals} ai={_ai_tail(lobby, gid)}")
                     tail = (SHOTS / "progress.txt").read_text(encoding="utf-8")[-1500:]
                     raise AssertionError(f"day 1 did not finish: {goals}\n{tail}")
@@ -606,6 +608,7 @@ def _drive(sync, origin: str, lobby, notes: dict[str, str], played: dict[str, st
             _wait_day(p2, "2")
             p1.screenshot(path=str(SHOTS / "13-day-2.png"))
             notes["day"] = "day 2 after the playtest clock moved one day length"
+            _day2_fight(pages, goals, lobby, gid, notes)
             _day2_move(pages, notes)
 
             p1.bring_to_front()
@@ -684,6 +687,46 @@ def _fresh() -> dict[str, bool]:
 
 def _day_done(row: dict[str, bool]) -> bool:
     return row["trade"] and row["warp"] and row["dock"] and row["gear"] and row["fight"]
+
+
+def _day1_done(row: dict[str, bool]) -> bool:
+    """Every goal but the bot fight, which may finish on day 2."""
+    return row["trade"] and row["warp"] and row["dock"] and row["gear"]
+
+
+def _day2_fight(pages: dict, goals: dict, lobby, gid: str, notes: dict[str, str]) -> None:
+    """A seat that did not catch the code bot on day 1 keeps chasing it on day 2.
+
+    The playtest plays two days, and a human hunting a bot that trades around the
+    map can take that long. The fight is still required: it must land by day 2.
+    """
+    deadline = time.time() + DAY1_BUDGET_S
+    last_move = time.time()
+    while time.time() < deadline and not all(_day_done(row) for row in goals.values()):
+        if time.time() - last_move > DAY1_STALL_S:
+            chips = {seat: _chip(page) for seat, page in pages.items()}
+            raise AssertionError(f"day 2 fight stalled: no human move for {DAY1_STALL_S}s; chips={chips} goals={goals}")
+        moved = False
+        for seat, page in pages.items():
+            if _chip(page) != "YOUR MOVE":
+                continue
+            last_move = time.time()
+            page.bring_to_front()
+            if _day_done(goals[seat]):
+                before = _result(page)
+                _pass(page)
+                _settle(page, before, 8)
+            else:
+                _step(page, seat, goals[seat], lobby, gid, notes)
+                if goals[seat]["fight"]:
+                    notes[f"{seat}-fight-day"] = "2"
+            moved = True
+            break
+        if not moved:
+            time.sleep(0.25)
+    if not all(_day_done(row) for row in goals.values()):
+        _progress(f"STOP day 2 goals={goals} ai={_ai_tail(lobby, gid)}")
+        raise AssertionError(f"no bot fight by the end of day 2: {goals}")
 
 
 def _has_text(page, selector: str, text: str) -> bool:
@@ -983,7 +1026,7 @@ def _step(page, seat: str, row: dict[str, bool], lobby, gid: str, notes: dict[st
             notes[f"{seat}-dock"] = _here(page)[:180]
             page.screenshot(path=str(SHOTS / f"08-stardock-{seat}.png"))
             return
-        _engage(page, 1)
+        _go_to_dock(page)
         return
     if row["dock"] and not row["gear"]:
         if _has_text(page, "#here button", "StarDock: buy gear"):
@@ -992,7 +1035,7 @@ def _step(page, seat: str, row: dict[str, bool], lobby, gid: str, notes: dict[st
                 notes[f"{seat}-gear"] = _result(page)[:180]
             return
         if not _at_dock(page):
-            _engage(page, 1)
+            _go_to_dock(page)
         return
     if not row["trade"]:
         here = _sector(page)
@@ -1028,15 +1071,45 @@ def _step(page, seat: str, row: dict[str, bool], lobby, gid: str, notes: dict[st
         if target is None:
             raise AssertionError("no code bot on the board")
         if _sector(page) == str(target):
+            if "StarDock" in _here(page):
+                # StarDock is protected, and a v3.11 game draws it outside FedSpace (#192),
+                # where the code bot now shops. Wait for the bot to leave.
+                _progress(f"{seat} code bot is at StarDock {target}; waiting for it to leave")
+                page.keyboard.press(".")
+                return
             raise AssertionError(f"{seat} is in {target} but cannot attack the code bot: {_here(page)[:240]}")
         _engage(page, target)
         return
     page.keyboard.press(".")
 
 
+_DOCK_COURSE = "button[data-kind=stardock_course]"
+
+
 def _at_dock(page) -> bool:
+    # v3.11 lobby games draw StarDock's sector (GAP 1.5, #192). Sector 1 is then Terra,
+    # and Terra's "Plot course to StarDock (sector N)" button is not the dock itself.
+    if page.locator(_DOCK_COURSE).count():
+        return False
     text = _here(page)
     return "StarDock" in text or _sector(page) == "1"
+
+
+def _go_to_dock(page) -> bool:
+    """Head for StarDock: Terra (sector 1) shows the course when the dock was drawn elsewhere."""
+    if not page.locator(_DOCK_COURSE).count():
+        return _engage(page, 1)
+    before = _result(page)
+    _js_click(page, _DOCK_COURSE)
+    try:
+        page.locator("[data-testid=engage]").wait_for(timeout=8_000)
+    except Exception:
+        _progress(f"dock course no engage button result={_result(page)[:140]!r}")
+        return False
+    _js_click(page, "[data-testid=engage]")
+    outcome = _settle(page, before, 40)
+    _progress(f"engage StarDock -> sector={_sector(page)} result={outcome[:140]!r}")
+    return "refused" not in outcome.lower()
 
 
 def _engage(page, sector: int) -> bool:
