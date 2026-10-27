@@ -80,14 +80,12 @@ def test_profile_uses_the_cabal_formula_and_leaves_the_stored_flag(monkeypatch) 
 
 
 def test_haggle_experience_off_is_the_capped_gap() -> None:
-    assert K.HAGGLE_EXP_MODE == "legacy"
     assert haggle_experience(3, 40) == 3
     assert haggle_experience(40, 40) == K.PORT_HAGGLE_XP_CAP
     assert haggle_experience(0, 40) == 0
 
 
 def test_haggle_experience_on_is_one_or_two(monkeypatch) -> None:
-    monkeypatch.setattr(K, "HAGGLE_EXP_MODE", "live")
     assert haggle_experience(1, 40) == K.HAGGLE_EXP_GOOD == 1
     assert haggle_experience(39, 40) == 1
     assert haggle_experience(40, 40) == K.HAGGLE_EXP_GREAT == 2
@@ -117,7 +115,6 @@ def test_a_trade_awards_the_gap_until_the_switch_is_on(monkeypatch) -> None:
     base = K.xp_award("trade") + K.xp_award("first_dock")
     assert player.experience == base + K.PORT_HAGGLE_XP_CAP
 
-    monkeypatch.setattr(K, "HAGGLE_EXP_MODE", "live")
     universe, player = _seat()
     universe.sectors[11].port = _fuel_port()
     modest = apply_action(
@@ -187,14 +184,11 @@ def test_ship_rename_refuses_a_blank_name_and_a_short_purse(monkeypatch) -> None
 
 def test_profile_turns_the_note_helpers_on_without_moving_the_flags(monkeypatch) -> None:
     assert K.class0_hold_formula_live() is False
-    assert K.haggle_exp_live() is False
     assert K.ship_rename_live() is False
     monkeypatch.setattr(K, "V311_PROFILE", "v311")
     assert K.class0_hold_formula_live() is True
-    assert K.haggle_exp_live() is True
     assert K.ship_rename_live() is True
     assert K.CLASS0_HOLD_FORMULA_MODE == "legacy"
-    assert K.HAGGLE_EXP_MODE == "legacy"
     assert K.SHIP_RENAME_MODE == "legacy"
 
 
