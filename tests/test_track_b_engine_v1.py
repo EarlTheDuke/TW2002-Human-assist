@@ -36,6 +36,8 @@ from tw2k.engine.observation import _sector_detail
 from tw2k.engine.runner import _bfs_path, apply_action, grant_starting_planet, tick_day
 from tw2k.engine.victory import _planet_asset_value, full_net_worth, planet_tax_value
 
+pytestmark = pytest.mark.legacy_profile
+
 
 def _u():
     u = generate_universe(GameConfig(

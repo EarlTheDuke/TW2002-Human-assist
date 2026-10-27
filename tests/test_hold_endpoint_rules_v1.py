@@ -2,9 +2,13 @@
 
 from __future__ import annotations
 
+import pytest
+
 from tw2k.agents.prompts import get_system_prompt
 from tw2k.engine import GameConfig, Player, build_observation, generate_universe
 from tw2k.engine import constants as K
+
+pytestmark = pytest.mark.legacy_profile
 
 
 def _hint() -> str:

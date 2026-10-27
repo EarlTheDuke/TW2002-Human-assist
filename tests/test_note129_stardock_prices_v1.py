@@ -13,11 +13,15 @@ from __future__ import annotations
 
 from pathlib import Path
 
+import pytest
+
 import tw2k.engine.constants as K
 from tests.test_tw2002_live_profile_v1 import HELPERS
 from tw2k.engine import Action, ActionKind, GameConfig, apply_action, generate_universe
 from tw2k.engine.legality import legal_actions
 from tw2k.engine.models import Player, Ship
+
+pytestmark = pytest.mark.legacy_profile
 
 ROOT = Path(__file__).resolve().parents[1]
 MENUS = ROOT / "docs" / "playtests" / "twgs-live" / "stardock-menus.txt"

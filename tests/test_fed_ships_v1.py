@@ -1,6 +1,10 @@
 """fed-ships-ferrengi-v1. The three starships appear only when the switch is on."""
+import pytest
+
 import tw2k.engine.constants as K
 from tw2k.engine import GameConfig, generate_universe
+
+pytestmark = pytest.mark.legacy_profile
 
 
 def _universe():

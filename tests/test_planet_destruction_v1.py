@@ -2,12 +2,16 @@
 
 from __future__ import annotations
 
+import pytest
+
 import tw2k.engine.constants as K
 from tests.test_phase_abc import _make_universe
 from tw2k.engine.actions import Action, ActionKind
 from tw2k.engine.models import Alliance, Commodity, EventKind, Planet, PlanetClass, Universe
 from tw2k.engine.observation import build_observation, event_facts
 from tw2k.engine.runner import apply_action
+
+pytestmark = pytest.mark.legacy_profile
 
 
 def _plant(u, sid: int, owner: str, *, fighters: int = 0, shields: int = 0) -> Planet:

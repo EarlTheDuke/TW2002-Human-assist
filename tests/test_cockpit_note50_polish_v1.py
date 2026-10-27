@@ -9,12 +9,13 @@ from pathlib import Path
 import pytest
 
 import tw2k.engine.constants as K
+from tests._cu_host import CuHost
 from tw2k.engine.capture import min_capture_qty
 from tw2k.engine.combat import combat_odds_of
 from tw2k.engine.models import Commodity, PlanetClass
 from tw2k.engine.planets import _complete_citadels
 
-from tests._cu_host import CuHost
+pytestmark = pytest.mark.legacy_profile
 
 TOK = "note50-polish-token-p2-00000000000"
 TOK1 = "note50-polish-token-p1-00000000000"

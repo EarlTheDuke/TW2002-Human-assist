@@ -5,6 +5,8 @@ SD-p and FIG-l are already the stored rule, so rows 100 and 103 add no switch.
 
 from __future__ import annotations
 
+import pytest
+
 import tw2k.engine.constants as K
 from tw2k.engine import Action, ActionKind, GameConfig, apply_action, build_observation, generate_universe
 from tw2k.engine.combat import _resolve_ship_combat_attacker_npc
@@ -20,6 +22,8 @@ from tw2k.engine.models import (
 )
 from tw2k.engine.observation import _ferrengi_check
 from tw2k.engine.runner import _apply_sector_hazards, _quasar_shot
+
+pytestmark = pytest.mark.legacy_profile
 
 
 def _world(seed: int = 8501):

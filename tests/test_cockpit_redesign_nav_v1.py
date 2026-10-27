@@ -10,6 +10,8 @@ import pytest
 from tests._cu_host import CuHost
 from tests._refresh import wait_refreshes
 
+pytestmark = pytest.mark.legacy_profile
+
 TOK = "nav-e2e-token-p2-0000000000000000"
 
 

@@ -19,7 +19,11 @@ import time
 import urllib.request
 from pathlib import Path
 
+import pytest
+
 from tests._cu_host import CuHost
+
+pytestmark = pytest.mark.legacy_profile
 
 TOK = "amz1-first-look-token-p2-00000000"
 TRADE = json.loads(

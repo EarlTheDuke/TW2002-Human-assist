@@ -19,6 +19,8 @@ sys.path.insert(0, str(ROOT / "scripts"))
 
 import media_validate_manifest as mv  # noqa: E402
 
+pytestmark = pytest.mark.legacy_profile
+
 MEDIA = ROOT / "web" / "media"
 V1 = json.loads((MEDIA / "manifest.json").read_text(encoding="utf-8-sig"))
 V2 = json.loads((MEDIA / "examples" / "manifest.v2.example.json").read_text(encoding="utf-8"))

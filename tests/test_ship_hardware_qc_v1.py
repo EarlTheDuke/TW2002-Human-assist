@@ -19,6 +19,8 @@ from tw2k.engine.models import (
 )
 from tw2k.engine.runner import tick_day
 
+pytestmark = pytest.mark.legacy_profile
+
 
 def _world(seed: int = 5201):
     u = generate_universe(

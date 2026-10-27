@@ -12,12 +12,16 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
+import pytest
+
 from tw2k.agents.seat_brain import SeatBrain, SeatMemory
 from tw2k.engine import GameConfig, generate_universe
 from tw2k.engine.actions import Action
 from tw2k.engine.models import Player
 from tw2k.engine.observation import build_observation
 from tw2k.engine.runner import apply_action, tick_day
+
+pytestmark = pytest.mark.legacy_profile
 
 ROOT = Path(__file__).resolve().parents[1]
 

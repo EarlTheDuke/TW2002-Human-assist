@@ -2,12 +2,16 @@
 
 from __future__ import annotations
 
+import pytest
+
 from tests.test_phase_abc import _make_universe
 from tests.test_siege_path_v1 import _place, _planet
 from tw2k.engine.constants import PLANET_FIGHTER_CAP
 from tw2k.engine.models import Commodity, PlanetClass
 from tw2k.engine.planets import K, fighters_from_colonists
 from tw2k.engine.runner import tick_day
+
+pytestmark = pytest.mark.legacy_profile
 
 SECTOR = 120
 

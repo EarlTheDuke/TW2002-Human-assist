@@ -17,12 +17,9 @@ from __future__ import annotations
 
 import asyncio
 
+import pytest
+
 import tw2k.engine.constants as K
-from tw2k.agents.external import ExternalAgent
-from tw2k.engine import GameConfig, generate_universe
-from tw2k.engine.actions import Action, ActionKind
-from tw2k.engine.models import EventKind, Player
-from tw2k.engine.runner import _warp_cost_for, apply_action
 from tests.test_external_harness_phase1 import (
     TOK2,
     _app_and_client,
@@ -30,6 +27,13 @@ from tests.test_external_harness_phase1 import (
     _http_spec,
     _wait_until,
 )
+from tw2k.agents.external import ExternalAgent
+from tw2k.engine import GameConfig, generate_universe
+from tw2k.engine.actions import Action, ActionKind
+from tw2k.engine.models import EventKind, Player
+from tw2k.engine.runner import _warp_cost_for, apply_action
+
+pytestmark = pytest.mark.legacy_profile
 
 
 def _universe():

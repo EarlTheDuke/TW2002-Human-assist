@@ -13,6 +13,8 @@ import sys
 from fractions import Fraction
 from pathlib import Path
 
+import pytest
+
 import tw2k.engine.constants as K
 from tests._pin_env import pin_env
 from tw2k.agents.prompts import get_system_prompt
@@ -34,6 +36,8 @@ from tw2k.engine.models import (
 )
 from tw2k.engine.observation import build_observation
 from tw2k.engine.runner import tick_day
+
+pytestmark = pytest.mark.legacy_profile
 
 ROOT = Path(__file__).resolve().parents[1]
 CAPTURE_LEGACY_GOLDEN = "b8980da2a91220a4cc8c13f1"  # same on Windows and Linux, on ad21ac6 and this tree

@@ -2,9 +2,13 @@
 
 from __future__ import annotations
 
+import pytest
+
 import tw2k.engine.constants as K
 from tw2k.engine.models import Commodity, Planet, PlanetClass
 from tw2k.engine.victory import _planet_asset_value, planet_tax_value
+
+pytestmark = pytest.mark.legacy_profile
 
 
 def _goods() -> tuple[int, int, int]:

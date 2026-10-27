@@ -6,9 +6,10 @@ from pathlib import Path
 
 import pytest
 
+from tests._cu_host import CuHost
 from tw2k.engine.models import FighterDeployment, FighterMode, ShipClass
 
-from tests._cu_host import CuHost
+pytestmark = pytest.mark.legacy_profile
 
 PORT_TOK = "combat-port-token-p2-000000000000"
 DOCK_TOK = "combat-dock-token-p2-000000000000"

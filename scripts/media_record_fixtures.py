@@ -28,6 +28,9 @@ from tw2k.engine.models import Commodity, FerrengiShip, MineType, Player  # noqa
 from tw2k.engine.observation import _event_visible_to, build_observation, event_view  # noqa: E402
 from tw2k.engine.runner import _bfs_path, apply_action  # noqa: E402
 
+# R-4: this tool checks the legacy rules; the stored V311_PROFILE default is v311 now.
+K.V311_PROFILE = "legacy"
+
 OUT = ROOT / "tests" / "fixtures" / "media_events"
 SEED = 250925
 VIEWER = "P1"

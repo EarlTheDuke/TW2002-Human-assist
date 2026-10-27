@@ -11,11 +11,15 @@ Plants:
 
 from __future__ import annotations
 
+import pytest
+
 import tw2k.engine.constants as K
 from tw2k.engine import Action, ActionKind, GameConfig, apply_action, generate_universe
 from tw2k.engine.fed import run_tows
 from tw2k.engine.fleet import _park_manned, target_block
 from tw2k.engine.models import Planet, PlanetClass, Player, Ship
+
+pytestmark = pytest.mark.legacy_profile
 
 
 def _world():

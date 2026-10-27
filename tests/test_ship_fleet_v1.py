@@ -43,6 +43,8 @@ from tw2k.engine.runner import tick_day
 from tw2k.engine.scanners import density_reading, sector_view
 from tw2k.engine.victory import full_net_worth
 
+pytestmark = pytest.mark.legacy_profile
+
 ROOT = Path(__file__).resolve().parents[1]
 FLEET_DEFAULTS = (
     ("FLEET_MODE", "tw2002"), ("FLEET_MAX_SHIPS", 5), ("FLEET_XPORT_METRIC", "directed"),

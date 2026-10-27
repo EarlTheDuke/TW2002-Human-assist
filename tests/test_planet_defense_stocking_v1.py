@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import pytest
+
 from tests.test_phase_abc import _make_universe
 from tw2k.engine import constants as K
 from tw2k.engine.actions import Action, ActionKind
@@ -9,6 +11,8 @@ from tw2k.engine.legality import legal_actions
 from tw2k.engine.models import EventKind, Planet, PlanetClass
 from tw2k.engine.observation import event_facts
 from tw2k.engine.runner import apply_action
+
+pytestmark = pytest.mark.legacy_profile
 
 SECTOR = 120
 COST = K.TURN_COST["deposit_planet_defense"]

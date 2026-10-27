@@ -4,6 +4,8 @@ from __future__ import annotations
 
 import random
 
+import pytest
+
 from tw2k.engine import GameConfig, generate_universe
 from tw2k.engine import constants as K
 from tw2k.engine.actions import Action, ActionKind
@@ -11,6 +13,8 @@ from tw2k.engine.legality import legal_actions
 from tw2k.engine.models import FighterDeployment, FighterMode, MineDeployment, MineType, Player
 from tw2k.engine.observation import build_observation
 from tw2k.engine.runner import _apply_sector_hazards, apply_action, tick_day
+
+pytestmark = pytest.mark.legacy_profile
 
 NEW_VERBS = {"corp_set_password", "corp_drop", "corp_transfer"}
 

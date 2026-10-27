@@ -14,6 +14,11 @@ ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "src"))
 sys.path.insert(0, str(ROOT / "scripts"))
 
+# R-4: this tool checks the legacy rules; the stored V311_PROFILE default is v311 now.
+import tw2k.engine.constants as _profile  # noqa: E402
+
+_profile.V311_PROFILE = "legacy"
+
 from planetary_scenario_lab import (  # noqa: E402
     DEFAULT_ATTACKER_SHIELDS,
     DEFAULT_CITADEL_LEVEL,

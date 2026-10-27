@@ -16,6 +16,8 @@ import tw2k.engine.constants as K
 from tests._cu_host import CuHost
 from tw2k.engine.models import MineType
 
+pytestmark = pytest.mark.legacy_profile
+
 ROOT = Path(__file__).resolve().parents[1]
 SHOTS = ROOT / "docs" / "playtests" / "beta-playtest2-v1"
 TOK = "note106-playtest2-token-p2-00000000"

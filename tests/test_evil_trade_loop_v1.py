@@ -2,10 +2,14 @@
 
 from __future__ import annotations
 
+import pytest
+
 import tw2k.engine.constants as K
 from tw2k.agents.seat_brain import SeatBrain, SeatMemory, View
 from tw2k.engine.evil_trade import next_evil_step
 from tw2k.public.manual import render
+
+pytestmark = pytest.mark.legacy_profile
 
 
 def _legal(kind: str, *, params: dict | None = None, reason: str = "") -> dict:

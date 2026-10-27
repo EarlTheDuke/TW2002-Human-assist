@@ -60,7 +60,7 @@ SLOW_UNIT_FILES = frozenset({
 
 
 def is_pin_file(path: Path) -> bool:
-    return path.stem.endswith("_legacy_pin") or path.stem == "test_pin_hermetic_qc55"
+    return path.stem.endswith(("_legacy_pin", "_v311_pin")) or path.stem == "test_pin_hermetic_qc55"
 
 
 def quick_files(tests_dir: Path) -> list[Path]:

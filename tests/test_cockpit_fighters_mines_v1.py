@@ -8,6 +8,8 @@ import pytest
 
 from tests._cu_host import CuHost
 
+pytestmark = pytest.mark.legacy_profile
+
 PORT_TOK = "fighters-port-token-p2-000000000000"
 DOCK_TOK = "fighters-dock-token-p2-000000000000"
 SHOTS = Path(__file__).resolve().parents[1] / "docs" / "playtests" / "cockpit-fighters-mines-v1"

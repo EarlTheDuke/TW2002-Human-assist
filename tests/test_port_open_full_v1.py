@@ -18,10 +18,14 @@ Plants these tests re-break:
 
 from __future__ import annotations
 
+import pytest
+
 import tw2k.engine.constants as K
 from tw2k.engine.economy import regenerate_ports
 from tw2k.engine.models import GameConfig
 from tw2k.engine.universe import generate_universe
+
+pytestmark = pytest.mark.legacy_profile
 
 
 def _shape(universe):

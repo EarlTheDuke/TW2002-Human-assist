@@ -8,8 +8,12 @@ import subprocess
 import sys
 from pathlib import Path
 
+import pytest
+
 import tw2k.engine.constants as K
 from tw2k.engine.models import GameConfig
+
+pytestmark = pytest.mark.legacy_profile
 
 ROOT = Path(__file__).resolve().parents[1]
 QUEUE = ROOT / "docs/plans/live-twgs-test-queue-v1.md"

@@ -8,6 +8,8 @@ from __future__ import annotations
 from pathlib import Path
 from types import SimpleNamespace
 
+import pytest
+
 import tw2k.engine.constants as K
 from tw2k.engine import GameConfig, generate_universe
 from tw2k.engine.models import Commodity, PortClass
@@ -15,6 +17,8 @@ from tw2k.public import pages
 from tw2k.public import workers as WM
 from tw2k.public.security import parse_game_form
 from tw2k.public.worker import health_payload
+
+pytestmark = pytest.mark.legacy_profile
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -53,7 +57,7 @@ def test_switch_overlay_for_legacy_and_v311() -> None:
     assert legacy["PORT_STOCK_FIDELITY_MODE"] == "live"
     assert legacy["LEGACY_DAY_CLOCK_MODE"] == "live"
     assert legacy["SEAT_IDLE_START_MODE"] == "live"
-    assert "V311_PROFILE" not in legacy
+    assert legacy["V311_PROFILE"] == "legacy"  # R-4: the stored default is v311
     package = WM.switch_overlay(_settings("legacy", "v311"))
     assert package["STARTING_PACKAGE_MODE"] == "live"
     assert package["PORT_STOCK_FIDELITY_MODE"] == "live"

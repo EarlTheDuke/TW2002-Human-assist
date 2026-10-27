@@ -11,6 +11,8 @@ import pytest
 from tests._cu_host import VIEW_H, VIEW_W, CuHost
 from tests.test_amz6_warp_codes import _replace_snapshot, _wait_parked, warp_label
 
+pytestmark = pytest.mark.legacy_profile
+
 TOK = "port-color-v1-token-p2-0000000000000"
 MAP_TOP = {1440: 714, 1920: 927}
 SHOTS = Path(__file__).resolve().parents[1] / "docs" / "playtests" / "cockpit-polish-v1"

@@ -2,12 +2,16 @@
 
 from __future__ import annotations
 
+import pytest
+
 from tw2k.agents.prompts import get_system_prompt
 from tw2k.engine import Action, ActionKind, GameConfig, apply_action, generate_universe, tick_day
 from tw2k.engine import constants as K
 from tw2k.engine.legality import legal_actions
 from tw2k.engine.models import Player, Ship, ShipClass
 from tw2k.engine.victory import full_net_worth
+
+pytestmark = pytest.mark.legacy_profile
 
 
 def _world(credits=1_000_000, alignment=0, sector=1):

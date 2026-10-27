@@ -16,6 +16,8 @@ from tw2k.engine.legality import legal_actions
 from tw2k.engine.models import Alliance, EventKind, Ship, ShipClass
 from tw2k.engine.observation import build_observation
 
+pytestmark = pytest.mark.legacy_profile
+
 
 def _la(u, pid, kind):
     return next(x for x in legal_actions(u, pid) if x.kind == kind)

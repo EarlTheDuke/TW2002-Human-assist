@@ -2,13 +2,17 @@
 
 from __future__ import annotations
 
+import pytest
+
 import tw2k.engine.constants as K
 from tests.test_phase_abc import _first_non_fed_sector, _make_universe
 from tests.test_ship_combat_core_v1 import _act, _duel
 from tw2k.engine.actions import Action, ActionKind
-from tw2k.engine.runner import apply_action
 from tw2k.engine.models import EventKind, FerrengiShip, Planet, PlanetClass
 from tw2k.engine.observation import event_facts
+from tw2k.engine.runner import apply_action
+
+pytestmark = pytest.mark.legacy_profile
 
 
 def _stand(u, player, sector_id: int) -> None:

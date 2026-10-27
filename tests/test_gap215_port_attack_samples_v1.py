@@ -13,6 +13,8 @@ from tests.test_ship_combat_core_v1 import _act, _park
 from tw2k.engine.actions import ActionKind
 from tw2k.engine.models import EventKind, Port, PortClass, ShipClass
 
+pytestmark = pytest.mark.legacy_profile
+
 
 def _cruiser(seed: int, class_id: PortClass):
     u, (pilot, _other, _c) = _make_universe(seed=seed)

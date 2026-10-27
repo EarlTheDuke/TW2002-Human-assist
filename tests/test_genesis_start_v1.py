@@ -2,9 +2,13 @@
 
 from __future__ import annotations
 
+import pytest
+
 import tw2k.engine.constants as K
 from tw2k.engine import Action, ActionKind, GameConfig, apply_action, generate_universe
 from tw2k.engine.models import Player, Ship, ShipClass
+
+pytestmark = pytest.mark.legacy_profile
 
 
 def _deploy(mode: str):

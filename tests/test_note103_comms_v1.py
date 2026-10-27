@@ -2,10 +2,14 @@
 
 from __future__ import annotations
 
+import pytest
+
 from tw2k.engine import Action, ActionKind, GameConfig, apply_action, generate_universe
 from tw2k.engine import constants as K
 from tw2k.engine.models import Player, Ship
 from tw2k.engine.presence import note_poll
+
+pytestmark = pytest.mark.legacy_profile
 
 EXPECTED_HULLS = (
     "merchant_cruiser",

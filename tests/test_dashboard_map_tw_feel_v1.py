@@ -4,6 +4,10 @@ from __future__ import annotations
 
 from pathlib import Path
 
+import pytest
+
+pytestmark = pytest.mark.legacy_profile
+
 ROOT = Path(__file__).resolve().parents[1]
 SHOTS = ROOT / "docs" / "playtests" / "dashboard-map-tw-feel-v1"
 REF = Path(r"C:\Users\sugar\tw2002_reference\dashboard_test\qc\dashboard-map-tw-feel-v1")

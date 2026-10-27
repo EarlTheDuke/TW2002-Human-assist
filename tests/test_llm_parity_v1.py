@@ -4,7 +4,11 @@ from __future__ import annotations
 
 import json
 
+import pytest
+
 import tw2k.engine.constants as K
+
+pytestmark = pytest.mark.legacy_profile
 
 
 def test_lp1_mode(monkeypatch):

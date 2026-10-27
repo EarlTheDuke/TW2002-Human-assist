@@ -5,18 +5,21 @@ These are the legacy-side facts. The gated tw2002 path is added later.
 
 from __future__ import annotations
 
+import pytest
+
+from tests.test_corp_rules_v1 import _act, _u
+from tests.test_ship_tow_v1 import _park, _sit, _world
 from tw2k.engine import constants as K
 from tw2k.engine.actions import Action, ActionKind
-from tw2k.engine.combat import _destroy_ship
-from tw2k.engine.fleet import attack_unmanned
 from tw2k.engine.bank import on_ship_lost
+from tw2k.engine.combat import _destroy_ship
 from tw2k.engine.corp import disband
+from tw2k.engine.fleet import attack_unmanned
 from tw2k.engine.models import EventKind, FighterDeployment, FighterMode, TowLock
 from tw2k.engine.scanners import limpet_visible
 from tw2k.engine.tow import emit_hold, extern_hold_why
 
-from tests.test_corp_rules_v1 import _act, _u
-from tests.test_ship_tow_v1 import _park, _sit, _world
+pytestmark = pytest.mark.legacy_profile
 
 
 def test_today_a_correct_password_is_refused_after_a_wrong_guess(monkeypatch):

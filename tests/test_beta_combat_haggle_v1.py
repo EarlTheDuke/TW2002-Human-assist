@@ -9,6 +9,8 @@ from __future__ import annotations
 import asyncio
 from types import SimpleNamespace
 
+import pytest
+
 import tw2k.engine.constants as K
 from tw2k.agents.heuristic import HeuristicAgent
 from tw2k.engine import Action, ActionKind, GameConfig, generate_universe
@@ -19,6 +21,8 @@ from tw2k.engine.observation import build_observation
 from tw2k.engine.runner import apply_action
 from tw2k.server.broadcaster import Broadcaster
 from tw2k.server.runner import AgentSpec, MatchRunner, MatchSpec
+
+pytestmark = pytest.mark.legacy_profile
 
 
 def _universe(seed: int = 71):

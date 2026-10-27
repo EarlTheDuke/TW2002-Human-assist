@@ -7,9 +7,12 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from tw2k.engine.models import EventKind, FighterDeployment, FighterMode, MineDeployment, MineType
+import pytest
 
 from tests._cu_host import CuHost
+from tw2k.engine.models import EventKind, FighterDeployment, FighterMode, MineDeployment, MineType
+
+pytestmark = pytest.mark.legacy_profile
 
 TOK = "hazard-fix-token-p2-00000000000000"
 SHOTS = Path(__file__).resolve().parents[1] / "docs" / "playtests" / "cockpit-hazards-fix-v1"

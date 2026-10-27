@@ -5,6 +5,8 @@ from __future__ import annotations
 import importlib.util
 from pathlib import Path
 
+import pytest
+
 import tw2k.engine.constants as K
 from tw2k.engine import Action, ActionKind, GameConfig, generate_universe
 from tw2k.engine.alien import (
@@ -32,6 +34,8 @@ from tw2k.engine.models import (
 from tw2k.engine.observation import build_observation
 from tw2k.engine.runner import apply_action
 from tw2k.engine.scanners import density_reading
+
+pytestmark = pytest.mark.legacy_profile
 
 _FORBIDDEN = {
     "imperial_starship", "corporate_flagship", "interdictor_cruiser", "tholian_sentinel",

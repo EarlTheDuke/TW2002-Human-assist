@@ -4,6 +4,8 @@ from __future__ import annotations
 
 from pathlib import Path
 
+import pytest
+
 from tests.test_phase_abc import _make_universe
 from tests.test_planet_transporter_v1 import _chain, _fighters, _hop, _plant, _stand
 from tw2k.engine import GameConfig, generate_universe, tick_day
@@ -13,6 +15,8 @@ from tw2k.engine.combat import _destroy_ship
 from tw2k.engine.economy import regenerate_ports
 from tw2k.engine.models import Commodity, Port, PortClass, PortStock
 from tw2k.engine.runner import apply_action
+
+pytestmark = pytest.mark.legacy_profile
 
 FUEL = Commodity.FUEL_ORE
 ROOT = Path(__file__).resolve().parents[1]

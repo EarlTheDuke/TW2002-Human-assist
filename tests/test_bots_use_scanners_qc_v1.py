@@ -4,12 +4,16 @@ from __future__ import annotations
 
 import asyncio
 
+import pytest
+
 from tw2k.agents.heuristic import HeuristicAgent
 from tw2k.agents.seat_brain import SeatBrain, SeatMemory, View
 from tw2k.engine import ActionKind, GameConfig, generate_universe
 from tw2k.engine import constants as K
 from tw2k.engine.models import Player, Ship
 from tw2k.engine.observation import build_observation
+
+pytestmark = pytest.mark.legacy_profile
 
 
 def _open(u, pid, sector=1, credits=30_000, ship=None):

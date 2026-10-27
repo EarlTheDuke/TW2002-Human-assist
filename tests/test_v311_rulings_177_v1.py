@@ -11,11 +11,15 @@ from __future__ import annotations
 
 from types import SimpleNamespace
 
+import pytest
+
 import tw2k.engine.constants as K
 from tests.test_fedspace_police_v1 import _world
 from tw2k.engine.corpships import board_block
 from tw2k.engine.models import Planet, PlanetClass, ShipClass
 from tw2k.engine.runner import _remove_planet
+
+pytestmark = pytest.mark.legacy_profile
 
 
 def _flagship_world(monkeypatch):

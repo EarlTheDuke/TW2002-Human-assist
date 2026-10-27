@@ -17,6 +17,8 @@ from tw2k.engine.models import Commodity, Planet, PlanetClass, Player, Ship, Shi
 from tw2k.engine.observation import build_observation
 from tw2k.engine.runner import full_net_worth, planet_tax_value, tick_day
 
+pytestmark = pytest.mark.legacy_profile
+
 
 @pytest.fixture
 def tw(monkeypatch):

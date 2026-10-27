@@ -9,11 +9,15 @@ The string "1" does not.
 """
 from __future__ import annotations
 
+import pytest
+
 import tw2k.engine.constants as K
 from tests.test_fedspace_police_v1 import _world
 from tw2k.engine import Action, ActionKind, apply_action
 from tw2k.engine.combat import _destroy_ship_tw2002
 from tw2k.engine.runner import tick_day
+
+pytestmark = pytest.mark.legacy_profile
 
 
 def _arm(monkeypatch, mode: str) -> None:

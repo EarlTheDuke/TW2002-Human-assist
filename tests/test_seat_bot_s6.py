@@ -14,6 +14,8 @@ from __future__ import annotations
 
 import copy
 
+import pytest
+
 from tw2k.agents.seat_acceptance import synthetic_obs, validate_action
 from tw2k.agents.seat_brain import SeatBrain
 from tw2k.engine import GameConfig, generate_universe
@@ -21,6 +23,8 @@ from tw2k.engine.actions import Action, ActionKind
 from tw2k.engine.models import EventKind, Player
 from tw2k.engine.observation import build_observation
 from tw2k.engine.runner import apply_action
+
+pytestmark = pytest.mark.legacy_profile
 
 
 def _set_la(obs, kind, legal=True, reason=None, **params):

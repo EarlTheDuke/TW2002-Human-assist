@@ -13,7 +13,11 @@ Plants:
 
 from __future__ import annotations
 
+import pytest
+
 import tw2k.engine.constants as K
+
+pytestmark = pytest.mark.legacy_profile
 
 
 def test_default_keeps_the_scaled_days_and_the_s1_colonists():

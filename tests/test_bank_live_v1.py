@@ -1,9 +1,13 @@
 """bank-live-v1. The account cap comes off only when the switch is on."""
+import pytest
+
+import tw2k.engine.constants as K
 from tw2k.engine.actions import Action, ActionKind
 from tw2k.engine.bank import handle_bank_deposit
 from tw2k.engine.models import GameConfig, Player
 from tw2k.engine.universe import generate_universe
-import tw2k.engine.constants as K
+
+pytestmark = pytest.mark.legacy_profile
 
 
 def _seat(credits: int = 600_000):

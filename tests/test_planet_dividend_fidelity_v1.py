@@ -7,12 +7,16 @@ colonists are dying off.
 
 from __future__ import annotations
 
+import pytest
+
 import tw2k.engine.constants as K
 from tests.test_phase_abc import _make_universe
 from tw2k.engine.models import Commodity, EventKind, Planet, PlanetClass
 from tw2k.engine.observation import build_observation
 from tw2k.engine.planets import colonist_trend
 from tw2k.engine.runner import planet_tax_value, tick_day
+
+pytestmark = pytest.mark.legacy_profile
 
 
 def test_default_still_pays() -> None:

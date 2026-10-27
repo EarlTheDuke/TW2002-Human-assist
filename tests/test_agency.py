@@ -17,6 +17,8 @@ from tw2k.engine.match_metrics import build_match_metrics_payload
 from tw2k.engine.models import Event, EventKind
 from tw2k.engine.observation import Observation
 
+pytestmark = pytest.mark.legacy_profile
+
 
 def test_hint_level_defaults_full(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.delenv("TW2K_HINT_LEVEL", raising=False)

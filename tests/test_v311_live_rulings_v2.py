@@ -5,12 +5,16 @@ the code they already have. Autopilot port stops and Genesis names are new.
 """
 from pathlib import Path
 
+import pytest
+
 from tw2k.engine import GameConfig, generate_universe
 from tw2k.engine import constants as K
 from tw2k.engine.actions import Action, ActionKind
 from tw2k.engine.combat import _resolve_ship_attack_tw2002
 from tw2k.engine.models import Player, Port, PortClass, ShipClass
 from tw2k.engine.runner import _bfs_path, apply_action
+
+pytestmark = pytest.mark.legacy_profile
 
 ROOT = Path(__file__).resolve().parents[1]
 

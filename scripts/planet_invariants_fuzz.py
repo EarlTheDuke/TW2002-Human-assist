@@ -34,6 +34,9 @@ from tw2k.engine.models import (  # noqa: E402
 from tw2k.engine.runner import _bfs_path, apply_action, tick_day  # noqa: E402
 from tw2k.engine.universe import generate_universe  # noqa: E402
 
+# R-4: this tool checks the legacy rules; the stored V311_PROFILE default is v311 now.
+K.V311_PROFILE = "legacy"
+
 # Forty fixed seeds. --seeds N uses the first N. A seed listed in XFAIL is a
 # known engine bug: the script still runs it, prints xfail, and does not
 # exit 1. Do not add a seed here to hide a new failure.

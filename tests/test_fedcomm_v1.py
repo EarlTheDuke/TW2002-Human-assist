@@ -10,10 +10,14 @@ Plants:
 
 from __future__ import annotations
 
+import pytest
+
 import tw2k.engine.constants as K
 from tw2k.engine.class0 import extern_sweep
 from tw2k.engine.models import FighterDeployment, FighterMode, GameConfig, Player, Ship, ShipClass
 from tw2k.engine.universe import generate_universe
+
+pytestmark = pytest.mark.legacy_profile
 
 
 def _world():

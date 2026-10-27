@@ -2,11 +2,15 @@
 
 from __future__ import annotations
 
+import pytest
+
 import tw2k.engine.constants as K
 from tw2k.engine import GameConfig, generate_universe
 from tw2k.engine.legality import legal_actions
 from tw2k.engine.models import Player, Ship
 from tw2k.engine.observation import build_observation
+
+pytestmark = pytest.mark.legacy_profile
 
 
 def _open(u, pid, sector, credits, *, alignment=0, experience=0, name="Seat"):

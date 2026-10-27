@@ -2,11 +2,15 @@
 
 from __future__ import annotations
 
+import pytest
+
 from tests.test_phase_abc import _make_universe
 from tw2k.engine.actions import Action, ActionKind
 from tw2k.engine.constants import STARTING_FIGHTERS, TURN_COST
 from tw2k.engine.models import EventKind, Planet, PlanetClass
 from tw2k.engine.runner import apply_action
+
+pytestmark = pytest.mark.legacy_profile
 
 LAND_COST = TURN_COST["land_planet"]
 SECTOR = 120

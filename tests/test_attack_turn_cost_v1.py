@@ -9,10 +9,14 @@ from __future__ import annotations
 
 from pathlib import Path
 
+import pytest
+
 import tw2k.engine.constants as K
 from tests.test_ship_combat_core_v1 import _act, _challenge, _duel, _la
 from tw2k.engine.actions import ActionKind
 from tw2k.engine.models import ShipClass
+
+pytestmark = pytest.mark.legacy_profile
 
 ROOT = Path(__file__).resolve().parents[1]
 CAPTURE = ROOT / "docs" / "playtests" / "twgs-live" / "attack-turn-cost-ven.txt"

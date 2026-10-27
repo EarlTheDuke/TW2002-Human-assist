@@ -10,10 +10,14 @@ import subprocess
 import sys
 from pathlib import Path
 
+import pytest
+
 import tw2k.engine.constants as K
 from tests import fed_legacy_digest as FLD
 from tests._pin_env import pin_env, scrubbed_environ
 from tests.test_port_upgrade_legacy_pin import PIN_FLIPS, PORT_UPGRADE_LEGACY_GOLDEN
+
+pytestmark = pytest.mark.legacy_profile
 
 ROOT = Path(__file__).resolve().parents[1]
 

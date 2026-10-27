@@ -30,6 +30,8 @@ from tw2k.engine.planets import _accrue_planet_treasury
 from tw2k.engine.runner import apply_action, query_route
 from tw2k.engine.universe import generate_universe
 
+pytestmark = pytest.mark.legacy_profile
+
 
 def _las(u, pid: str) -> dict:
     return {la.kind: la for la in legal_actions(u, pid)}

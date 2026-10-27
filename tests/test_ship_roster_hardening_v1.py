@@ -2,12 +2,16 @@
 
 from __future__ import annotations
 
+import pytest
+
 from tw2k.engine import Action, ActionKind, GameConfig, apply_action, generate_universe
 from tw2k.engine import constants as K
 from tw2k.engine.legality import legal_actions
 from tw2k.engine.models import Planet, PlanetClass, Player, Ship, ShipClass
 from tw2k.engine.runner import _planet_odds_fight
 from tw2k.server.runner import _is_day_done
+
+pytestmark = pytest.mark.legacy_profile
 
 # Copied from SHIP_ROSTER.md. Not read back out of the spec.
 # price, max holds, included holds, fighters, shields, mines, genesis, photons, turns per warp

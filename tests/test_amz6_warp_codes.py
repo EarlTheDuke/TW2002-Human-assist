@@ -10,9 +10,13 @@ from __future__ import annotations
 import re
 import time
 
+import pytest
+
 from tests._cu_host import VIEW_H, VIEW_W, CuHost
 from tw2k.engine.models import Commodity
 from tw2k.engine.observation import build_observation
+
+pytestmark = pytest.mark.legacy_profile
 
 TOK = "amz6-codes-token-p2-000000000000"
 

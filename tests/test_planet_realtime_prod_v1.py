@@ -11,9 +11,13 @@ Plants:
 
 from __future__ import annotations
 
+import pytest
+
 import tw2k.engine.constants as K
 from tw2k.engine.models import Commodity, Planet, PlanetClass
 from tw2k.engine.planets import _advance_planets, _close_realtime_production, refresh_planet_production
+
+pytestmark = pytest.mark.legacy_profile
 
 # 7.3 hours. 1,000 fuel colonists on class M make 30 fuel a day, so this
 # slice is 9 and the day tick owes the other 21.
