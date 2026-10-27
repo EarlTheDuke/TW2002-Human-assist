@@ -1440,6 +1440,7 @@ def _destroy_ship_tw2002(
     player.flee_penalty = False
     exp_before = int(player.experience)
     align_before = int(player.alignment)
+    pod_cash = 0
     if podded:
         player.pods_today += 1
         dest = _pod_destination(universe, player, death_sector, by_other)
@@ -1452,7 +1453,8 @@ def _destroy_ship_tw2002(
             player.ship.shields = 30
         if by_other and K.pod_cash_live():
             # RULINGS_v311.md Addendum A: "the victim's cash was gone and the pod held 25 credits".
-            player.credits = max(int(player.credits), int(K.POD_CASH_CREDITS))
+            pod_cash = max(0, int(K.POD_CASH_CREDITS) - int(player.credits))
+            player.credits = int(player.credits) + pod_cash
         _place(universe, player, dest)
         outcome = "escape_pod"
         # The summary reaches the killer and every witness; where the pod went does not (fog).
@@ -1503,6 +1505,9 @@ def _destroy_ship_tw2002(
     )
     if K.bank_on():
         universe.events[-1].payload["credits_lost"] = credits_lost
+    if pod_cash:
+        # The purse is new money; the event carries it so every credit is accounted for.
+        universe.events[-1].payload["pod_cash"] = pod_cash
     # fedspace-police-v1 f19: bounty only on real death (not pod)
     from .fed import record_bounty_on_death
     record_bounty_on_death(universe, pid, killer_id, outcome)
