@@ -8,9 +8,10 @@ from pathlib import Path
 
 import pytest
 
+from tests._cu_host import CuHost
 from tw2k.engine.models import ShipClass
 
-from tests._cu_host import CuHost
+pytestmark = pytest.mark.legacy_profile
 
 ROOT = Path(__file__).resolve().parents[1]
 SHOTS = ROOT / "docs" / "playtests" / "cockpit-ship-view-3d-v2"

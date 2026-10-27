@@ -10,6 +10,8 @@ import pytest
 from tests._cu_host import VIEW_H, VIEW_W, CuHost
 from tw2k.engine.observation import build_observation
 
+pytestmark = pytest.mark.legacy_profile
+
 TOK = "exit-ring-v1-token-p2-00000000000"
 MAP_TOP = {1440: 714, 1920: 927}
 

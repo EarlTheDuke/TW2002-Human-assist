@@ -7,6 +7,8 @@ import pytest
 
 from tests._cu_host import CuHost, free_port
 
+pytestmark = pytest.mark.legacy_profile
+
 TOK = "playthrough-p2-000000000000000000"
 # Game 5 owns 8042. The shared scanner starts at 8040, so this smoke starts higher.
 SMOKE_PORT = 8050

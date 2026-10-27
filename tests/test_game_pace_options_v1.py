@@ -26,6 +26,8 @@ from tw2k.public.lobby import create_lobby_app
 from tw2k.server.app import create_app
 from tw2k.server.runner import AgentSpec, MatchSpec
 
+pytestmark = pytest.mark.legacy_profile
+
 REPO = Path(__file__).resolve().parents[1]
 TOK = "p" * 40
 

@@ -12,6 +12,8 @@ import pytest
 
 from tests._cu_host import VIEW_H, VIEW_W, CuHost
 
+pytestmark = pytest.mark.legacy_profile
+
 ROOT = Path(__file__).resolve().parents[1]
 TOK = "polish-v2-token-p2-00000000000000"
 

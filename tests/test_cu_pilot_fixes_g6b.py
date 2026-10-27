@@ -19,6 +19,7 @@ from contextlib import redirect_stderr, redirect_stdout
 from pathlib import Path
 
 import httpx
+import pytest
 
 from tests._cu_host import CuHost
 from tw2k.engine import GameConfig, generate_universe
@@ -27,6 +28,8 @@ from tw2k.engine.observation import build_observation, status_fields
 from tw2k.engine.runner import _record_port_intel
 from tw2k.server.app import create_app
 from tw2k.server.runner import AgentSpec, MatchSpec
+
+pytestmark = pytest.mark.legacy_profile
 
 ROOT = Path(__file__).resolve().parents[1]
 TOK = "g6b-token-p2-00000000000000000"

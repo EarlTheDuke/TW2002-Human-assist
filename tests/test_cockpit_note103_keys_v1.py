@@ -13,6 +13,8 @@ import pytest
 
 from tw2k.public.manual import render
 
+pytestmark = pytest.mark.legacy_profile
+
 ROOT = Path(__file__).resolve().parents[1]
 JS = ROOT / "web" / "redesign.js"
 TOK = "note103-keys-token-p2-0000000000"

@@ -6,10 +6,11 @@ from pathlib import Path
 
 import pytest
 
+from tests._cu_host import CuHost
 from tw2k.engine.models import ParkedShip, Ship, ShipClass
 from tw2k.engine.tavern import password_for
 
-from tests._cu_host import CuHost
+pytestmark = pytest.mark.legacy_profile
 
 TOK = "dock-token-p2-00000000000000000000"
 SHOTS = Path(__file__).resolve().parents[1] / "docs" / "playtests" / "cockpit-stardock-extras-v1"

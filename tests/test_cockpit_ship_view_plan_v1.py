@@ -11,6 +11,8 @@ import pytest
 from tests._cu_host import CuHost
 from tw2k.engine.models import ShipClass
 
+pytestmark = pytest.mark.legacy_profile
+
 ROOT = Path(__file__).resolve().parents[1]
 SHOTS = Path("/opt/cursor/artifacts/note116")
 JS = ROOT / "web" / "redesign.js"

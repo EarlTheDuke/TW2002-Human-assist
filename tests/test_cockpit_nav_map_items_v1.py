@@ -23,6 +23,8 @@ from tw2k.engine.runner import query_route
 from tw2k.server.app import create_app
 from tw2k.server.runner import AgentSpec, MatchSpec
 
+pytestmark = pytest.mark.legacy_profile
+
 REPO = Path(__file__).resolve().parents[1]
 SHOTS = REPO / "docs" / "playtests" / "cockpit-nav-and-map-v1"
 TOK = "n" * 40

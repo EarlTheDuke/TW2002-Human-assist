@@ -16,6 +16,8 @@ from tests._cu_host import CuHost
 from tw2k.engine.models import Planet, PlanetClass
 from tw2k.engine.observation import build_observation
 
+pytestmark = pytest.mark.legacy_profile
+
 TOK = "note97-cockpit-token-p2-000000000"
 PLANET_ID = 88097
 SHOTS = Path(__file__).resolve().parents[1] / "docs" / "playtests" / "note97-v1"

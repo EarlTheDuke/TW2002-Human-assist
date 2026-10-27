@@ -14,6 +14,8 @@ from tests._cu_host import CuHost
 from tw2k.engine import constants as K
 from tw2k.engine.models import EventKind
 
+pytestmark = pytest.mark.legacy_profile
+
 TOK = "note83-tax-token-p2-00000000000000"
 SHOTS = Path(__file__).resolve().parents[1] / "docs" / "playtests" / "cockpit-tax-wording-v1"
 OLD_WARN = "The dawn tax takes 10% of the cash on your ship when it is over 49,999."

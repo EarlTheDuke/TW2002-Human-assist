@@ -27,6 +27,8 @@ import tw2k.engine.constants as K
 from tw2k.engine.observation import build_observation
 from tw2k.public.manual import render
 
+pytestmark = pytest.mark.legacy_profile
+
 ROOT = Path(__file__).resolve().parents[1]
 CASES = ("v311", "legacy")
 CAPTURE_PATH = ROOT / "docs/playtests/twgs-live/computer-b.txt"

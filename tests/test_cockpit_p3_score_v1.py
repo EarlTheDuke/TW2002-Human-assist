@@ -8,6 +8,8 @@ import pytest
 import tw2k.engine.constants as K
 from tests._cu_host import CuHost, allowed_test_port
 
+pytestmark = pytest.mark.legacy_profile
+
 TOK = "p3-score-token-p2-00000000000000001"
 
 

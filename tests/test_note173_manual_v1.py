@@ -10,8 +10,10 @@ import pytest
 import tw2k.engine.constants as K
 from tw2k.public import pages
 from tw2k.public import workers as WM
-from tw2k.public.manual import SECTIONS, _SWITCH_PLAIN, render
+from tw2k.public.manual import _SWITCH_PLAIN, SECTIONS, render
 from tw2k.public.security import parse_game_form
+
+pytestmark = pytest.mark.legacy_profile
 
 
 def test_v311_mode_lists_every_switch(monkeypatch) -> None:
@@ -76,7 +78,7 @@ def test_rules_profile_is_a_display_and_defaults_stay() -> None:
     assert "Profile: v3.11" in v311
     parsed = parse_game_form({"name": "Alpha", "rules": "legacy", "starting_package": "classic"})
     assert "profile" not in parsed.settings()
-    assert "V311_PROFILE" not in WM.switch_overlay(parsed.settings())
+    assert WM.switch_overlay(parsed.settings())["V311_PROFILE"] == "legacy"  # R-4: the default is v311
     v311_settings = parse_game_form({"name": "Alpha", "rules": "v311"}).settings()
     assert WM.switch_overlay(v311_settings)["V311_PROFILE"] == "v311"
     assert K.V311_PROFILE == "legacy"
