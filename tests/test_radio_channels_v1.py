@@ -10,10 +10,14 @@ Plants:
 
 from __future__ import annotations
 
+import pytest
+
 import tw2k.engine.constants as K
 from tw2k.engine import Action, ActionKind, GameConfig, apply_action, generate_universe
 from tw2k.engine.legality import legal_actions
 from tw2k.engine.models import Player, Ship
+
+pytestmark = pytest.mark.legacy_profile
 
 
 def _world():

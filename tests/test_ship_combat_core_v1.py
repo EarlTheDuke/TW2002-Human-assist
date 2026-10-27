@@ -32,6 +32,8 @@ from tw2k.engine.models import (
 from tw2k.engine.observation import _event_visible_to, build_observation, event_facts
 from tw2k.engine.runner import apply_action
 
+pytestmark = pytest.mark.legacy_profile
+
 ROOT = Path(__file__).resolve().parents[1]
 HULLS = [c for c in ShipClass if c is not ShipClass.ESCAPE_POD]  # the pod is not for sale
 

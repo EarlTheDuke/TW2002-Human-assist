@@ -13,9 +13,13 @@ import json
 import os
 from pathlib import Path
 
+import pytest
+
 import tw2k.agents.cockpit_seat as seat
 import tw2k.engine.constants as K
 from tests.test_external_harness_phase1 import TOK2, _app_and_client, _auth, _http_spec, _wait_until
+
+pytestmark = pytest.mark.legacy_profile
 
 LOG = Path(__file__).resolve().parents[1] / "docs" / "playtests" / "cockpit-ai-seat-v1"
 ARTIFACT_ENV = "TW2K_SEAT_ARTIFACTS"

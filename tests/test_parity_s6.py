@@ -30,6 +30,8 @@ from tw2k.server.app import create_app
 from tw2k.server.harness import rules_verbs
 from tw2k.server.runner import AgentSpec, MatchSpec
 
+pytestmark = pytest.mark.legacy_profile
+
 ROOT = Path(__file__).resolve().parents[1]
 TOK = {"P2": "s6-token-p2-000000000000000", "P3": "s6-token-p3-000000000000000", "P4": "s6-token-p4-000000000000000"}
 

@@ -7,12 +7,16 @@ and TW2002_LIVE_PROFILE does not.
 """
 from __future__ import annotations
 
+import pytest
+
 import tw2k.engine.constants as K
 from tests.test_fedspace_police_v1 import _act, _world
 from tw2k.engine import Action, ActionKind, GameConfig, apply_action, generate_universe
 from tw2k.engine.models import Event, EventKind, PlanetClass, Player, Ship, ShipClass
 from tw2k.engine.observation import _event_visible_to
 from tw2k.engine.runner import _bfs_path, tick_day
+
+pytestmark = pytest.mark.legacy_profile
 
 
 def _seat(universe, pid: str = "P1") -> Player:

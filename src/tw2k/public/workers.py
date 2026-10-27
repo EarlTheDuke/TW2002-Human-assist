@@ -155,6 +155,8 @@ def switch_overlay(settings: dict[str, Any]) -> dict[str, str]:
     if settings.get("rules") == "v311":
         out["V311_PROFILE"] = "v311"
     else:
+        # R-4: the stored default is v311 now, so a Legacy game names its profile.
+        out["V311_PROFILE"] = "legacy"
         out["PORT_STOCK_FIDELITY_MODE"] = "live"
         out["SEAT_IDLE_START_MODE"] = "live"
         if settings.get("starting_package") == "v311":

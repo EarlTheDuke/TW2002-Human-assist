@@ -1,8 +1,12 @@
 """haggle-detail-v1. Off, the older window stays. On, the measured bands apply."""
+import pytest
+
 import tw2k.engine.constants as K
 from tests.test_ports_haggle_v1 import _port, _seat, _trade
 from tw2k.engine.economy import port_buy_price, port_sell_price
 from tw2k.engine.models import Commodity, PortClass
+
+pytestmark = pytest.mark.legacy_profile
 
 FUEL = Commodity.FUEL_ORE
 

@@ -2,11 +2,15 @@
 
 from __future__ import annotations
 
+import pytest
+
 from tw2k.engine import Action, ActionKind, GameConfig, apply_action, generate_universe, tick_day
 from tw2k.engine import constants as K
 from tw2k.engine.economy import regenerate_ports
 from tw2k.engine.legality import legal_actions
 from tw2k.engine.models import Commodity, Player, Port, PortClass, PortStock, Ship
+
+pytestmark = pytest.mark.legacy_profile
 
 FUEL = Commodity.FUEL_ORE
 

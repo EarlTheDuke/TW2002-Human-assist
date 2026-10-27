@@ -16,12 +16,14 @@ import pytest
 
 from tw2k.agents.prompts import format_observation
 from tw2k.engine import GameConfig, generate_universe
-from tw2k.engine.actions import Action, ActionKind
 from tw2k.engine import constants as K
+from tw2k.engine.actions import Action, ActionKind
 from tw2k.engine.legality import LegalAction, legal_actions
 from tw2k.engine.models import Commodity, Player, PortClass
 from tw2k.engine.observation import build_observation
 from tw2k.engine.runner import apply_action
+
+pytestmark = pytest.mark.legacy_profile
 
 ROOT = Path(__file__).resolve().parents[1]
 HTML = (ROOT / "web" / "bot.html").read_text(encoding="utf-8")

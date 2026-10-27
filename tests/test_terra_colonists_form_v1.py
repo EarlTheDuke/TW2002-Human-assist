@@ -6,10 +6,14 @@ at one colonist per hold, so the old sentence does not move.
 
 from __future__ import annotations
 
+import pytest
+
 import tw2k.engine.constants as K
 from tests.test_class0_terra_v1 import _act, _world
 from tw2k.engine.actions import ActionKind
 from tw2k.engine.models import Commodity, EventKind
+
+pytestmark = pytest.mark.legacy_profile
 
 
 def test_legacy_sentence_matches_the_holds(monkeypatch) -> None:

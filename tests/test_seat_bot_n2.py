@@ -16,6 +16,8 @@ from __future__ import annotations
 import importlib.util
 from pathlib import Path
 
+import pytest
+
 from tw2k.agents.seat_acceptance import synthetic_obs, validate_action
 from tw2k.agents.seat_brain import SeatBrain
 from tw2k.engine import GameConfig, generate_universe
@@ -25,6 +27,8 @@ from tw2k.engine.models import Player
 from tw2k.engine.observation import build_observation
 from tw2k.engine.planets import ORGANICS_DAYS_SUSTAINABLE, organics_worker_target, planet_growth_status
 from tw2k.engine.runner import _bfs_path, apply_action
+
+pytestmark = pytest.mark.legacy_profile
 
 ROOT = Path(__file__).resolve().parents[1]
 

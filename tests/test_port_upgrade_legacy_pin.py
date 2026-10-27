@@ -11,7 +11,11 @@ import subprocess
 import sys
 from pathlib import Path
 
+import pytest
+
 from tests._pin_env import pin_env
+
+pytestmark = pytest.mark.legacy_profile
 
 ROOT = Path(__file__).resolve().parents[1]
 PORT_UPGRADE_LEGACY_GOLDEN = "e63989167ac9d2ce833ea256"

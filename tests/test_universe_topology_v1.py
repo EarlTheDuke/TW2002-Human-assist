@@ -11,12 +11,16 @@ Plants:
 
 from __future__ import annotations
 
+import pytest
+
 import tw2k.engine.constants as K
 from tw2k.engine.actions import Action, ActionKind
 from tw2k.engine.models import GameConfig, Player, Ship, ShipClass
 from tw2k.engine.observation import _action_hint
 from tw2k.engine.runner import _handle_plot_course
 from tw2k.engine.universe import generate_universe
+
+pytestmark = pytest.mark.legacy_profile
 
 
 def _adj(universe):

@@ -18,6 +18,8 @@ from tw2k.engine.models import Player
 from tw2k.engine.runner import apply_action
 from tw2k.public import manual
 
+pytestmark = pytest.mark.legacy_profile
+
 ROOT = Path(__file__).resolve().parents[1]
 
 

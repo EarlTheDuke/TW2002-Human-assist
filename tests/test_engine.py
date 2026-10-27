@@ -9,6 +9,8 @@ from __future__ import annotations
 
 import asyncio
 
+import pytest
+
 from tw2k.agents import HeuristicAgent
 from tw2k.engine import (
     Action,
@@ -21,6 +23,8 @@ from tw2k.engine import (
     tick_day,
 )
 from tw2k.engine.models import EventKind, Player, Ship
+
+pytestmark = pytest.mark.legacy_profile
 
 
 def _build_universe_with_agent():

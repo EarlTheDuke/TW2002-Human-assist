@@ -35,6 +35,8 @@ from tw2k.server.broadcaster import Broadcaster
 from tw2k.server.runner import AgentSpec, MatchRunner, MatchSpec
 from tw2k.server.spectator_gate import is_gated_path
 
+pytestmark = pytest.mark.legacy_profile
+
 ROOT = Path(__file__).resolve().parents[1]
 TOK2 = "s1-token-p2-00000000000000"
 TOK3 = "s1-token-p3-00000000000000"

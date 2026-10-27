@@ -2,9 +2,13 @@
 
 from __future__ import annotations
 
+import pytest
+
 import tw2k.engine.constants as K
 from tw2k.engine.economy import can_trade, regenerate_ports
 from tw2k.engine.models import Commodity, GameConfig, Port, PortClass, PortStock, Sector, Universe
+
+pytestmark = pytest.mark.legacy_profile
 
 
 def _universe(productivity: int, maximum: int, current: int) -> Universe:

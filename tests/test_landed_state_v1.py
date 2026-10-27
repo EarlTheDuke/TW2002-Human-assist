@@ -7,6 +7,8 @@ the bank are not told to lift off nine hops away.
 
 from __future__ import annotations
 
+import pytest
+
 import tw2k.engine.constants as K
 from tests.test_citadel_class_tables_v1 import _land, _plant
 from tests.test_phase_abc import _make_universe
@@ -14,6 +16,8 @@ from tw2k.engine.actions import Action, ActionKind
 from tw2k.engine.legality import legal_actions
 from tw2k.engine.models import PlanetClass
 from tw2k.engine.runner import apply_action
+
+pytestmark = pytest.mark.legacy_profile
 
 
 def test_legacy_warp_keeps_the_landing() -> None:

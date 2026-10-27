@@ -1,6 +1,8 @@
 """NOTE 102, rows 145-149. Each new switch off and on, and the two rows left unused."""
 from __future__ import annotations
 
+import pytest
+
 import tw2k.engine.constants as K
 from tw2k.engine.actions import Action, ActionKind
 from tw2k.engine.alien import alien_day_step
@@ -28,6 +30,8 @@ from tw2k.engine.models import (
 from tw2k.engine.observation import game_status
 from tw2k.engine.runner import apply_action, tick_day
 from tw2k.engine.universe import generate_universe
+
+pytestmark = pytest.mark.legacy_profile
 
 FUEL = Commodity.FUEL_ORE
 

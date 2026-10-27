@@ -24,6 +24,8 @@ from tw2k.engine.models import (
 from tw2k.engine.observation import _event_visible_to, build_observation, event_facts
 from tw2k.engine.runner import apply_action
 
+pytestmark = pytest.mark.legacy_profile
+
 
 def _park(u, player, sid: int) -> None:
     here = u.sectors[player.sector_id]

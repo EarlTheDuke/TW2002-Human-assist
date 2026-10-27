@@ -10,11 +10,15 @@ from __future__ import annotations
 import re
 from pathlib import Path
 
+import pytest
+
 from tw2k.engine import Action, ActionKind, GameConfig, apply_action, generate_universe
 from tw2k.engine import constants as K
 from tw2k.engine.models import Player, PortClass, Ship
 from tw2k.public.manual import render
 from tw2k.server.reference import game_reference, stardock_class_label
+
+pytestmark = pytest.mark.legacy_profile
 
 ROOT = Path(__file__).resolve().parents[1]
 

@@ -31,6 +31,8 @@ from tw2k.engine.models import (
 from tw2k.engine.observation import build_observation
 from tw2k.engine.planet_trade import BUSTED, LANDED, NO_AGREEMENT_PORT, NO_PLANET, NOT_INTERESTED, lot_price
 
+pytestmark = pytest.mark.legacy_profile
+
 ORE, ORG, EQ = Commodity.FUEL_ORE, Commodity.ORGANICS, Commodity.EQUIPMENT
 PT_DEFAULTS = (
     ("PLANET_TRADE_MODE", "tw2002"), ("PLANET_TRADE_PRICING", "curve"), ("PLANET_TRADE_CURVE_STEP", 100),

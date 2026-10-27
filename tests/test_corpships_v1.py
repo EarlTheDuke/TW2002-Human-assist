@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import pytest
+
 import tw2k.engine.constants as K
 from tests._pin_env import pin_env
 from tw2k.agents.prompts import get_system_prompt
@@ -10,6 +12,8 @@ from tw2k.engine.corpships import FAILSAFE, furb_gain
 from tw2k.engine.legality import legal_actions
 from tw2k.engine.models import Corporation, EventKind, ParkedShip, Player, Ship, ShipClass
 from tw2k.engine.observation import build_observation
+
+pytestmark = pytest.mark.legacy_profile
 
 
 def _world():

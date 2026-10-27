@@ -21,6 +21,8 @@ from tw2k.engine import constants as K
 from tw2k.engine.models import Player
 from tw2k.engine.runner import _bfs_path
 
+pytestmark = pytest.mark.legacy_profile
+
 
 def _universe():
     return generate_universe(GameConfig(seed=7, universe_size=60, max_days=8, turns_per_day=50))

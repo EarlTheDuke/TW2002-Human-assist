@@ -22,6 +22,8 @@ from __future__ import annotations
 import asyncio
 from pathlib import Path
 
+import pytest
+
 import tw2k.engine.constants as K
 from tw2k.agents.heuristic import HeuristicAgent, _canned_hail
 from tw2k.engine.actions import Action, ActionKind
@@ -43,6 +45,8 @@ from tw2k.public.config import LobbyConfig
 from tw2k.public.lobby import Lobby, create_lobby_app
 from tw2k.public.pages import lobby as lobby_page
 from tw2k.server.reference import game_reference
+
+pytestmark = pytest.mark.legacy_profile
 
 ROOT = Path(__file__).resolve().parents[1]
 REDESIGN = (ROOT / "web" / "redesign.js").read_text(encoding="utf-8")

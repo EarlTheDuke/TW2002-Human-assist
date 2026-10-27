@@ -1,8 +1,12 @@
 """rank-display-options-v1. The screens grow a second rank only when asked."""
+import pytest
+
+import tw2k.engine.constants as K
 from tw2k.engine import GameConfig, build_observation, generate_universe
 from tw2k.engine.models import Player, Ship, ShipClass
 from tw2k.server.harness import final_standings
-import tw2k.engine.constants as K
+
+pytestmark = pytest.mark.legacy_profile
 
 
 def _world():

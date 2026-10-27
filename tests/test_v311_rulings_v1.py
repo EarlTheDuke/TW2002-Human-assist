@@ -15,6 +15,8 @@ from __future__ import annotations
 
 from pathlib import Path
 
+import pytest
+
 import tw2k.engine.constants as K
 from tests.test_citadel_class_tables_v1 import _build, _fill, _land, _plant
 from tests.test_phase_abc import _make_universe
@@ -36,6 +38,8 @@ from tw2k.engine.models import (
     ShipClass,
 )
 from tw2k.engine.runner import apply_action, grant_starting_planet, recover_turns, refresh_offline_turns
+
+pytestmark = pytest.mark.legacy_profile
 
 ROOT = Path(__file__).resolve().parents[1]
 PLAN = ROOT / "docs" / "plans" / "v311-profile-v1.md"

@@ -8,16 +8,19 @@ from __future__ import annotations
 
 import asyncio
 
+import pytest
+
 import tw2k.agents.cockpit_seat as seat
 import tw2k.engine.constants as K
 from tests.test_colonist_units_v1 import _act, _land, _take, _world
 from tests.test_external_harness_phase1 import TOK2, _app_and_client, _auth, _http_spec, _wait_until
-from tw2k.engine.models import Commodity, PlanetClass
+from tw2k.engine.legality import legal_actions
+from tw2k.engine.models import Commodity, Planet, PlanetClass
 from tw2k.engine.observation import build_observation
 from tw2k.engine.planets import daily_production
-from tw2k.engine.legality import legal_actions
 from tw2k.engine.victory import _planet_asset_value
-from tw2k.engine.models import Planet
+
+pytestmark = pytest.mark.legacy_profile
 
 
 def test_clarity_stays_off_until_a_live_switch(monkeypatch) -> None:

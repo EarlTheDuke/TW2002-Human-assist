@@ -31,6 +31,8 @@ from tw2k.engine.models import (
 from tw2k.engine.runner import apply_action, tick_day
 from tw2k.engine.victory import combat_rewards, kill_rewards
 
+pytestmark = pytest.mark.legacy_profile
+
 
 def _lane(universe):
     for sid, sector in universe.sectors.items():

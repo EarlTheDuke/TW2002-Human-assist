@@ -2,10 +2,14 @@
 
 from __future__ import annotations
 
+import pytest
+
 import tw2k.engine.constants as K
 from tests.test_phase_abc import _make_universe
 from tw2k.engine.observation import Observation, status_fields
 from tw2k.server.harness import final_standings
+
+pytestmark = pytest.mark.legacy_profile
 
 
 def _obs():

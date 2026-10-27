@@ -5003,7 +5003,7 @@ def tax_terms() -> tuple[int, int, int]:
 # RULINGS_v311.md s2-s7 and Addendum A plus every MASTER_PLAN switch marked yes. Its own
 # switch, separate from TW2002_LIVE_PROFILE. docs/plans/v311-profile-v1.md lists the set
 # with reasons.
-V311_PROFILE = "legacy"  # "legacy" | "v311"
+V311_PROFILE = "v311"  # "legacy" | "v311"
 
 
 def v311_profile() -> bool:

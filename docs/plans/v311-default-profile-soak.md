@@ -76,3 +76,18 @@ A v3.11 soak needs enough credits to clear the profile tax and still buy fighter
 The side-lobby create form already has that preset. `src/tw2k/public/pages.py` posts `/new` with `starting_credits`. The select value `100000` is the option labeled `100,000`. `src/tw2k/public/security.py` `_credits_override` stores it as `starting_credits_override` (0 to 10,000,000). `original` leaves the v3.11 package at 300. Game `fd7ebcfe` was created with `starting_credits=100000`. No separate admin credit API.
 
 StarDock services do not use an enter-dock flag. Shipyards, the bank, Federation Hall, and the where-to doors open in the sector that holds the dock. That sector is 1 until `STARDOCK_LOCATION_MODE` or `V311_PROFILE=v311` stores another one. Sol (sector 1) still sells gear after the move, which is why Buy gear opens there while the shipyard does not. The redesign cockpit draws Shipyards and Bank only in the dock sector, and from sector 1 it offers `Plot course to StarDock (sector N)` instead of a button that only reports the old "sector 1" refusal.
+
+## R-4 taken (2026-10-26, branch `phase2-v311-default`)
+
+`V311_PROFILE` in `constants.py` is `"v311"`. A process that sets nothing plays the v3.11 rulings.
+
+- The lobby's Legacy rule set now names `V311_PROFILE: "legacy"` in its switch overlay, so a Legacy game is still legacy.
+- Test modules that pin legacy numbers carry `pytestmark = pytest.mark.legacy_profile` (tests/conftest.py runs the module under `"legacy"`). 220 modules; grep the marker to find the tests that go with each legacy path removal.
+- The legacy digest harnesses (`tests/fed_legacy_digest.py`, `tests/capture_legacy_pin.py`) set `"legacy"` themselves, so every legacy pin keeps its recorded digest.
+- `scripts/planet_invariants_fuzz.py`, `scripts/port_trade_fuzz.py`, `scripts/planetary_lab_all.py` and `scripts/media_record_fixtures.py` check legacy numbers and set `"legacy"` at import.
+- New v3.11 pins: `tests/test_bots_match_v311_pin.py` (harness `tests/v311_digest.py`), two 3-day scripted matches on the stored defaults. A legacy-removal batch must leave both digests unchanged.
+
+Found by the flip, not fixed here:
+
+- Under v3.11 the planet fuzz sees 25 credits it cannot explain: the pod's 25-credit purse (POD_CASH_MODE, RULINGS Addendum A) is granted in `combat.py` without a figure on the `ship_destroyed` event.
+- `scripts/port_trade_fuzz.py` models the legacy price formula only; under v3.11 the engine quotes 24 where the formula says 27 (seed 93001).

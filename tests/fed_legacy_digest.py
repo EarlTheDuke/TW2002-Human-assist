@@ -46,6 +46,9 @@ def legacy_run_digest(root: Path, seats: str = "N3,H", days: int = 2, seed: int 
 
     saved_env = {k: os.environ.pop(k) for k in list(os.environ) if k.upper().startswith("TW2K_")}
     saved_modes = {name: getattr(K, name) for name in dir(K) if name.endswith("_MODE")}
+    # R-4: the stored profile default is v311; a legacy pin runs the legacy profile.
+    saved_modes["V311_PROFILE"] = K.V311_PROFILE
+    K.V311_PROFILE = "legacy"
     try:
         return _legacy_run_digest(root, seats, days, seed, flip)
     finally:

@@ -16,12 +16,15 @@ import sys
 from pathlib import Path
 
 import httpx
+import pytest
 
 import tw2k.agents.cockpit_seat as seat
 import tw2k.engine.constants as K
 from tests.test_external_harness_phase1 import TOK2, _app_and_client, _http_spec, _wait_until
 from tw2k.engine import GameConfig
 from tw2k.server.runner import AgentSpec, MatchSpec
+
+pytestmark = pytest.mark.legacy_profile
 
 ROOT = Path(__file__).resolve().parents[1]
 SCRIPT = ROOT / "scripts" / "run_cockpit_seat.py"

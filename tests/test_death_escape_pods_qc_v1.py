@@ -8,6 +8,8 @@ from __future__ import annotations
 import asyncio
 import json
 
+import pytest
+
 import tw2k.engine.constants as K
 from tests.test_death_escape_pods_v1 import (
     _act,
@@ -27,6 +29,8 @@ from tw2k.engine.legality import legal_actions
 from tw2k.engine.models import ShipClass
 from tw2k.engine.observation import build_observation
 from tw2k.engine.runner import apply_action, tick_day
+
+pytestmark = pytest.mark.legacy_profile
 
 PODDED = [c.value for c in ShipClass if c.value not in ("scout_marauder", "escape_pod")]
 

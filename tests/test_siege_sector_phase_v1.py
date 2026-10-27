@@ -20,6 +20,8 @@ from tw2k.engine.models import (
 from tw2k.engine.observation import build_observation, event_facts
 from tw2k.engine.runner import apply_action
 
+pytestmark = pytest.mark.legacy_profile
+
 COST = TURN_COST["land_planet"]
 
 

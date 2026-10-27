@@ -26,6 +26,8 @@ from tw2k.engine.models import (
 from tw2k.engine.observation import build_observation
 from tw2k.engine.port_build import upgrade_legal_spec
 
+pytestmark = pytest.mark.legacy_profile
+
 FUEL, ORG, EQ = Commodity.FUEL_ORE, Commodity.ORGANICS, Commodity.EQUIPMENT
 
 

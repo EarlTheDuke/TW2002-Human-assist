@@ -1,8 +1,12 @@
 """discovery-exp-daily-bonus-v1. Off, only the first trader at a port scores."""
+import pytest
+
 import tw2k.engine.constants as K
 from tests.test_ports_haggle_v1 import _port, _seat, _trade
 from tw2k.engine.models import Commodity, Player, PortClass, Ship
 from tw2k.engine.runner import tick_day
+
+pytestmark = pytest.mark.legacy_profile
 
 FUEL = Commodity.FUEL_ORE
 

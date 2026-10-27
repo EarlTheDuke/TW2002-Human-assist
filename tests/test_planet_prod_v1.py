@@ -2,9 +2,13 @@
 
 from __future__ import annotations
 
+import pytest
+
 import tw2k.engine.constants as K
 from tw2k.engine.models import Commodity, GameConfig, Planet, PlanetClass, Universe
 from tw2k.engine.planets import _advance_planets
+
+pytestmark = pytest.mark.legacy_profile
 
 
 def _world(fuel: int, organics: int = 0, stock_org: int = 0) -> Universe:

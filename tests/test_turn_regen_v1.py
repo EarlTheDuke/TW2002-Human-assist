@@ -1,8 +1,12 @@
 """offline-turn-regen-v1. Off, a new day still refills the turns."""
+import pytest
+
 import tw2k.engine.constants as K
 from tests.test_ports_haggle_v1 import _seat
 from tw2k.engine.actions import Action, ActionKind
 from tw2k.engine.runner import apply_action, tick_day
+
+pytestmark = pytest.mark.legacy_profile
 
 
 def test_flag_stays_legacy() -> None:

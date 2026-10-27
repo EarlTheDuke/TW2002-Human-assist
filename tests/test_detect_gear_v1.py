@@ -1,5 +1,9 @@
 """detect-gear-v1. Prices that already match stay. The three that do not move only when the switch is on."""
+import pytest
+
 import tw2k.engine.constants as K
+
+pytestmark = pytest.mark.legacy_profile
 
 
 def test_flag_stays_legacy_and_the_matched_prices_stay() -> None:

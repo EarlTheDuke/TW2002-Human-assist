@@ -2,9 +2,13 @@
 
 from __future__ import annotations
 
+import pytest
+
 import tw2k.engine.constants as K
 from tests.test_phase_abc import _make_universe
 from tw2k.engine.victory import combat_rewards, is_fedsafe
+
+pytestmark = pytest.mark.legacy_profile
 
 
 def _delta(mode: str) -> int:

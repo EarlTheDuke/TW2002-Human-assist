@@ -22,6 +22,8 @@ from tw2k.engine import constants as K
 from tw2k.engine.models import MineType, Player, Ship
 from tw2k.engine.observation import build_observation
 
+pytestmark = pytest.mark.legacy_profile
+
 # ---------------------------------------------------------------- armids
 
 

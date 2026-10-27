@@ -2,12 +2,16 @@
 
 from __future__ import annotations
 
+import pytest
+
 import tw2k.engine.constants as K
 from tw2k.engine import GameConfig, generate_universe
 from tw2k.engine.models import Commodity, Player
 from tw2k.engine.planets import spend_free_start
 from tw2k.engine.runner import grant_starting_planet
 from tw2k.engine.victory import full_net_worth
+
+pytestmark = pytest.mark.legacy_profile
 
 
 def _seat(seed: int = 75):

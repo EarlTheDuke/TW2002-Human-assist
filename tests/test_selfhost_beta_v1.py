@@ -40,6 +40,8 @@ from tw2k.public import workers as WM
 from tw2k.public.lobby import create_lobby_app
 from tw2k.public.proxy import strip_lobby_cookies, upstream_headers
 
+pytestmark = pytest.mark.legacy_profile
+
 REPO = Path(__file__).resolve().parents[1]
 WEB = REPO / "web"
 
@@ -181,6 +183,7 @@ def test_item1_each_game_is_one_serve_worker_with_its_own_switches(tmp_path) -> 
         "PORT_STOCK_FIDELITY_MODE": "live",
         "SEAT_IDLE_START_MODE": "live",
         "STARTING_PACKAGE_MODE": "live",
+        "V311_PROFILE": "legacy",
     }
     classic = S.parse_game_form({"name": "C", "rules": "legacy", "starting_package": "classic"}).settings()
     assert WM.switch_overlay(classic) == {
@@ -188,6 +191,7 @@ def test_item1_each_game_is_one_serve_worker_with_its_own_switches(tmp_path) -> 
         "LEGACY_DAY_CLOCK_MODE": "live",
         "PORT_STOCK_FIDELITY_MODE": "live",
         "SEAT_IDLE_START_MODE": "live",
+        "V311_PROFILE": "legacy",
     }
 
 
