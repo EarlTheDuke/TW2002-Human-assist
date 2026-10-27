@@ -23,7 +23,9 @@ def test_bot_stays_and_bot2_is_open(tmp_path: Path, monkeypatch) -> None:
     assert "Grok Bot Cockpit" in bot
     assert "ship-board" not in bot
     assert 'data-testid="ship-board"' in bot2
-    assert 'data-testid="scene-still"' in bot2
+    # #432 retired the viewport still; the ship stage plays effects on #stageFx.
+    assert 'data-testid="scene-still"' not in bot2
+    assert 'data-testid="stage-fx"' in bot2
     assert 'data-testid="command-keys"' in bot2
 
 
@@ -42,7 +44,8 @@ def test_screens_at_three_widths(tmp_path: Path, monkeypatch) -> None:
                     "() => { const el = document.querySelector('[data-testid=ship-class]'); return el && el.textContent && !el.textContent.includes('\\u2014'); }",
                     timeout=20_000,
                 )
-                assert page.locator("[data-testid=scene-still]").count() == 1
+                assert page.locator("[data-testid=scene-still]").count() == 0
+                assert page.locator("[data-testid=stage-fx]").count() == 1
                 assert page.locator("[data-testid=fighter-row]").count() == 1
                 assert page.locator("[data-testid=ship-cargo] .hold").count() == 4
                 page.screenshot(path=str(SHOTS / f"{width}.png"), full_page=True)
