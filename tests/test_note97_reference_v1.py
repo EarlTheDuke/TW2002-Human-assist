@@ -133,7 +133,6 @@ def test_stardock_label_is_9_only_on_the_live_map(monkeypatch) -> None:
 
 
 def test_haggle_amounts_and_rename_cost_stay(monkeypatch) -> None:
-    assert K.HAGGLE_EXP_MODE == "legacy"
     assert K.HAGGLE_EXP_GOOD == 1
     assert K.HAGGLE_EXP_GREAT == 2
     assert K.SHIP_RENAME_MODE == "legacy"

@@ -171,23 +171,7 @@ def _hekate_corp(u):
     u.players["P3"].experience = 7890
 
 
-def test_d22_1_legacy_message_names_the_formula():
-    """Profile off is the old sentence: the formula, even when the floor took less."""
-    assert K.CORP_EXP_PENALTY_MODE == "legacy"
-    assert K.corp_exp_penalty_taken() is False
-    u = _u()
-    _cid_corp(u)
-    assert mixed_loss(u, u.corporations["XYZ"]) == 200
-    _mixed_penalty(u)
-    assert u.players["P3"].experience == 1
-    assert u.players["P1"].experience == 4_800
-    event = _penalty_for(u, "P3")
-    assert event.payload == {"ticker": "XYZ", "loss": 200, "experience": 1}
-    assert event.summary == "Cid lost 200 experience for a mixed corp"
-
-
 def test_d22_1_taken_flag_names_the_experience_removed(monkeypatch):
-    monkeypatch.setattr(K, "CORP_EXP_PENALTY_MODE", "taken")
     u = _u()
     _cid_corp(u)
     assert mixed_loss(u, u.corporations["XYZ"]) == 200
@@ -201,24 +185,9 @@ def test_d22_1_taken_flag_names_the_experience_removed(monkeypatch):
     assert ann.summary == "Ann lost 200 experience for a mixed corp"
 
 
-def test_d22_1_legacy_hekate_message_is_the_formula():
-    u = _u()
-    _hekate_corp(u)
-    assert mixed_loss(u, u.corporations["XYZ"]) == 582
-    _mixed_penalty(u)
-    assert u.players["P1"].experience == 1
-    assert u.players["P2"].experience == 1
-    assert u.players["P3"].experience == 7890 - 582
-    hekate = _penalty_for(u, "P1")
-    assert hekate.payload == {"ticker": "XYZ", "loss": 582, "experience": 1}
-    assert hekate.summary == "Hekate lost 582 experience for a mixed corp"
-    assert not any(e.kind == EventKind.CORP_EXP_PENALTY and e.actor_id == "P2" for e in u.events)
-
-
 def test_d22_1_v311_names_the_taken_amount_and_uses_least_extreme(monkeypatch):
     """Evil -400 and good 800: least extreme is 100. Cid's 30 becomes 1, so the event says 29."""
     _profile(monkeypatch, "v311")
-    assert K.corp_exp_penalty_taken() is True
     assert K.mixed_corp_exp_rule() == "least_extreme"
     assert K.MIXED_CORP_EXP_FLOOR == 1
     u = _u()
@@ -354,7 +323,6 @@ def test_d22_3_stored_defaults_stay_and_v311_selects_the_live_rules(monkeypatch)
     assert K.MIXED_CORP_EXP_RULE == "highest_good"
     assert K.MIXED_CORP_EXP_FLOOR == 1
     assert K.CORP_LEAVER_DEPLOYMENTS == "legacy"
-    assert K.CORP_EXP_PENALTY_MODE == "legacy"
     assert K.corp_alignment_rule() == "mixed"
     assert K.mixed_corp_exp_rule() == "highest_good"
     assert K.corp_join_check() is False
@@ -364,19 +332,16 @@ def test_d22_3_stored_defaults_stay_and_v311_selects_the_live_rules(monkeypatch)
     assert K.MIXED_CORP_EXP_RULE == "highest_good"
     assert K.MIXED_CORP_EXP_FLOOR == 1
     assert K.CORP_LEAVER_DEPLOYMENTS == "legacy"
-    assert K.CORP_EXP_PENALTY_MODE == "legacy"
     assert K.corp_alignment_rule() == "join_check"
     assert K.corp_join_check() is True
     assert K.mixed_corp_exp_rule() == "least_extreme"
     assert K.mixed_corp_least_extreme() is True
     assert K.corp_leaver_to_ceo() is True
-    assert K.corp_exp_penalty_taken() is True
     monkeypatch.setattr(K, "TW2002_LIVE_PROFILE", "live")
     monkeypatch.setattr(K, "V311_PROFILE", "legacy")
     assert K.corp_alignment_rule() == "mixed"
     assert K.mixed_corp_exp_rule() == "highest_good"
     assert K.corp_leaver_to_ceo() is False
-    assert K.corp_exp_penalty_taken() is False
 
 
 def test_d22_2_v311_moves_corporate_fighters_to_the_ceo(monkeypatch):
@@ -460,17 +425,10 @@ def test_join_check_drift_stays_in_and_the_extern_penalty_still_runs(monkeypatch
 
 
 def test_class_m_flags_default_legacy_and_v311_turns_the_helpers_on(monkeypatch):
-    assert K.CLASS_M_NW_MODE == "legacy"
     assert K.CLASS_M_DROP_MODE == "legacy"
-    assert K.CLASS_M_GENESIS_MODE == "legacy"
-    assert K.class_m_nw_units() is False
     assert K.class_m_drop_units() is False
-    assert K.class_m_genesis_units() is False
     monkeypatch.setattr(K, "V311_PROFILE", "v311")
-    assert K.CLASS_M_NW_MODE == "legacy"
-    assert K.class_m_nw_units() is True
     assert K.class_m_drop_units() is True
-    assert K.class_m_genesis_units() is True
     assert K.class_m_fidelity_live() is True
 
 
@@ -485,10 +443,8 @@ def test_class_m_net_worth_legacy_prices_each_person():
     assert full_net_worth(u, u.players["P1"]) - before == each
 
 
-@pytest.mark.parametrize("nw,fidelity", [("legacy", "live"), ("live", "legacy")])
-def test_class_m_net_worth_needs_both_switches(monkeypatch, nw, fidelity):
-    monkeypatch.setattr(K, "CLASS_M_NW_MODE", nw)
-    monkeypatch.setattr(K, "CLASS_M_FIDELITY_MODE", fidelity)
+def test_class_m_net_worth_needs_class_m_fidelity(monkeypatch):
+    monkeypatch.setattr(K, "CLASS_M_FIDELITY_MODE", "legacy")
     planet = _valued_planet(PlanetClass.M, K.LIVE_STARTING_COLONISTS)
     each = K.LIVE_STARTING_COLONISTS * K.COLONIST_PRICE
     assert _planet_asset_value(planet) == each
@@ -496,7 +452,6 @@ def test_class_m_net_worth_needs_both_switches(monkeypatch, nw, fidelity):
 
 
 def test_class_m_net_worth_live_prices_thousands_and_keeps_the_tax_basis(monkeypatch):
-    monkeypatch.setattr(K, "CLASS_M_NW_MODE", "live")
     monkeypatch.setattr(K, "CLASS_M_FIDELITY_MODE", "live")
     planet = _valued_planet(PlanetClass.M, K.LIVE_STARTING_COLONISTS)
     thousands = (K.LIVE_STARTING_COLONISTS // K.CLASS_M_PEOPLE_PER_THOUSAND) * K.COLONIST_PRICE
@@ -648,7 +603,6 @@ def test_class_m_genesis_seed_legacy_is_handbook_units(monkeypatch):
 
 
 def test_class_m_genesis_seed_scales_only_class_m(monkeypatch):
-    monkeypatch.setattr(K, "CLASS_M_GENESIS_MODE", "live")
     monkeypatch.setattr(K, "CLASS_M_FIDELITY_MODE", "live")
     monkeypatch.setattr(K, "PLANET_CLASS_WEIGHTS", {"M": 1.0})
     u = _u()
@@ -665,7 +619,6 @@ def test_class_m_genesis_seed_scales_only_class_m(monkeypatch):
 def test_class_m_genesis_v311_starts_empty(monkeypatch):
     monkeypatch.setattr(K, "V311_PROFILE", "v311")
     monkeypatch.setattr(K, "PLANET_CLASS_WEIGHTS", {"M": 1.0})
-    assert K.class_m_genesis_units() is True
     assert K.genesis_start_live() is True
     u = _u()
     planet = _genesis(u, {"M": 1.0})

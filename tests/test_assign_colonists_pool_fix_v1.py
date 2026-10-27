@@ -41,44 +41,19 @@ def _move(universe, planet_id: int, dest: str, qty: int = 10):
     )
 
 
-def test_legacy_sends_the_colonist_pool_into_fuel():
-    assert K.ASSIGN_POOL_FIX_MODE == "legacy"
+def test_live_keeps_the_colonist_pool():
     universe, _player, planet = _seat()
     result = _move(universe, planet.id, "colonists")
     assert result.ok is True
-    assert planet.colonists[Commodity.FUEL_ORE] == 10
-    assert planet.colonists[Commodity.COLONISTS] == 0
-
-
-def test_live_keeps_the_colonist_pool():
-    _prior_assign_pool_fix_mode = K.ASSIGN_POOL_FIX_MODE
-    try:
-        universe, _player, planet = _seat()
-        try:
-            K.ASSIGN_POOL_FIX_MODE = "live"
-            result = _move(universe, planet.id, "colonists")
-            assert result.ok is True
-            assert planet.colonists[Commodity.COLONISTS] == 10
-            assert planet.colonists[Commodity.FUEL_ORE] == 0
-        finally:
-            K.ASSIGN_POOL_FIX_MODE = "legacy"
-    finally:
-        K.ASSIGN_POOL_FIX_MODE = _prior_assign_pool_fix_mode
+    assert planet.colonists[Commodity.COLONISTS] == 10
+    assert planet.colonists[Commodity.FUEL_ORE] == 0
 
 
 def test_named_goods_pools_stay_named():
-    _prior_assign_pool_fix_mode = K.ASSIGN_POOL_FIX_MODE
-    try:
-        universe, _player, planet = _seat()
-        try:
-            K.ASSIGN_POOL_FIX_MODE = "live"
-            assert _move(universe, planet.id, "organics").ok is True
-            assert planet.colonists[Commodity.ORGANICS] == 10
-            assert _move(universe, planet.id, "equipment").ok is True
-            assert planet.colonists[Commodity.EQUIPMENT] == 10
-            assert _move(universe, planet.id, "fuel_ore").ok is True
-            assert planet.colonists[Commodity.FUEL_ORE] == 10
-        finally:
-            K.ASSIGN_POOL_FIX_MODE = "legacy"
-    finally:
-        K.ASSIGN_POOL_FIX_MODE = _prior_assign_pool_fix_mode
+    universe, _player, planet = _seat()
+    assert _move(universe, planet.id, "organics").ok is True
+    assert planet.colonists[Commodity.ORGANICS] == 10
+    assert _move(universe, planet.id, "equipment").ok is True
+    assert planet.colonists[Commodity.EQUIPMENT] == 10
+    assert _move(universe, planet.id, "fuel_ore").ok is True
+    assert planet.colonists[Commodity.FUEL_ORE] == 10

@@ -221,7 +221,6 @@ def _planet_asset_value(planet, *, tax_basis: bool = False) -> int:
     if (
         not tax_basis
         and getattr(planet.class_id, "value", planet.class_id) == "M"
-        and K.class_m_nw_units()
         and K.class_m_fidelity_live()
     ):
         colonist_total //= int(K.CLASS_M_PEOPLE_PER_THOUSAND)
@@ -290,6 +289,10 @@ def _construction_contents(planet) -> int:
     target = int(getattr(planet, "citadel_target", 0) or 0)
     level = int(planet.citadel_level or 0)
     if target <= level:
+        return 0
+    if level == 0 and K.genesis_score_fair() and getattr(planet, "origin", "") == "genesis":
+        # A genesis planet's seed is exactly the level-1 goods. Under GENESIS_SCORE fair
+        # those do not count until level 1 is built, so spending them on that build adds nothing yet.
         return 0
     next_level = level + 1
     if K.citadel_fidelity_on() or K.CITADEL_COST_MODE == "class":

@@ -299,7 +299,7 @@ class EventKind(str, Enum):
     PLANET_TRANSPORT = "planet_transport"
     PLANET_COLONISTS_KILLED = "planet_colonists_killed"
     PLANET_DESTROYED = "planet_destroyed"
-    # NOTE 102. Nightly overload collision. Never emitted while PLANET_COLLISION_MODE is legacy.
+    # NOTE 102. Nightly overload collision.
     PLANET_COLLISION = "planet_collision"
     RECALL_DEPLOYED = "recall_deployed"
     SURRENDER = "surrender"

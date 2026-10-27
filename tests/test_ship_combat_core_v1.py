@@ -355,11 +355,11 @@ def test_observation_shows_the_challenge_and_nothing_hidden() -> None:
     assert event_facts(ev) == {"mode": "toll", "count": 6}
     assert _event_visible_to(ev, ship.id, u)
     assert not _event_visible_to(ev, "C", u)
-    # Other ships in a sector still show no fighters or shields.
+    # Other ships in a sector show their fighters and shields (Phase 2 retired RIVAL_STRENGTH_MODE).
     _park(u, u.players["C"], there)
     seen = build_observation(u, ship.id)
     other = next(o for o in seen.other_players if o["id"] == "C")
-    assert "fighters" not in other and "shields" not in other
+    assert other["fighters"] == int(u.players["C"].ship.fighters) and "shields" in other
 
 
 def test_retreat_goes_back_costs_a_warp_and_fires_nothing() -> None:

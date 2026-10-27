@@ -141,15 +141,16 @@ def test_same_seed_gives_the_same_limits() -> None:
     assert limits(21) != limits(22)
 
 
-def test_experience_from_a_good_deal_is_capped() -> None:
+def test_a_counter_at_the_bound_pays_the_great_haggle() -> None:
     universe, player = _seat()
     port = _port(universe, PortClass.CLASS_1_BSS, FUEL, -100, 0)
     listed = port_buy_price(port, FUEL, 0)
     bound = haggle_bound(listed, -100, "sell")
-    assert bound - listed > K.PORT_HAGGLE_XP_CAP
+    assert bound > listed
     result = _trade(universe, "sell", "fuel_ore", unit_price=bound)
     assert result.ok, result.error
-    assert player.experience == K.xp_award("trade") + K.xp_award("first_dock") + K.PORT_HAGGLE_XP_CAP
+    # NOTE 87: +2 for a great haggle (Phase 2 retired the legacy capped credit gap).
+    assert player.experience == K.xp_award("trade") + K.xp_award("first_dock") + K.HAGGLE_EXP_GREAT
 
 
 def test_hidden_limit_stays_out_of_payloads() -> None:

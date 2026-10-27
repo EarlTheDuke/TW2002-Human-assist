@@ -547,7 +547,7 @@ def tick_day(universe: Universe) -> None:
       Two pods come back because pods_day is this day.
     - the Grimy curse, colonist jettison, and Underground password attempts
       reset because they are stamped with this day
-    - overloaded sectors may lose two planets (PLANET_COLLISION_MODE, off)
+    - overloaded sectors may lose two planets
     - a destroyed Class 0 or Class 9 port is rebuilt when the radiation is
       gone (SPECIAL_PORT_DEFENCE_MODE, off)
     - a disconnected human can be deleted after 30 quiet wall-clock days
@@ -642,8 +642,7 @@ def tick_day(universe: Universe) -> None:
 
     if K.special_port_defence_live():
         _rebuild_special_ports(universe)
-    if K.planet_collision_live():
-        _planet_collisions(universe)
+    _planet_collisions(universe)
 
     universe.emit(
         EventKind.DAY_TICK,
@@ -1700,9 +1699,8 @@ def _attack_special_port(universe, pid, player, sector, port, qty: int, cost: in
         sector.special_port_figs = 0
         sector.special_port_down_day = int(universe.day)
         universe.special_ports_destroyed = prior + 1
-        if K.exp_sources_live():
-            player.experience = int(player.experience) + int(K.PORT_DESTROY_EXPERIENCE)
-            player.alignment = int(player.alignment) - int(K.PORT_DESTROY_ALIGNMENT)
+        player.experience = int(player.experience) + int(K.PORT_DESTROY_EXPERIENCE)
+        player.alignment = int(player.alignment) - int(K.PORT_DESTROY_ALIGNMENT)
         universe.emit(
             EventKind.PORT_DESTROYED,
             actor_id=pid,
@@ -2437,8 +2435,6 @@ def _handle_assign_colonists(universe: Universe, pid: str, action: Action) -> Ac
         return ActionResult(ok=False, error=f"invalid 'to' pool {dst!r}")
     if src not in pool_keys and src != "ship":
         return ActionResult(ok=False, error=f"invalid 'from' pool {src!r}")
-    if K.citadel_fidelity_on() and dst == "colonists" and not K.assign_pool_fix_live():
-        dst = "fuel_ore"
 
     cost = _colonist_menu_turns()
     if player.turns_today + cost > player.turns_per_day:
@@ -2791,7 +2787,7 @@ def _handle_deploy_genesis(universe: Universe, pid: str, action: Action) -> Acti
         seed_total = K.GENESIS_SEED_COLONISTS
         # The 2,500 is the handbook count (enough for an L1 of 1,000). Class M
         # stores people, so one handbook colonist is CLASS_M_PEOPLE_PER_THOUSAND.
-        if cls.value == "M" and K.class_m_genesis_units() and K.class_m_fidelity_live():
+        if cls.value == "M" and K.class_m_fidelity_live():
             seed_total *= int(K.CLASS_M_PEOPLE_PER_THOUSAND)
         planet.colonists[Commodity.FUEL_ORE] = int(seed_total * 0.40)
         planet.colonists[Commodity.ORGANICS] = int(seed_total * 0.25)

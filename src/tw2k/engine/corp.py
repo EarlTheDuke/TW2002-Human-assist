@@ -707,11 +707,9 @@ def _mixed_penalty(universe: Universe) -> None:
             # Legacy names the formula. "taken" (on under V311) names what the
             # floor actually removed. Hekate's TWGS table: 102 experience ended
             # at 1, which is 101 taken, not 582.
-            reported = loss
-            if K.corp_exp_penalty_taken():
-                reported = before - int(player.experience)
-                if reported <= 0:
-                    continue
+            reported = before - int(player.experience)
+            if reported <= 0:
+                continue
             universe.emit(
                 EventKind.CORP_EXP_PENALTY, actor_id=player.id,
                 payload={"ticker": corp.ticker, "loss": reported, "experience": int(player.experience)},

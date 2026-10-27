@@ -54,19 +54,13 @@ def _attack(u, qty: int = 15_000):
 
 
 def test_new_switches_stay_legacy() -> None:
-    assert K.EXP_SOURCES_MODE == "legacy"
     assert K.SPECIAL_PORT_DEFENCE_MODE == "legacy"
-    assert K.PLANET_COLLISION_MODE == "legacy"
-    assert K.exp_sources_live() is False
     assert K.special_port_defence_live() is False
-    assert K.planet_collision_live() is False
 
 
 def test_profile_turns_the_four_helpers_on(monkeypatch) -> None:
     monkeypatch.setattr(K, "V311_PROFILE", "v311")
-    assert K.exp_sources_live() and K.special_port_defence_live()
-    assert K.planet_collision_live()
-    assert K.EXP_SOURCES_MODE == "legacy"
+    assert K.special_port_defence_live()
     assert K.SPECIAL_PORT_DEFENCE_MODE == "legacy"
 
 
@@ -129,7 +123,6 @@ def test_special_port_a_short_wave_does_not_kill_it(monkeypatch) -> None:
 
 def test_special_port_the_budget_destroys_and_the_feds_rebuild(monkeypatch) -> None:
     monkeypatch.setattr(K, "SPECIAL_PORT_DEFENCE_MODE", "live")
-    monkeypatch.setattr(K, "EXP_SOURCES_MODE", "live")
     u, player = _world()
     spent = 0
     while u.sectors[1].special_port_down_day is None:
@@ -156,17 +149,6 @@ def test_special_port_the_budget_destroys_and_the_feds_rebuild(monkeypatch) -> N
     assert u.sectors[1].special_port_down_day is None
     assert K.special_port_figs_needed(u.special_ports_destroyed) == K.SPECIAL_PORT_FIGS_AFTER
     assert K.special_port_rating(u.special_ports_destroyed) == K.SPECIAL_PORT_RATING_AFTER
-
-
-def test_exp_sources_off_pays_nothing_for_the_kill(monkeypatch) -> None:
-    monkeypatch.setattr(K, "SPECIAL_PORT_DEFENCE_MODE", "live")
-    u, player = _world()
-    u.sectors[1].special_port_figs = K.SPECIAL_PORT_FIGS_FIRST - 10
-    player.ship.fighters = 15_000
-    res = _attack(u, 15_000)
-    assert res.ok, res.error
-    assert u.sectors[1].special_port_down_day == u.day
-    assert player.experience == 0
 
 
 def test_class_0_uses_the_same_budget(monkeypatch) -> None:
@@ -211,16 +193,7 @@ def test_npcs_already_treat_player_fighters_as_the_stored_rule() -> None:
     assert ferr.shields < before
 
 
-def test_collisions_off_leave_an_overloaded_sector_alone(monkeypatch) -> None:
-    u, _player = _world()
-    _overload(u, 12, 7)
-    tick_day(u)
-    assert len(u.sectors[12].planet_ids) == 7
-    assert not any(ev.kind == EventKind.PLANET_COLLISION for ev in u.events)
-
-
 def test_collisions_on_name_the_sector_and_may_drop_two_planets(monkeypatch) -> None:
-    monkeypatch.setattr(K, "PLANET_COLLISION_MODE", "live")
     monkeypatch.setattr(K, "PLANET_COLLISION_PCT_PER_EXCESS", 0)
     u, _player = _world()
     _overload(u, 12, 7)

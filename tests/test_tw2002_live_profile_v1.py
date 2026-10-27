@@ -11,7 +11,6 @@ HELPERS = (
     "alignment_live",
     "alliance_live",
     "api_args_live",
-    "assign_pool_fix_live",
     "async_day_live",
     "citadel_days_live",
     "citadel_perk_live",
@@ -33,7 +32,6 @@ HELPERS = (
     "own_planet_fighter_live",
     "own_planet_turn_live",
     "planet_class_live",
-    "planet_nw_live",
     "planet_prod_live",
     "planet_shields_active",
     "port_class_live",
@@ -68,7 +66,6 @@ HELPERS = (
     "class_m_fidelity_live",
     "port_stock_fidelity_live",
     "ship_exit_on",
-    "rival_strength_live",
     "planet_landing_combat_on",
     "offensive_clash_held",
     "owner_hazard_notice_on",
@@ -82,10 +79,7 @@ HELPERS = (
     "tax_v311",
     "pod_cash_live",
     "citadel_table_fix_live",
-    "class_m_nw_units",
     "class_m_drop_units",
-    "class_m_genesis_units",
-    "alien_combat_fix_live",
     "haggle_counter_live",
     "bot_hazard_memory_live",
     "trade_in_parts_live",
@@ -118,13 +112,9 @@ HELPERS = (
     "port_attack_all_classes",
     "port_class_number_fix",
     "class0_hold_formula_live",
-    "haggle_exp_live",
     "ship_rename_live",
-    "exp_sources_live",
     "special_port_defence_live",
-    "planet_collision_live",
     "bot_bank_float_live",
-    "capture_credit_line_live",
     "mail_live",
     "legacy_day_clock_live",
     "price_scale_live",
@@ -141,7 +131,7 @@ def test_profile_stays_off_and_helpers_stay_false() -> None:
     assert K.TW2002_LIVE_PROFILE == "legacy"
     assert K.tw2002_live_profile() is False
     names = HELPERS
-    assert len(names) == 128  # Phase 2: four helpers retired (V311_RETIRED_SWITCHES)
+    assert len(names) == 118  # Phase 2: helpers retired so far (V311_RETIRED_SWITCHES)
     for name in names:
         assert getattr(K, name)() is False, name
 
@@ -153,7 +143,6 @@ def test_profile_on_turns_every_helper_on_without_moving_the_stored_flag(monkeyp
         assert getattr(K, name)() is True, name
     assert K.TERRA_COLONIST_MODE == "legacy"
     assert K.SHIP_EXIT_MODE == "legacy"
-    assert K.RIVAL_STRENGTH_MODE == "legacy"
     assert K.PLANET_LANDING_COMBAT_MODE == "legacy"
     assert K.OFFENSIVE_CLASH_MODE == "legacy"
     assert K.OWNER_HAZARD_NOTICE_MODE == "legacy"
@@ -180,13 +169,9 @@ def test_profile_on_turns_every_helper_on_without_moving_the_stored_flag(monkeyp
     assert K.FERRENGI_GRUDGE_MODE == "legacy"
     assert K.FERRENGI_PACE_MODE == "legacy"
     assert K.CLASS0_HOLD_FORMULA_MODE == "legacy"
-    assert K.HAGGLE_EXP_MODE == "legacy"
     assert K.SHIP_RENAME_MODE == "legacy"
     assert K.EXP_SCORE_MODE == "legacy"
-    assert K.CLASS_M_NW_MODE == "legacy"
     assert K.CLASS_M_DROP_MODE == "legacy"
-    assert K.CLASS_M_GENESIS_MODE == "legacy"
-    assert K.ALIEN_COMBAT_FIX_MODE == "legacy"
     assert K.HAGGLE_COUNTER_MODE == "legacy"
     assert K.BOT_HAZARD_MEMORY_MODE == "legacy"
     assert K.TREASURY_CAP_MODE == "legacy"
@@ -198,10 +183,7 @@ def test_profile_on_turns_every_helper_on_without_moving_the_stored_flag(monkeyp
     assert K.GENESIS_NAME_MODE == "legacy"
     assert K.PORT_ATTACK_ALL_CLASSES_MODE == "legacy"
     assert K.PORT_CLASS_NUMBER_FIX_MODE == "legacy"
-    assert K.EXP_SOURCES_MODE == "legacy"
     assert K.SPECIAL_PORT_DEFENCE_MODE == "legacy"
-    assert K.PLANET_COLLISION_MODE == "legacy"
-    assert K.CAPTURE_CREDIT_LINE_MODE == "legacy"
     assert K.ATOMIC_MINES_PORT_NUKE is True
     assert K.PLANET_TREASURY_CAP == 10_000_000
     assert K.DEFAULT_ONE_WAY_FRACTION == 0.15
