@@ -87,28 +87,7 @@ def _alien_exchange(u, shields: int, fighters: int, sent: int = 30):
     return alien, ev, rnd
 
 
-def test_legacy_alien_odds_can_absorb_more_than_the_volley_and_shields_still_drop():
-    """The recorded exchange is the odds formula, not a missed shield update.
-
-    CargoTran odds 0.8 turn a volley of 30 into floor(30/0.8) = 37. Shields
-    of 47 absorb 37 and finish at 10. The summary uses those same numbers.
-    """
-    assert K.ALIEN_COMBAT_FIX_MODE == "legacy" and not K.alien_combat_fix_live()
-    u = _universe(7101)
-    _alien, ev, rnd = _alien_exchange(u, shields=47, fighters=275)
-    assert rnd["attacker_volley"] == 30
-    assert rnd["defender_volley"] == 0
-    assert rnd["defender_shield_absorbed"] == 37
-    assert rnd["defender_shield_absorbed"] > rnd["attacker_volley"]
-    assert rnd["defender_fighters_lost"] == 0
-    assert rnd["defender_s_after"] == 10
-    assert rnd["attacker_fighters_lost"] == 30
-    assert "lost 30" in ev.summary
-    assert "lost 37 shields and 0 fighters" in ev.summary
-
-
 def test_live_alien_trade_is_one_to_one_and_the_summary_matches(monkeypatch):
-    monkeypatch.setattr(K, "ALIEN_COMBAT_FIX_MODE", "live")
     u = _universe(7102)
     alien, ev, rnd = _alien_exchange(u, shields=10, fighters=275)
     assert rnd["attacker_volley"] == 30
@@ -132,7 +111,6 @@ def test_live_alien_trade_is_one_to_one_and_the_summary_matches(monkeypatch):
 
 
 def test_live_alien_fix_does_not_change_a_player_exchange(monkeypatch):
-    monkeypatch.setattr(K, "ALIEN_COMBAT_FIX_MODE", "live")
     u = _universe(7104)
     attacker = _seat(u, pid="P1", name="Guest 1", fighters=200)
     defender = _seat(u, pid="P2", name="Other", fighters=275, shields=47)

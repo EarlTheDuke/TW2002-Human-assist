@@ -3550,10 +3550,6 @@ CORP_SIDE_OF_ZERO = "good"                # cr8 UNVERIFIED
 MIXED_CORP_EXP_RULE = "highest_good"      # cr9: "highest_good" | "least_extreme"
 MIXED_CORP_EXP_DIVISOR = 4                # cr9
 MIXED_CORP_EXP_FLOOR = 1                  # cr9 UNVERIFIED; a live overnight read is still open
-# D22-1. "legacy" puts the formula loss in the CORP_EXP_PENALTY summary and
-# loss field. "taken" names the experience actually removed (the floor).
-# The experience math is the same either way. V311 turns "taken" on.
-CORP_EXP_PENALTY_MODE = "legacy"          # "legacy" | "taken"
 CORP_LEAVER_PLANETS = "corp_keeps"        # cr10: "corp_keeps" | "leaver_keeps"
 # D22-2. "legacy": a leaver's corporate fighters and mines keep his owner_id.
 # "to_ceo": that owner_id becomes the C.E.O. The corp ticker stays.
@@ -3724,17 +3720,6 @@ def planet_nudge_on() -> bool:
 
 def quasar_nudge_on() -> bool:
     return LLM_QUASAR_NUDGE_MODE == "on"
-
-
-# assign-colonists-pool-fix-v1. Appended so later slices can rebase cleanly.
-# "legacy": with citadel fidelity on, assign_colonists to=colonists lands in fuel_ore.
-# "live": to=colonists stays in the colonists pool. The named goods pools stay named.
-ASSIGN_POOL_FIX_MODE = "legacy"  # "legacy" | "live"
-
-
-def assign_pool_fix_live() -> bool:
-    """True when assign_colonists to=colonists stays in the colonists pool."""
-    return ASSIGN_POOL_FIX_MODE == "live" or tw2002_live_profile() or v311_profile()
 
 
 # hold-endpoint-rules-v1. Appended so later slices can rebase cleanly.
@@ -4796,16 +4781,6 @@ def stardock_location_live() -> bool:
     return STARDOCK_LOCATION_MODE == "v311" or v311_profile()
 
 
-# combat-clarity-v1. Off, a same-sector rival's fighters and shields stay out of
-# the seat view, so the bank pin stays put. On, the sector line can show them.
-RIVAL_STRENGTH_MODE = "legacy"  # "legacy" | "live"
-
-
-def rival_strength_live() -> bool:
-    """True when a trader in your sector shows fighters and shields."""
-    return RIVAL_STRENGTH_MODE == "live" or tw2002_live_profile() or v311_profile()
-
-
 # hazards-scans-v1. Legacy keeps today's landing: a rival planet whose
 # fighters are not defending is claimed by landing, fighters included.
 # tw2002 fights the planet's fighters and shields first and claims it
@@ -5011,7 +4986,6 @@ V311_PROFILE_HELPERS: dict[str, tuple[str, str]] = {
     "planet_shields_active": ("PLANET_SHIELD_ACTIVE_MODE", "MASTER_PLAN yes"),
     "genesis_score_fair": ("GENESIS_SCORE_MODE", "MASTER_PLAN yes (fair)"),
     "action_result_report": ("ACTION_RESULT_MODE", "MASTER_PLAN yes for AI-seat games (report)"),
-    "assign_pool_fix_live": ("ASSIGN_POOL_FIX_MODE", "MASTER_PLAN yes"),
     "hold_rules_live": ("HOLD_RULES_MODE", "MASTER_PLAN yes"),
     "planet_nw_live": ("PLANET_NW_MODE", "MASTER_PLAN yes"),
     "port_price_live": ("PORT_PRICE_MODE", "MASTER_PLAN yes"),
@@ -5045,7 +5019,6 @@ V311_PROFILE_HELPERS: dict[str, tuple[str, str]] = {
     "class_m_fidelity_live": ("CLASS_M_FIDELITY_MODE", "MASTER_PLAN yes (Ben NOTE 19)"),
     "port_stock_fidelity_live": ("PORT_STOCK_FIDELITY_MODE", "MASTER_PLAN yes"),
     "ship_exit_on": ("SHIP_EXIT_MODE", "MASTER_PLAN yes"),
-    "rival_strength_live": ("RIVAL_STRENGTH_MODE", "MASTER_PLAN yes"),
     "planet_landing_combat_on": ("PLANET_LANDING_COMBAT_MODE", "MASTER_PLAN yes"),
     "owner_hazard_notice_on": ("OWNER_HAZARD_NOTICE_MODE", "MASTER_PLAN yes"),
     "ship_flee_published": ("SHIP_FLEE_MODE", "MASTER_PLAN yes"),
@@ -5056,14 +5029,10 @@ V311_PROFILE_HELPERS: dict[str, tuple[str, str]] = {
     "pod_cash_live": ("POD_CASH_MODE", "RULINGS Addendum A (the pod has 25 credits)"),
     "citadel_table_fix_live": ("CITADEL_TABLE_FIX_MODE", "S1 section VII (class U citadel L3 colonists)"),
     "home_planet_live": ("HOME_PLANET_MODE", "REVISION.TXT 1558 and the new-character transcript (45/65/81 thousand)"),
-    "class_m_nw_units": ("CLASS_M_NW_MODE", "S1 / NOTE 19 (class M net worth is thousands, not people)"),
     "class_m_drop_units": ("CLASS_M_DROP_MODE", "S1 / NOTE 19 and terra-colonists-v1 (a hold of Terra colonists is one thousand people)"),
-    "class_m_genesis_units": ("CLASS_M_GENESIS_MODE", "S1 class M L1 is 1,000 thousand; the 2,500 seed is handbook units"),
-    "corp_exp_penalty_taken": ("CORP_EXP_PENALTY_MODE", "Hekate TWGS table: the event names the experience taken, not the formula"),
     "corp_leaver_to_ceo": ("CORP_LEAVER_DEPLOYMENTS", "live TWGS v3.34b: a leaver's corporate fighters stay with the corp under the C.E.O."),
     "corp_join_check": ("CORP_ALIGNMENT_RULE", "EIS join: signs must agree, 0 fits either side, later drift is not an oust"),
     "mixed_corp_least_extreme": ("MIXED_CORP_EXP_RULE", "Cabal MIN(ABS(lowest alignment), highest alignment) / 4"),
-    "alien_combat_fix_live": ("ALIEN_COMBAT_FIX_MODE", "NOTE 71: alien fighters trade 1:1 and shields soak first"),
     "haggle_counter_live": ("HAGGLE_COUNTER_MODE", "NOTE 71: a port counter keeps the turn; holds are checked first"),
     "bot_hazard_memory_live": ("BOT_HAZARD_MEMORY_MODE", "NOTE 71: a bot does not flee back into Ferrengal or a mined sector"),
     "trade_in_parts_live": ("TRADE_IN_PARTS_MODE", "NOTE 73: the yard itemises the old ship"),
@@ -5164,34 +5133,18 @@ V311_PROFILE_HELPERS: dict[str, tuple[str, str]] = {
         "CLASS0_HOLD_FORMULA_MODE",
         "NOTE 87: Class 0 holds use the cabal B*H + 20*H*(H-1)/2 total",
     ),
-    "haggle_exp_live": (
-        "HAGGLE_EXP_MODE",
-        "NOTE 87: a good haggle is +1 experience and a great one is +2",
-    ),
     "ship_rename_live": (
         "SHIP_RENAME_MODE",
         "NOTE 87: the shipyard sells a new registration and ship name. "
         "Fee 5,000 and 30 characters CONFIRMED (Ven 2026-10-24). Turns not measured",
     ),
-    "exp_sources_live": (
-        "EXP_SOURCES_MODE",
-        "NOTE 102 GAP 9.2: destroying a port pays 50 experience and costs 50 alignment",
-    ),
     "special_port_defence_live": (
         "SPECIAL_PORT_DEFENCE_MODE",
         "NOTE 102 GAP 11.10: StarDock and Class 0 take a huge fighter budget and the Feds rebuild them",
     ),
-    "planet_collision_live": (
-        "PLANET_COLLISION_MODE",
-        "NOTE 102 GAP 6.6: an overloaded sector can lose two planets at Extern",
-    ),
     "bot_bank_float_live": (
         "BOT_BANK_FLOAT_MODE",
         "NOTE 88 row 114: a code bot keeps a full hold at its route buy price before it deposits",
-    ),
-    "capture_credit_line_live": (
-        "CAPTURE_CREDIT_LINE_MODE",
-        "NOTE 105: a capture already takes credits on hand the same way as a destroy; the cockpit says so",
     ),
     "mail_live": (
         "MAIL_MODE",
@@ -5427,6 +5380,28 @@ V311_RETIRED_SWITCHES: dict[str, tuple[str, str]] = {
         "planet_bust_exp_live",
         "NOTE 102 GAP 14.3: the owner can create and destroy a planet for 75 experience",
     ),
+    # Batch 2.
+    "ASSIGN_POOL_FIX_MODE": ("assign_pool_fix_live", "MASTER_PLAN yes"),
+    "RIVAL_STRENGTH_MODE": ("rival_strength_live", "MASTER_PLAN yes"),
+    "CLASS_M_NW_MODE": ("class_m_nw_units", "S1 / NOTE 19 (class M net worth is thousands, not people)"),
+    "CLASS_M_GENESIS_MODE": (
+        "class_m_genesis_units", "S1 class M L1 is 1,000 thousand; the 2,500 seed is handbook units",
+    ),
+    "CORP_EXP_PENALTY_MODE": (
+        "corp_exp_penalty_taken", "Hekate TWGS table: the event names the experience taken, not the formula",
+    ),
+    "ALIEN_COMBAT_FIX_MODE": ("alien_combat_fix_live", "NOTE 71: alien fighters trade 1:1 and shields soak first"),
+    "HAGGLE_EXP_MODE": ("haggle_exp_live", "NOTE 87: a good haggle is +1 experience and a great one is +2"),
+    "EXP_SOURCES_MODE": (
+        "exp_sources_live", "NOTE 102 GAP 9.2: destroying a port pays 50 experience and costs 50 alignment",
+    ),
+    "PLANET_COLLISION_MODE": (
+        "planet_collision_live", "NOTE 102 GAP 6.6: an overloaded sector can lose two planets at Extern",
+    ),
+    "CAPTURE_CREDIT_LINE_MODE": (
+        "capture_credit_line_live",
+        "NOTE 105: a capture already takes credits on hand the same way as a destroy; the cockpit says so",
+    ),
 }
 
 
@@ -5590,31 +5565,19 @@ def home_planet_live() -> bool:
 
 # class-m-planet-units-v1. Appended so later slices can rebase cleanly.
 # Class M under class_m_fidelity_live stores people. S1 and NOTE 19 count
-# those people in thousands (CLASS_M_PEOPLE_PER_THOUSAND). Three switches,
-# each "legacy" until a profile turns it on:
+# those people in thousands (CLASS_M_PEOPLE_PER_THOUSAND):
 #   net worth prices a thousand, not one person (COLONIST_PRICE);
-#   a Terra drop lands as people, and one thousand fills one hold;
+#   a Terra drop lands as people, and one thousand fills one hold (this switch);
 #   a genesis seed of GENESIS_SEED_COLONISTS is that many thousands.
+# Net worth and the genesis seed are always on (Phase 2 retired their switches).
 # The genesis scale runs only when the seed is still placed. V311 also
 # turns genesis_start_live on, and S1 / GAP 6.5 leave that planet empty.
-CLASS_M_NW_MODE = "legacy"  # "legacy" | "live"
 CLASS_M_DROP_MODE = "legacy"  # "legacy" | "live"
-CLASS_M_GENESIS_MODE = "legacy"  # "legacy" | "live"
-
-
-def class_m_nw_units() -> bool:
-    """True when class M net worth prices handbook thousands."""
-    return CLASS_M_NW_MODE == "live" or tw2002_live_profile() or v311_profile()
 
 
 def class_m_drop_units() -> bool:
     """True when a class M colonist drop converts Terra holds into people."""
     return CLASS_M_DROP_MODE == "live" or tw2002_live_profile() or v311_profile()
-
-
-def class_m_genesis_units() -> bool:
-    """True when a class M genesis seed is stored as people."""
-    return CLASS_M_GENESIS_MODE == "live" or tw2002_live_profile() or v311_profile()
 
 
 def class_m_transfer_on(class_id: str) -> bool:
@@ -5684,11 +5647,6 @@ def colonist_holds_for_cargo(amount: int) -> int:
     return (count + per - 1) // per
 
 
-def corp_exp_penalty_taken() -> bool:
-    """True when a mixed-corp event names the experience that was taken."""
-    return CORP_EXP_PENALTY_MODE == "taken" or v311_profile()
-
-
 def corp_leaver_to_ceo() -> bool:
     """True when a leaver's corporate fighters and mines move to the C.E.O."""
     return CORP_LEAVER_DEPLOYMENTS == "to_ceo" or v311_profile()
@@ -5716,18 +5674,6 @@ def mixed_corp_exp_rule() -> str:
 def mixed_corp_least_extreme() -> bool:
     """True when the Extern loss is min(most good, most evil) / 4."""
     return mixed_corp_exp_rule() == "least_extreme"
-
-
-# beta-combat-haggle-v1 (NOTE 71). "legacy" keeps the odds formula, where a
-# defender odds below 1 can make shields absorb more than the volley.
-# "live" trades alien fighters 1:1 and lets shields soak first, never more
-# than the volley or more than they hold. Appended so later slices rebase.
-ALIEN_COMBAT_FIX_MODE = "legacy"  # "legacy" | "live"
-
-
-def alien_combat_fix_live() -> bool:
-    """True when an alien exchange uses the 1:1 shield-first numbers."""
-    return ALIEN_COMBAT_FIX_MODE == "live" or tw2002_live_profile() or v311_profile()
 
 
 # beta-combat-haggle-v1 (NOTE 71). "legacy" answers a counter and then the
@@ -6312,16 +6258,9 @@ def class0_hold_formula_live() -> bool:
 # price pays 5). None of those is REPORT2 s3/s7, and the 5 disagrees with
 # the +1/+2 reading, so the amounts stay. Which counter is great stays the
 # hidden bound: see economy.haggle_experience. DISCOVERY_EXP_MODE stays the
-# first-dock award. Stored default stays legacy (the credit gap, capped at
-# PORT_HAGGLE_XP_CAP).
-HAGGLE_EXP_MODE = "legacy"  # "legacy" | "live"
+# first-dock award.
 HAGGLE_EXP_GOOD = 1
 HAGGLE_EXP_GREAT = 2
-
-
-def haggle_exp_live() -> bool:
-    """True when an accepted haggle awards +1 or +2 instead of the credit gap."""
-    return HAGGLE_EXP_MODE == "live" or tw2002_live_profile() or v311_profile()
 
 
 # v311-exp-alignment-trade-gaps-v1 (NOTE 87) SD-n, row 112.
@@ -6629,16 +6568,10 @@ def fighter_report_live() -> bool:
 # on a personal first dock, already run under DISCOVERY_EXP_MODE (runner.tick_day,
 # runner._handle_trade). Atomic destruction of an ordinary port already pays
 # xp_award("destroy_port"), which is 50 while RANK_MODE is tw2002.
-# This switch is the missing pay on a StarDock or Class 0 kill: +50 experience
-# and -50 alignment (EXPERIENCE_ALIGNMENT.md x11). Stored default stays legacy.
-EXP_SOURCES_MODE = "legacy"  # "legacy" | "live"
+# This is the missing pay on a StarDock or Class 0 kill: +50 experience
+# and -50 alignment (EXPERIENCE_ALIGNMENT.md x11).
 PORT_DESTROY_EXPERIENCE = 50
 PORT_DESTROY_ALIGNMENT = 50
-
-
-def exp_sources_live() -> bool:
-    """True when destroying a special port pays the documented 50 experience."""
-    return EXP_SOURCES_MODE == "live" or tw2002_live_profile() or v311_profile()
 
 
 # NOTE 102 GAP 11.10. Cabal formulas.html (Destroying a port): StarDock and the
@@ -6688,25 +6621,9 @@ def special_port_rating(already_destroyed: int) -> int:
 # Someguy_MBBS_manual.txt, OldBBS_TW.faq.txt, REV v3 (collisions generate NavHaz).
 # 10 percent per planet over the cap of 5, never past 100, is the stand-in.
 # Sector 1 is skipped (Old FAQ v2 says overload skips sector one).
-PLANET_COLLISION_MODE = "legacy"  # "legacy" | "live"
 PLANET_COLLISION_PCT_PER_EXCESS = 10
 
 
-def planet_collision_live() -> bool:
-    """True when Extern can collide planets in an overloaded sector."""
-    return PLANET_COLLISION_MODE == "live" or tw2002_live_profile() or v311_profile()
-
-
-# NOTE 105. gb15 and the MBBS manual: capturing a player takes the credits
-# they are carrying, the same as a kill. The engine already does that
-# (apply_manned_capture -> on_ship_lost). This switch is only the cockpit
-# sentence. Stored default stays legacy, so a capture line stays as it was.
-CAPTURE_CREDIT_LINE_MODE = "legacy"  # "legacy" | "live"
-
-
-def capture_credit_line_live() -> bool:
-    """True when a capture result says the credits that were on board."""
-    return CAPTURE_CREDIT_LINE_MODE == "live" or tw2002_live_profile() or v311_profile()
 # terra-colonist-units-fix-v1 (NOTE 89). Terra live stores people in the hold
 # (TERRA_LIVE_PER_HOLD). Class M already converts. Every other class stores
 # handbook colonists, so a drop of one hold must land as 1, not 1,000.

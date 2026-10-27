@@ -93,7 +93,7 @@ def test_cf5b_level_2_fighters_do_defend() -> None:
     assert planet.fighters < 40
 
 
-def test_cf6_landed_colonists_join_fuel_production() -> None:
+def test_cf6_landed_colonists_stay_in_the_colonist_pool() -> None:
     u, _players = _make_universe(seed=71006)
     owner, planet, _colonists = _ready(u)
     owner.ship.cargo[Commodity.COLONISTS] = 25
@@ -104,8 +104,9 @@ def test_cf6_landed_colonists_join_fuel_production() -> None:
         args={"planet_id": planet.id, "from": "ship", "to": "colonists", "qty": 25},
     ))
     assert res.ok, res.error
-    assert planet.colonists.get(Commodity.FUEL_ORE, 0) == before + 25
-    assert planet.colonists.get(Commodity.COLONISTS, 0) == idle_before
+    # Phase 2 retired ASSIGN_POOL_FIX_MODE: to=colonists lands in the colonists pool.
+    assert planet.colonists.get(Commodity.FUEL_ORE, 0) == before
+    assert planet.colonists.get(Commodity.COLONISTS, 0) == idle_before + 25
 
 
 def test_cf7_exact_ore_is_enough() -> None:

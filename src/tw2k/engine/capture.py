@@ -164,14 +164,13 @@ def apply_manned_capture(universe, attacker_id: str, target) -> None:
         witnesses.append(attacker_id)
     # The death path strips player.ship in place. That object is the copy, not the captured hull.
     _destroy_ship(universe, target.id, reason="captured", killer_id=attacker_id, by_other=True)
-    # gb15: the cash is already gone, the same as a destroy. The cockpit sentence
-    # that says so is NOTE 105 and stays off unless the switch is on.
+    # gb15: the cash is already gone, the same as a destroy. NOTE 105: the capture
+    # result says how much was on board.
     credits_lost = 0
-    if K.capture_credit_line_live():
-        for destroyed in reversed(universe.events):
-            if destroyed.kind is EventKind.SHIP_DESTROYED and (destroyed.payload or {}).get("victim") == target.id:
-                credits_lost = int((destroyed.payload or {}).get("credits_lost") or 0)
-                break
+    for destroyed in reversed(universe.events):
+        if destroyed.kind is EventKind.SHIP_DESTROYED and (destroyed.payload or {}).get("victim") == target.id:
+            credits_lost = int((destroyed.payload or {}).get("credits_lost") or 0)
+            break
 
     hull.fighters = 0
     hull.shields = 0

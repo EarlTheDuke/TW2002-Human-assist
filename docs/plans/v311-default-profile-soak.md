@@ -102,3 +102,11 @@ Retired (the v3.11 rule is the only rule; `V311_RETIRED_SWITCHES` keeps the name
 - `PLANET_BUST_EXP_MODE`: the owner may destroy a planet they created.
 
 The legacy digest pins retire with this batch: a legacy run is no longer the game it recorded. `tests/fed_legacy_digest.py`, `tests/capture_legacy_pin.py`, the thirteen `*_legacy_pin.py` files and the in-module legacy digest tests are gone. The v3.11 pins (`tests/test_bots_match_v311_pin.py`) are the guard, and they did not move.
+
+## Legacy removal, batch 2 (branch `phase2-legacy-batch2`)
+
+Retired: `ASSIGN_POOL_FIX_MODE`, `RIVAL_STRENGTH_MODE`, `CLASS_M_NW_MODE`, `CLASS_M_GENESIS_MODE`, `CORP_EXP_PENALTY_MODE`, `ALIEN_COMBAT_FIX_MODE`, `HAGGLE_EXP_MODE`, `EXP_SOURCES_MODE`, `PLANET_COLLISION_MODE`, `CAPTURE_CREDIT_LINE_MODE`. The research comments on the constants that stay (haggle experience, port-kill pay, collision odds, class M units) are kept with the legacy wording removed.
+
+Held back for a later batch: `GENESIS_SCORE_MODE` and `PLANET_NW_MODE`. Both change net worth, and the code bots size their bank nest egg from net worth. With either one always on, the legacy-rule bots change strategy: N2 stops beating N1 on seed 250925, and the N3 seat delays its colonist ferry by a day. That batch needs a bot retune to go with it.
+
+Also fixed: with both of those on (as in every v3.11 game), starting a genesis planet's first citadel level put the 308,600 of seed goods back into net worth for the length of the build. The seed goods now stay out until level 1 is built.

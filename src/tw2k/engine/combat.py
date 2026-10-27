@@ -782,7 +782,7 @@ def _resolve_ship_attack_tw2002(universe: Universe, attacker_id: str, target, qt
     # trades 1:1: one volley point removes one shield, then one fighter, and
     # never more than the shields hold. Player and Ferrengi exchanges stay
     # on the odds formula.
-    if is_alien and K.alien_combat_fix_live():
+    if is_alien:
         volley = max(0, math.floor(power))
         pool = s_eff + d_f
         if qty > 0 and volley >= pool:

@@ -70,6 +70,17 @@ def test_live_keeps_the_goods_while_the_level_builds() -> None:
         K.PLANET_NW_MODE = _prior_planet_nw_mode
 
 
+def test_a_genesis_seed_counts_only_once_level_1_is_built(monkeypatch) -> None:
+    """The seed is the level-1 goods: hidden while idle (GENESIS_SCORE fair) and while building."""
+    monkeypatch.setattr(K, "GENESIS_SCORE_MODE", "fair")
+    monkeypatch.setattr(K, "PLANET_NW_MODE", "live")
+    before = _planet_asset_value(_planet(building=False, done=False))
+    during = _planet_asset_value(_planet(building=True, done=False))
+    done = _planet_asset_value(_planet(building=False, done=True))
+    assert during == before
+    assert done - during == 308_600
+
+
 def test_live_does_not_change_the_growth_tax() -> None:
     _prior_planet_nw_mode = K.PLANET_NW_MODE
     try:

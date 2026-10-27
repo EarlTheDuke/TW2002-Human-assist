@@ -340,14 +340,13 @@ def test_pt12_haggle_matrix():
     res = _pt(u, planet_id=900, commodity="organics", qty=1_000, offer=bound + 1)
     assert not res.ok and res.error == NOT_INTERESTED and a.turns_today == 1
     assert a.credits == 10_000 and pl.stockpile[ORG] == 3_000 and u.sectors[sid].port.stock[ORG].current == 1_000
-    # good counter at the bound: paid the offer + good-counter experience
+    # counter at the bound: paid the offer + the great-haggle experience (NOTE 87)
     u = copy.deepcopy(snap)
     a, pl = u.players["A"], u.planets[900]
     xp0 = a.experience
     assert _pt(u, planet_id=900, commodity="organics", qty=1_000, offer=bound).ok
     assert a.credits == 10_000 + bound and pl.stockpile[ORG] == 2_000
-    bargain = (bound - q + 500) // 1_000
-    assert a.experience - xp0 == K.xp_award("trade") + K.xp_award("first_dock") + min(K.PORT_HAGGLE_XP_CAP, bargain)
+    assert a.experience - xp0 == K.xp_award("trade") + K.xp_award("first_dock") + K.HAGGLE_EXP_GREAT
     ev = [e for e in u.events if e.kind == EventKind.PLANET_TRADE][-1]
     assert ev.payload["countered"] is True and ev.payload["quote"] == q
     # low offer accepted at the offer
