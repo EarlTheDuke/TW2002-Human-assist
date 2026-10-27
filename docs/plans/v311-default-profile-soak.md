@@ -89,5 +89,5 @@ StarDock services do not use an enter-dock flag. Shipyards, the bank, Federation
 
 Found by the flip, not fixed here:
 
-- Under v3.11 the planet fuzz sees 25 credits it cannot explain: the pod's 25-credit purse (POD_CASH_MODE, RULINGS Addendum A) is granted in `combat.py` without a figure on the `ship_destroyed` event.
+- Fixed on `fix-pod-cash-event`: under v3.11 the planet fuzz saw 25 credits it could not explain. The pod's 25-credit purse (POD_CASH_MODE, RULINGS Addendum A) was granted in `combat.py` without a figure on the `ship_destroyed` event; the event now carries `pod_cash`, and the fuzz runs on the stored default (5 seeds) plus `--profile legacy`.
 - `scripts/port_trade_fuzz.py` models the legacy price formula only; under v3.11 the engine quotes 24 where the formula says 27 (seed 93001).
