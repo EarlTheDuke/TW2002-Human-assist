@@ -1,24 +1,24 @@
-﻿"""ExternalAgent â€” a seat driven by an out-of-process bot over REST.
+"""ExternalAgent — a seat driven by an out-of-process bot over REST.
 
-Plan: docs/plans/2026-09-20-external-harness.md (Â§1, Â§2.1).
+Plan: docs/plans/2026-09-20-external-harness.md (§1, §2.1).
 
 The agent plugs into the same ``BaseAgent.act(Observation) -> Action``
 contract as heuristic / LLM / human agents. It is ``HumanAgent`` plus:
 
-* ``turn_seq`` â€” increments every time the scheduler enters ``act()``. A
+* ``turn_seq`` — increments every time the scheduler enters ``act()``. A
   bot must echo the current value when it POSTs, so a slow reply meant
   for an earlier turn is rejected instead of being applied out of context.
-* ``turn_due`` â€” an ``asyncio.Event`` the REST layer long-polls on, so a
+* ``turn_due`` — an ``asyncio.Event`` the REST layer long-polls on, so a
   bot can block on "is it my turn?" without hammering the server.
-* ``token`` â€” the per-seat bearer secret. Stored on the instance only;
+* ``token`` — the per-seat bearer secret. Stored on the instance only;
   never serialized into meta.json, events, or snapshots.
-* ``last_result`` â€” the engine's verdict on the previous action, recorded
+* ``last_result`` — the engine's verdict on the previous action, recorded
   by the runner so the bot can see "warp ok" / "not enough turns" on its
   next status call without parsing the event feed.
 
 The agent does **not** enforce a timeout itself. The runner owns the
 deadline (``MatchSpec.external_timeout_s``) exactly the way it owns
-``human_deadline_s`` â€” on timeout it synthesizes a WAIT and emits
+``human_deadline_s`` — on timeout it synthesizes a WAIT and emits
 AGENT_ERROR. Keeping the deadline in one place means replay, tests and
 the spectator all agree about who decided the bot was too slow.
 """
