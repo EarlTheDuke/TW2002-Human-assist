@@ -34,9 +34,6 @@ from tw2k.engine.models import (  # noqa: E402
 from tw2k.engine.runner import _bfs_path, apply_action, tick_day  # noqa: E402
 from tw2k.engine.universe import generate_universe  # noqa: E402
 
-# R-4: this tool checks the legacy rules; the stored V311_PROFILE default is v311 now.
-K.V311_PROFILE = "legacy"
-
 # Forty fixed seeds. --seeds N uses the first N. A seed listed in XFAIL is a
 # known engine bug: the script still runs it, prints xfail, and does not
 # exit 1. Do not add a seed here to hide a new failure.
@@ -120,6 +117,7 @@ def _explained_total(before: dict[str, int], events, universe) -> int:
                 credits[actor] += int(payload.get("bounty") or 0)
             elif victim in credits and "credits_lost" in payload:
                 credits[victim] = int(credits[victim]) - int(payload.get("credits_lost") or 0)
+                credits[victim] += int(payload.get("pod_cash") or 0)
             elif victim in credits and not payload.get("outcome"):
                 # Legacy death keeps 75 percent. A tw2002 pod keeps all only while BANK_MODE is legacy.
                 credits[victim] = int(credits[victim] * 0.75)
@@ -491,7 +489,11 @@ def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="Planet invariant fuzz")
     parser.add_argument("--seeds", type=int, default=len(FIXED_SEEDS))
     parser.add_argument("--force-zero", default="", help="treat this kind as zero successes")
+    parser.add_argument("--profile", choices=("v311", "legacy"), default=None,
+                        help="V311_PROFILE for the run (default: the stored default, v311)")
     args = parser.parse_args(argv)
+    if args.profile:
+        K.V311_PROFILE = args.profile
     if args.seeds < 1 or args.seeds > len(FIXED_SEEDS):
         print(f"seeds must be 1..{len(FIXED_SEEDS)}")
         return 2

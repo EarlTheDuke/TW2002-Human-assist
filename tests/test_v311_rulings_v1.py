@@ -319,6 +319,7 @@ def test_addendum_a_kill_pays_the_killer_nothing_and_the_pod_has_25(monkeypatch)
     assert not [e for e in u.events if e.kind is EventKind.CREDITS_RECOVERED]
     lost = [e for e in u.events if e.kind is EventKind.SHIP_DESTROYED and e.payload.get("victim") == victim.id]
     assert lost[-1].payload["credits_lost"] == 10_000
+    assert lost[-1].payload["pod_cash"] == 25  # the purse is new money; the event carries it
     furb = [e for e in u.events if e.kind is EventKind.SHIP_FURBED]
     assert furb and furb[-1].payload["holds_gained"] == 7  # "salvaged these cargo holds: 7 empty"
     assert killer.ship.holds == 27
