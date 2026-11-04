@@ -1,11 +1,11 @@
 """async-days-v1. Seats share a day clock only when the switch is on."""
 import asyncio
 
+import tw2k.engine.constants as K
 from tw2k.engine.models import GameConfig, Player
 from tw2k.engine.universe import generate_universe
 from tw2k.server.broadcaster import Broadcaster
 from tw2k.server.runner import MatchRunner, MatchSpec, collect_in_seat_order
-import tw2k.engine.constants as K
 
 
 def test_flag_stays_legacy() -> None:

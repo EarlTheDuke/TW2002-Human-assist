@@ -4,9 +4,8 @@ from __future__ import annotations
 import shutil
 from pathlib import Path
 
-from tw2k.engine.models import FighterDeployment, FighterMode, ShipClass
-
 from tests._cu_host import CuHost
+from tw2k.engine.models import FighterDeployment, FighterMode, ShipClass
 
 TOK = "visual-qc-v1-token-p2-00000000000"
 ROOT = Path(__file__).resolve().parents[1]

@@ -8,6 +8,8 @@ economy2 T-Edit: maximum 2610/950/2100, productivity 261/95/210 a day.
 
 from __future__ import annotations
 
+from pathlib import Path
+
 import pytest
 
 import tw2k.engine.constants as K
@@ -100,4 +102,4 @@ def test_v311_restock_is_ten_percent(monkeypatch):
 def test_manual_line():
     from tw2k.public import manual
     assert "PORT_DRAIN_CURVE_MODE" in manual._SWITCH_PLAIN
-    assert "Drain curve and restock" in open(manual.__file__).read()
+    assert "Drain curve and restock" in Path(manual.__file__).read_text()

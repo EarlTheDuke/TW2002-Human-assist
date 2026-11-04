@@ -6,6 +6,8 @@ attack you; "These are by no means binding and are not enforced".
 
 from __future__ import annotations
 
+from pathlib import Path
+
 import tw2k.engine.constants as K
 from tw2k.engine import Action, ActionKind, GameConfig, generate_universe
 from tw2k.engine.legality import legal_actions
@@ -66,4 +68,4 @@ def test_switch_alone(monkeypatch):
 def test_manual_line():
     from tw2k.public import manual
     assert "ALLIANCE_OFF_MODE" in manual._SWITCH_PLAIN
-    assert "gentleman's agreement the game does not enforce" in open(manual.__file__).read()
+    assert "gentleman's agreement the game does not enforce" in Path(manual.__file__).read_text()

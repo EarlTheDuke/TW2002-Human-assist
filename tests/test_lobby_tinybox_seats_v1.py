@@ -228,7 +228,6 @@ def test_call_timeout_fits_inside_the_worker_turn(monkeypatch) -> None:
 
 def test_slow_reply_plays_heuristic_this_turn_without_lasting_fallback(monkeypatch, caplog) -> None:
     import logging
-    import socket
 
     from tw2k.public import tinybox as tb
 
@@ -236,7 +235,7 @@ def test_slow_reply_plays_heuristic_this_turn_without_lasting_fallback(monkeypat
     monkeypatch.setenv("TW2K_CUSTOM_API_KEY", _key())
 
     def slow(*_a, **_k):
-        raise socket.timeout("timed out")
+        raise TimeoutError("timed out")
 
     monkeypatch.setattr(tb, "ask", slow)
     budget = tb.TinyboxSeatBudget(tb.config(), "kimi-k2.6", gid="g", seat="P4")

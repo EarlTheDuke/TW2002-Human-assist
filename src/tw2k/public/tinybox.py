@@ -352,7 +352,7 @@ def ask(cfg: TinyboxConfig, model: str, user: str) -> str:
         cfg.endpoint, data=body, method="POST",
         headers={"authorization": f"Bearer {cfg.key}", "content-type": "application/json"},
     )
-    with urllib.request.urlopen(req, timeout=cfg.call_timeout_s) as reply:  # noqa: S310 - host-configured URL
+    with urllib.request.urlopen(req, timeout=cfg.call_timeout_s) as reply:
         return _text(json.loads(reply.read().decode()))
 
 

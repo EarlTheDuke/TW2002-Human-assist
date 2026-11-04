@@ -89,7 +89,7 @@ class Proxy:
         try:
             upstream = await connect(url, additional_headers=upstream_headers(ws.headers, extra, drop=_DROP_WS),
                                      open_timeout=10, max_size=8 * 1024 * 1024)
-        except (InvalidStatus, OSError, asyncio.TimeoutError):
+        except (TimeoutError, InvalidStatus, OSError):
             await ws.close(code=1008)
             return
         await ws.accept()

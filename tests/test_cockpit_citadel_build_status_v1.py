@@ -6,7 +6,6 @@ line must not call that an L0 build.
 
 from __future__ import annotations
 
-import json
 import shutil
 from pathlib import Path
 

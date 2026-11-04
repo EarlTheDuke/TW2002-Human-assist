@@ -260,7 +260,7 @@ def main() -> int:
                     try:
                         await asyncio.wait_for(ws.recv(), max(0.1, end - time.time()))
                         n += 1
-                    except asyncio.TimeoutError:
+                    except TimeoutError:
                         break
             return n
 

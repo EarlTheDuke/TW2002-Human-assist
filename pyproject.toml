@@ -32,7 +32,8 @@ dev = [
     "pytest-xdist>=3.6",
     "ruff>=0.3",
     "mypy>=1.8",
-    "jsonschema>=4.18",  # web/media/manifest.schema.json (scripts/media_validate_manifest.py)
+    "jsonschema>=4.18",
+    "pillow>=10.0",      # web/media asset import and clip checks (tests/test_v8b_xai_adapter.py)  # web/media/manifest.schema.json (scripts/media_validate_manifest.py)
 ]
 # Phase H6.1 — MCP server adapter for Cursor/Claude Code. Install with:
 #   pip install "tw2k-ai[mcp]"
@@ -76,11 +77,22 @@ ignore = [
     "SIM103", # needless-bool: readability > terseness for branching returns
     "RUF003", # ambiguous-unicode in comments: we intentionally ship unicode art
     "RUF059", # unused-unpacked-variable: fixtures often destructure and discard
+    "B905",   # zip-without-strict: adding strict= changes behaviour; not worth a sweep
+    "RUF046", # unnecessary-cast-to-int: int(round(x)) is explicit and harmless
+    "SIM108", # if-else-instead-of-ternary: readability call
+    "RUF015", # first-element via slice: readability call
+    "RUF005", # collection-literal-concatenation: readability call
+    "RUF007", # zip-instead-of-pairwise: readability call
 ]
 
 [tool.ruff.lint.per-file-ignores]
 # Tests routinely destructure fixtures and use short names.
-"tests/**" = ["F841", "B007", "RUF005", "RUF046"]
+"tests/**" = ["F841", "B007", "RUF005", "RUF046", "N806", "N999", "RUF012", "B017"]
+# Imports sit after the module logger on purpose.
+"src/tw2k/engine/corp.py" = ["E402"]
+# Log files handed to child processes stay open for the life of the process.
+"src/tw2k/public/ai_cockpit_launch.py" = ["SIM115"]
+"src/tw2k/public/workers.py" = ["SIM115"]
 # Scripts often have ad-hoc globbing / one-off helpers.
 "scripts/**" = ["SIM115"]
 

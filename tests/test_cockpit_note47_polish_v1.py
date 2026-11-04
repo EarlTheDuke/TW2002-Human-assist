@@ -7,7 +7,6 @@ from pathlib import Path
 import pytest
 
 import tw2k.engine.constants as K
-
 from tests._cu_host import CuHost
 
 TOK = "note47-polish-token-p2-00000000000"

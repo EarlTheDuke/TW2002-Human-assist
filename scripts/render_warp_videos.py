@@ -62,7 +62,7 @@ MIME = {
 
 
 class Handler(BaseHTTPRequestHandler):
-    def do_GET(self) -> None:  # noqa: N802
+    def do_GET(self) -> None:
         path = unquote(urlparse(self.path).path)
         if path in ("/", "/stage.html"):
             body = STAGE.read_bytes()

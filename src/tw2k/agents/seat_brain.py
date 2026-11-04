@@ -58,7 +58,6 @@ from ..engine.constants import (
     COMMODITY_BASE_PRICE,
     DENSITY_SCANNER_COST,
     GENESIS_SEED_COLONISTS,
-    genesis_torpedo_cost,
     HOLO_SCANNER_COST,
     SCANNER_DENSITY,
     SCANNER_HOLO,
@@ -69,6 +68,7 @@ from ..engine.constants import (
     class0_tw2002,
     combat_hull,
     fighter_unit_price,
+    genesis_torpedo_cost,
     info_tw2002,
     planet_growth_tw2002,
     scanner_room,
@@ -3950,7 +3950,7 @@ class SeatBrain:
                 if planet is not None:
                     need = _citadel_need_qty(planet, str(commodity))
                     if need > 0:
-                        stock = int(((planet.get("stockpile") or {}).get(commodity) or 0))
+                        stock = int((planet.get("stockpile") or {}).get(commodity) or 0)
                         qty = min(qty, max(0, stock - need))
                 if commodity == "organics":
                     g = (growth_view(planet) or {}) if planet else {}
@@ -5049,10 +5049,7 @@ class SeatBrain:
         day = int(v.day)
         current = int(v.net_worth)
         mem = self.mem
-        if mem.war_nw_peak_day < 0 or day - int(mem.war_nw_peak_day) > 3:
-            mem.war_nw_peak = current
-            mem.war_nw_peak_day = day
-        elif current >= int(mem.war_nw_peak):
+        if mem.war_nw_peak_day < 0 or day - int(mem.war_nw_peak_day) > 3 or current >= int(mem.war_nw_peak):
             mem.war_nw_peak = current
             mem.war_nw_peak_day = day
         switched = None if mem.war_drop_day < 0 else int(mem.war_drop_day)

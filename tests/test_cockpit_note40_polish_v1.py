@@ -4,9 +4,8 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from tw2k.engine.models import EventKind, MineDeployment, MineType
-
 from tests._cu_host import CuHost
+from tw2k.engine.models import EventKind, MineDeployment, MineType
 
 TOK = "note40-polish-token-p2-000000000000"
 SHOTS = Path(__file__).resolve().parents[1] / "artifacts" / "playtests" / "note40-polish-v1"

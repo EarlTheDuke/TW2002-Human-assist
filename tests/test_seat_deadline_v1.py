@@ -1,8 +1,8 @@
 """seat-deadline-autopass-v1. The clock changes only when the switch is on."""
+import tw2k.engine.constants as K
 from tw2k.engine.models import GameConfig, Player
 from tw2k.engine.runner import tick_day
 from tw2k.engine.universe import generate_universe
-import tw2k.engine.constants as K
 
 
 def test_flag_stays_legacy() -> None:

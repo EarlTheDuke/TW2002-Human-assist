@@ -7,7 +7,6 @@ from pathlib import Path
 from urllib.request import Request, urlopen
 
 import tw2k.engine.constants as K
-
 from tests._cu_host import CuHost
 
 TOK = "info-audit-token-p2-0000000000000"

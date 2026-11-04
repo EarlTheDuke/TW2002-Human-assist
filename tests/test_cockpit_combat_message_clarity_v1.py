@@ -8,10 +8,9 @@ from pathlib import Path
 import pytest
 
 import tw2k.engine.constants as K
+from tests._cu_host import CuHost
 from tw2k.engine.ferrengi import _make_ferrengi, apply_ferrengi_tribute, open_ferrengi_encounter
 from tw2k.engine.models import Commodity
-
-from tests._cu_host import CuHost
 
 TOK = "note63-clarity-token-p2-0000000000"
 TOK1 = "note63-clarity-token-p1-0000000000"

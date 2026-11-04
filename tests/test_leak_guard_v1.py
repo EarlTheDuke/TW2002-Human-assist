@@ -8,7 +8,6 @@ import sys
 from pathlib import Path
 
 import tw2k.engine.constants as K
-
 from tests._cu_host import acquire_info_mode, release_info_mode
 
 ROOT = Path(__file__).resolve().parents[1]

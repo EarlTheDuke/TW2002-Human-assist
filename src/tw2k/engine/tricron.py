@@ -13,7 +13,7 @@ is scored. A tie is not a greater total, so it does not pay.
 from __future__ import annotations
 
 import random
-from typing import Sequence
+from collections.abc import Sequence
 
 PLACE_231 = (2, 3, 1)
 ROUNDS = 10

@@ -1387,7 +1387,8 @@ def build_observation(universe: Universe, player_id: str, event_history: int = 4
     if K.bot_hazard_memory_live() and getattr(universe, "ferrengal_sector", None) is not None:
         obs._ferrengal_sector = int(universe.ferrengal_sector)
     if K.trader_rank_list_live():
-        from .victory import end_rule_line, game_over_panel, rank_for as _rank_for
+        from .victory import end_rule_line, game_over_panel
+        from .victory import rank_for as _rank_for
 
         ranked = []
         for seat in universe.players.values():

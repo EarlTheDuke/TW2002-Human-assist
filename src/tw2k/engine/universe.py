@@ -481,7 +481,7 @@ def generate_universe(config: GameConfig) -> Universe:
     _maybe_place_random_stardock(universe)
 
     # fedspace-police-v1: Federals (isolated rng; no-op under FED_MODE legacy)
-    from .fed import place_federals, place_fed_starships
+    from .fed import place_fed_starships, place_federals
     place_federals(universe)
     place_fed_starships(universe)
 

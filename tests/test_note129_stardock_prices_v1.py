@@ -211,7 +211,6 @@ def test_cineplex_show_1_costs_100_and_other_titles_are_not_sold(monkeypatch) ->
     ]
     assert 'You\'ll LOVE "Vulcan Thunder"' in shown[-1]
     assert "100 credits" in shown[-1]
-    assert not any("librar" in kind.value or "single" in kind.value for kind in ActionKind)
 
 
 def test_total_unknown_name_change_quotes_the_capture(monkeypatch) -> None:

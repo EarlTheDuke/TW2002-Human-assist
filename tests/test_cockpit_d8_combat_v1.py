@@ -8,7 +8,7 @@ import pytest
 
 import tw2k.engine.constants as K
 from tests._cu_host import CuHost
-from tw2k.engine.models import EventKind, FerrengiShip, Planet, PlanetClass
+from tw2k.engine.models import EventKind, FerrengiShip
 
 pytestmark = pytest.mark.legacy_profile
 

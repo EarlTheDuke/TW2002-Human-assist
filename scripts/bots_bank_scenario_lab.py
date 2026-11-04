@@ -51,7 +51,7 @@ def _tax() -> bool:
     _la(obs, "buy_equip", item={"choices": [], "unit_price_by": {}})
     _la(obs, "bank_deposit", max_amount=400_000, balance=0, room=500_000)
     saved = SeatBrain._away_cash
-    SeatBrain._away_cash = lambda self, v: 150_000  # noqa: SLF001
+    SeatBrain._away_cash = lambda self, v: 150_000
     try:
         action = brain.decide(obs)
     finally:

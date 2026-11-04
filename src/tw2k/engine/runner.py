@@ -46,10 +46,10 @@ from .ferrengi import (
     _ferrengi_regen,
     _ferrengi_roam_and_hunt,
     _spawn_ferrengi,
-    settle_ferrengi_pace_day,
     apply_ferrengi_tribute,
     clear_ferrengi_encounter,
     live_ferrengi_encounter,
+    settle_ferrengi_pace_day,
 )
 from .hardware import (
     add_navhaz,
@@ -86,6 +86,7 @@ from .models import (
     MineType,
     Planet,
     PlanetClass,
+    Player,
     PortClass,
     Universe,
 )
@@ -2910,7 +2911,7 @@ def _weighted_choice(rng: random.Random, weights: dict[str, float]) -> str:
     return next(iter(weights))
 
 
-def swap_hull(player: "Player", class_key: str, spec: dict, net_cost: int, parts: bool) -> None:
+def swap_hull(player: Player, class_key: str, spec: dict, net_cost: int, parts: bool) -> None:
     """Apply a StarDock hull purchase to the player. Shared by the buy handler and
     the yard's net-worth preview (legality), so the preview cannot drift."""
     player.credits -= net_cost

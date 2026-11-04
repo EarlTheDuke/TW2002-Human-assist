@@ -15,6 +15,7 @@ sys.path.insert(0, str(ROOT / "src"))
 sys.path.insert(0, str(ROOT / "tests"))
 
 from test_phase_abc import _make_universe  # noqa: E402
+
 from tw2k.agents.seat_brain import SeatBrain, SeatMemory, View  # noqa: E402
 from tw2k.agents.war_brain import siege_estimate  # noqa: E402
 from tw2k.engine import constants as K  # noqa: E402

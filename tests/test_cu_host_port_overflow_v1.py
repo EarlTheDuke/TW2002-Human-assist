@@ -1,7 +1,7 @@
 """_ephemeral_port skips a block that would run past port 65535."""
 
-from contextlib import contextmanager
 import socket
+from contextlib import contextmanager
 
 import tests._port_lock as port_lock_mod
 from tests import _cu_host

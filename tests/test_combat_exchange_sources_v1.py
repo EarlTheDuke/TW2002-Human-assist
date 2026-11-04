@@ -12,6 +12,7 @@ a random term, so the clone uses the expected value under every profile.
 from __future__ import annotations
 
 from fractions import Fraction
+from pathlib import Path
 
 import pytest
 
@@ -91,4 +92,4 @@ def test_short_volley_kills_odds_times_sent(monkeypatch, profile):
 
 def test_manual_states_the_formula():
     from tw2k.public import manual
-    assert "divided by theirs, of the target" in open(manual.__file__).read()
+    assert "divided by theirs, of the target" in Path(manual.__file__).read_text()

@@ -109,7 +109,7 @@ class LobbyConfig:
         self.root = Path(self.root)
 
     @classmethod
-    def from_env(cls, **overrides) -> "LobbyConfig":
+    def from_env(cls, **overrides) -> LobbyConfig:
         kw: dict = {}
         if os.environ.get(ENV_LOBBY_PORT):
             kw["port"] = int(os.environ[ENV_LOBBY_PORT])

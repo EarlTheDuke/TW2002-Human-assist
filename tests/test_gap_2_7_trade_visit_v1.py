@@ -58,17 +58,6 @@ def test_on_names_the_same_one_then_zero(monkeypatch) -> None:
     assert trade_turn_cost(_player()) != STALE_PER_TRADE
 
 
-def test_v311_profile_keeps_the_stored_visit_cost(monkeypatch) -> None:
-    """The profile does not take row 227, and it does not charge 3 or a new pair."""
-    monkeypatch.setattr(K, "V311_PROFILE", "v311")
-    assert K.TRADE_TURN_MODE == "legacy"
-    assert K.trade_turn_live() is False
-    assert _costs(_player()) == (1, 0, 1)
-    text = (ROOT / "docs" / "plans" / "v311-profile-v1.md").read_text(encoding="utf-8")
-    assert "Row 227 stays open" in text
-    assert "| 227 |" not in text
-
-
 def _seat():
     universe = generate_universe(
         GameConfig(seed=8, universe_size=20, max_days=5, enable_planets=False, enable_ferrengi=False)

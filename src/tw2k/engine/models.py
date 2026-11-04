@@ -11,7 +11,14 @@ import random
 from enum import Enum
 from typing import Any
 
-from pydantic import BaseModel, Field, PrivateAttr, SerializerFunctionWrapHandler, field_validator, model_serializer
+from pydantic import (
+    BaseModel,
+    Field,
+    PrivateAttr,
+    SerializerFunctionWrapHandler,
+    field_validator,
+    model_serializer,
+)
 
 from . import constants as K
 

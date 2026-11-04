@@ -311,7 +311,7 @@ class CockpitSeat:
             if callable(record):
                 try:
                     record(obs, kind, args)
-                except Exception:  # noqa: BLE001 - history is advisory
+                except Exception:
                     pass
             day = int(obs.get("day") or 0)
             row = table[day]
@@ -1549,7 +1549,7 @@ def _llm_http_choose(key: str, obs: dict[str, Any], cockpit: dict[str, Any] | No
         headers={"authorization": f"Bearer {key}", "content-type": "application/json"},
         method="POST",
     )
-    with urllib.request.urlopen(req, timeout=20) as reply:  # noqa: S310 - operator-supplied URL
+    with urllib.request.urlopen(req, timeout=20) as reply:
         payload = json.loads(reply.read().decode())
     text = ""
     choices = payload.get("choices") or []

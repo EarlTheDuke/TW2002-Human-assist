@@ -1,8 +1,8 @@
 """alliance-flow-v1. Peaceful allied landings and plain proposal endings stay off."""
+import tw2k.engine.constants as K
 from tw2k.engine import Action, ActionKind, GameConfig, generate_universe
 from tw2k.engine.models import Alliance, Planet, PlanetClass, Player, Ship, ShipClass
 from tw2k.engine.runner import apply_action, tick_day
-import tw2k.engine.constants as K
 
 
 def _pair():

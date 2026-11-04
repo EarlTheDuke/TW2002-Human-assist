@@ -6,9 +6,8 @@ from pathlib import Path
 
 import pytest
 
-from tw2k.engine.models import Commodity
-
 from tests._cu_host import CuHost
+from tw2k.engine.models import Commodity
 
 TOK = "citadel-token-p2-000000000000000"
 SHOTS = Path(__file__).resolve().parents[1] / "artifacts" / "playtests" / "cockpit-citadel-menu-v1"

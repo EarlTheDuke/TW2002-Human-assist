@@ -3,8 +3,6 @@ from __future__ import annotations
 
 import json
 
-import pytest
-
 from tw2k.engine import GameConfig, generate_universe
 from tw2k.engine import constants as K
 from tw2k.engine.actions import Action, ActionKind

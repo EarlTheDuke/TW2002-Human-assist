@@ -4,8 +4,9 @@ from __future__ import annotations
 
 import json
 import time
+from collections.abc import Iterable
 from html import escape
-from typing import Any, Iterable
+from typing import Any
 
 from ..engine import constants as K
 from .security import DAY_PRESETS, UNIVERSE_SIZES, ai_label, credits_phrase, turns_phrase

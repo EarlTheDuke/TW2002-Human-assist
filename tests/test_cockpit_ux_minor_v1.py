@@ -6,7 +6,6 @@ column says how much is for sale, or how much room a buying port has left.
 
 from __future__ import annotations
 
-import json
 import shutil
 from pathlib import Path
 

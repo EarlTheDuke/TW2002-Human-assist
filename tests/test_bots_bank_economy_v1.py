@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from pathlib import Path
+
 import pytest
 
 from tw2k.agents.bank_brain import (
@@ -331,7 +333,7 @@ def test_pb21_no_rival_balance():
 
     import tw2k.agents.bank_brain as bank_brain
 
-    tree = ast.parse(open(bank_brain.__file__, encoding="utf-8").read())
+    tree = ast.parse(Path(bank_brain.__file__).read_text(encoding="utf-8"))
     for node in ast.walk(tree):
         if isinstance(node, ast.ImportFrom):
             assert "universe" not in (node.module or "")
@@ -353,7 +355,7 @@ def test_pb22_no_rng():
     import tw2k.agents.bank_brain as bank_brain
     from tw2k.agents.bank_brain import away_reserve, nest_egg, purse, withdraw_amount
 
-    tree = ast.parse(open(bank_brain.__file__, encoding="utf-8").read())
+    tree = ast.parse(Path(bank_brain.__file__).read_text(encoding="utf-8"))
     banned = {"random", "rng", "randint", "choice", "uniform"}
     for node in ast.walk(tree):
         if isinstance(node, ast.ImportFrom):
@@ -758,13 +760,13 @@ def test_bb27_nest_egg_is_deposited_before_the_away_reserve():
         return obs
 
     brain = SeatBrain()
-    brain._away_cash = lambda v: 150_000  # noqa: SLF001
+    brain._away_cash = lambda v: 150_000
     empty = brain.decide(obs_for(0))
     assert empty["kind"] == "bank_deposit"
     assert empty["args"]["amount"] == 10_000
 
     full = SeatBrain()
-    full._away_cash = lambda v: 150_000  # noqa: SLF001
+    full._away_cash = lambda v: 150_000
     assert full.decide(obs_for(10_000))["kind"] != "bank_deposit"
 
 

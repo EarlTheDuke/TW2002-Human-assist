@@ -5,7 +5,6 @@ from __future__ import annotations
 import pytest
 
 from tw2k.engine import Action, ActionKind, GameConfig, apply_action, generate_universe
-from tw2k.engine import constants as K
 from tw2k.engine.models import Commodity, Player
 
 pytestmark = pytest.mark.legacy_profile

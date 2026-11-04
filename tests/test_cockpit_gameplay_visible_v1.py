@@ -7,9 +7,8 @@ from pathlib import Path
 import pytest
 
 import tw2k.engine.constants as K
-from tw2k.engine.models import Commodity, MineDeployment, MineType
-
 from tests._cu_host import CuHost
+from tw2k.engine.models import Commodity, MineDeployment, MineType
 
 TOK = "visible-token-p2-0000000000000000"
 SHOTS = Path(__file__).resolve().parents[1] / "artifacts" / "playtests" / "cockpit-gameplay-visible-v1"

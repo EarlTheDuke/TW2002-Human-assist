@@ -5,9 +5,8 @@ from __future__ import annotations
 from pathlib import Path
 
 import tw2k.engine.constants as K
-from tw2k.engine.models import FighterDeployment, FighterMode, MineDeployment, MineType
-
 from tests._cu_host import CuHost
+from tw2k.engine.models import FighterDeployment, FighterMode, MineDeployment, MineType
 
 TOK = "n42-polish-token-p2-00000000000000"
 SHOTS = Path(__file__).resolve().parents[1] / "artifacts" / "playtests" / "note42-polish-v1"

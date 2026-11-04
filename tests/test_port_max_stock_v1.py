@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import random
 import statistics
+from pathlib import Path
 
 import tw2k.engine.constants as K
 from tw2k.engine import GameConfig, generate_universe
@@ -94,4 +95,4 @@ def test_v311_pair_drains_like_economy3(monkeypatch):
 def test_manual_line():
     from tw2k.public import manual
     assert "PORT_MAX_STOCK_MODE" in manual._SWITCH_PLAIN
-    assert "takes a few percent off a port pair each trip" in open(manual.__file__).read()
+    assert "takes a few percent off a port pair each trip" in Path(manual.__file__).read_text()

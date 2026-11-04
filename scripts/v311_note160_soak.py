@@ -208,7 +208,15 @@ def _audit(universe, day: int) -> list[dict[str, Any]]:
 
 def run_soak(seed: int, days: int, universe_size: int) -> dict[str, Any]:
     from tw2k.agents.cockpit_seat import SeatBrain as ScriptedTrader
-    from tw2k.engine import Action, GameConfig, apply_action, build_observation, generate_universe, is_finished, tick_day
+    from tw2k.engine import (
+        Action,
+        GameConfig,
+        apply_action,
+        build_observation,
+        generate_universe,
+        is_finished,
+        tick_day,
+    )
     from tw2k.engine import constants as K
     from tw2k.engine.models import Player, Ship
     from tw2k.engine.presence import mark_ai_cockpit
@@ -264,8 +272,9 @@ def run_soak(seed: int, days: int, universe_size: int) -> dict[str, Any]:
         elif kind in makers:
             brain = makers[kind]()
         else:
-            from tw2k.agents import HeuristicAgent
             import zlib
+
+            from tw2k.agents import HeuristicAgent
             agent = HeuristicAgent(pid, name, seed=zlib.crc32(f"{seed}:{pid}".encode()))
         state[pid] = {
             "kind": kind, "name": name, "brain": brain, "agent": agent,

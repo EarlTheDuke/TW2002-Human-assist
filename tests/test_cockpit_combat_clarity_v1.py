@@ -11,7 +11,6 @@ from pathlib import Path
 
 import pytest
 
-import tw2k.engine.constants as K
 from tests._cu_host import CuHost
 from tw2k.engine.bank import on_ship_lost
 from tw2k.engine.models import EventKind, ShipClass

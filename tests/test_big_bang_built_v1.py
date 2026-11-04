@@ -8,6 +8,7 @@ Length ... Default is 45". Bubbles are Gold-only (S1), so none.
 from __future__ import annotations
 
 from collections import deque
+from pathlib import Path
 
 import tw2k.engine.constants as K
 from tw2k.engine.models import GameConfig
@@ -69,5 +70,5 @@ def test_manual_line(monkeypatch):
     monkeypatch.setattr(K, "V311_PROFILE", "v311")
     from tw2k.public import manual
     assert "BIG_BANG_BUILT_MODE" in manual._SWITCH_PLAIN
-    src = open(manual.__file__).read()
+    src = Path(manual.__file__).read_text()
     assert "95 percent of its 40 percent possible starports" in src

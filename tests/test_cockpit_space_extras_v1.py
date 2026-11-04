@@ -136,8 +136,6 @@ def _empty_sector(universe) -> int:
     raise AssertionError("no empty sector")
 
 
-def world(tmp_path_factory):
-    return None
 
 
 def _install():

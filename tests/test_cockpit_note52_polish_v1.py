@@ -8,10 +8,9 @@ from pathlib import Path
 
 import pytest
 
+from tests._cu_host import CuHost
 from tw2k.engine.ferrengi import _make_ferrengi, open_ferrengi_encounter
 from tw2k.engine.models import Commodity
-
-from tests._cu_host import CuHost
 
 TOK = "note52-polish-token-p2-00000000000"
 TOK1 = "note52-polish-token-p1-00000000000"

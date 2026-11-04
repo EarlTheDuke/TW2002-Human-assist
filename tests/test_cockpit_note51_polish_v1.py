@@ -8,12 +8,11 @@ from pathlib import Path
 import pytest
 
 import tw2k.engine.constants as K
+from tests._cu_host import CuHost
+from tests._refresh import wait_refreshes
 from tw2k.engine.ferrengi import _make_ferrengi, open_ferrengi_encounter
 from tw2k.engine.models import Commodity, PlanetClass
 from tw2k.engine.observation import build_observation
-
-from tests._cu_host import CuHost
-from tests._refresh import wait_refreshes
 
 TOK = "note51-polish-token-p2-00000000000"
 TOK1 = "note51-polish-token-p1-00000000000"

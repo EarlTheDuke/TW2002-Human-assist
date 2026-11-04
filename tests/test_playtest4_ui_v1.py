@@ -9,9 +9,11 @@
 from __future__ import annotations
 
 import tw2k.engine.constants as K
-from tests.test_colonist_units_v1 import _land, _world as _col_world
+from tests.test_colonist_units_v1 import _land
+from tests.test_colonist_units_v1 import _world as _col_world
+from tests.test_note73_beta_addendum_v1 import _seat
+from tests.test_note73_beta_addendum_v1 import _world as _yard_world
 from tests.test_note162_buildable_v1 import _world as _cim_world
-from tests.test_note73_beta_addendum_v1 import _seat, _world as _yard_world
 from tw2k.engine import Action, ActionKind, apply_action
 from tw2k.engine.legality import legal_actions
 from tw2k.engine.models import Commodity, EventKind, PlanetClass

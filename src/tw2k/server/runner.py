@@ -739,7 +739,7 @@ class MatchRunner:
         async def _ask(agent):
             try:
                 action = await asyncio.wait_for(agent.act(obs[agent.player_id]), timeout=deadline)
-            except (asyncio.TimeoutError, TimeoutError):
+            except TimeoutError:
                 action = None
             if action is None:
                 action = Action(kind=ActionKind.WAIT, thought="[async day] no answer — wait")
@@ -1144,7 +1144,6 @@ class MatchRunner:
                 # agent_kind (unchanged behaviour for heuristic / llm /
                 # manual-human submissions).
                 override = getattr(action, "actor_kind", None)
-                turns_before = player.turns_today
                 credits_before = int(player.credits)
                 cockpit_pre = None
                 if K.cockpit_fields_on() and hasattr(agent, "cockpit_verdict"):

@@ -32,7 +32,7 @@ def _free_block(n: int) -> int:
 
 def _start(env: dict, root: Path, url: str) -> subprocess.Popen:
     p = subprocess.Popen([sys.executable, "-m", "tw2k.cli", "lobby"], env=env, cwd=str(REPO),
-                         stdout=open(root / "lobby.out", "ab"), stderr=subprocess.STDOUT)
+                         stdout=open(root / "lobby.out", "ab"), stderr=subprocess.STDOUT)  # noqa: SIM115 - the child process keeps this handle
     deadline = time.time() + 60
     while time.time() < deadline:
         assert p.poll() is None, (root / "lobby.out").read_text(errors="replace")

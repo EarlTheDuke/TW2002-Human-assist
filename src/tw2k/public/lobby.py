@@ -24,13 +24,12 @@ from starlette.responses import HTMLResponse, JSONResponse, RedirectResponse, Re
 from starlette.routing import Route, WebSocketRoute
 from starlette.websockets import WebSocket
 
+from ..engine.constants import lobby_idle_limit_s as _idle_limit
 from . import pages
 from . import worker as W
-from ..engine.constants import lobby_idle_limit_s as _idle_limit
+from .ai_seat import AiMemory, drive_seats, mask_key
 from .config import LobbyConfig, pick_port
 from .proxy import Proxy
-from .ai_seat import AiMemory, drive_seats, mask_key
-from .share_url import request_origin, seat_link
 from .security import (
     GUEST_COOKIE,
     GUEST_COOKIE_MAX_AGE,
@@ -48,8 +47,17 @@ from .security import (
     parse_game_form,
     sha256_hex,
 )
+from .share_url import request_origin, seat_link
 from .store import ACTIVE, LIVE, Store
-from .workers import WorkerManager, admin_headers, ai_count, ai_seat_ids, cockpit_count, cockpit_seat_ids, seat_ids
+from .workers import (
+    WorkerManager,
+    admin_headers,
+    ai_count,
+    ai_seat_ids,
+    cockpit_count,
+    cockpit_seat_ids,
+    seat_ids,
+)
 
 log = logging.getLogger("tw2k.lobby")
 
@@ -65,7 +73,7 @@ _SECURITY_HEADERS = {
 }
 
 
-class TooLarge(Exception):
+class TooLarge(Exception):  # noqa: N818 - control flow for oversized bodies
     pass
 
 
@@ -100,6 +108,7 @@ class Lobby:
         self._port_probe = port_probe
         self.ai_memory = AiMemory()
         self.ai_tasks: dict[str, asyncio.Task] = {}
+        self._bg_tasks: set[asyncio.Task] = set()
         self.cockpit_rows: dict[str, dict[str, Any]] = {}
         self.seat_links: dict[str, dict[str, str]] = {}
         self._task: asyncio.Task | None = None
@@ -116,6 +125,16 @@ class Lobby:
     @property
     def closed(self) -> bool:
         return self.store.flag("closed") == "1"
+
+    def _spawn(self, coro) -> asyncio.Task:
+        """Start a background task and hold a reference until it finishes.
+
+        asyncio keeps only weak references to tasks, so an unreferenced task can be
+        garbage-collected before it completes."""
+        task = asyncio.create_task(coro)
+        self._bg_tasks.add(task)
+        task.add_done_callback(self._bg_tasks.discard)
+        return task
 
     def lock(self, gid: str) -> asyncio.Lock:
         return self.locks.setdefault(gid, asyncio.Lock())
@@ -1030,7 +1049,7 @@ class Lobby:
             if g["status"] == "sleeping" or g["status"] == "running":
                 if self.live_games() >= self.cfg.max_games and g["status"] == "sleeping":
                     return self._api_or(api, 503, pages.FULL_TEXT, request, title="Beta full")
-                asyncio.create_task(self.start_game(gid, resume=True))
+                self._spawn(self.start_game(gid, resume=True))
             if api:
                 return JSONResponse({"detail": "the game is waking up; retry in a few seconds", "seat": seat},
                                     status_code=503, headers={"retry-after": "5"})
@@ -1285,7 +1304,7 @@ class Lobby:
                     {"detail": pages.FULL_TEXT}, status_code=503)
             if not self.lock(gid).locked():
                 log.info("wake game=%s %s", gid, self.tag(request))
-                asyncio.create_task(self.start_game(gid, resume=True))
+                self._spawn(self.start_game(gid, resume=True))
             if wants_html:
                 return self.html(pages.waking(self.brand, g["name"]), 503)
             return JSONResponse({"detail": "this game is waking up; retry in a few seconds"}, status_code=503,
