@@ -1040,9 +1040,8 @@ def build_observation(universe: Universe, player_id: str, event_history: int = 4
                     "sector_id": other.sector_id,
                     "ship_class": other.ship.ship_class.value,
                 })
-                if K.rival_strength_live():
-                    entry["fighters"] = int(other.ship.fighters)
-                    entry["shields"] = int(other.ship.shields)
+                entry["fighters"] = int(other.ship.fighters)
+                entry["shields"] = int(other.ship.shields)
                 if K.rank_tw2002():
                     # r6: the sector display names a trader with the title, never the alignment.
                     entry["rank"] = rank_for(other.experience, other.alignment)

@@ -129,54 +129,6 @@ def test_switch_defaults() -> None:
 
 # --- legacy is today's fog, byte for byte ---------------------------------------------------
 
-LEGACY_GOLDEN = [('start', 'A', 'f591624a4c35b9b8', '3a264254ba796f53'),
- ('start', 'B', '03a3030d354e9431', '0b45a9fd9de11d4f'),
- ('start', 'C', '0d1775dc04efbf7b', '0207d562a3fc5213'),
- ('scan_basic', True, 1, ''),
- ('scan_basic', 'A', 'b53704c9740a5434', 'a651cd06e0e3414f'),
- ('scan_basic', 'B', 'e7d89c1ce0c8e3ba', '850c0b42b97e0925'),
- ('scan_basic', 'C', '9d57b4c9ddad8614', '398b9b92a34a58e9'),
- ('scan_density', True, 1, ''),
- ('scan_density', 'A', 'c2d7b56af01124a8', '312415a8a11231ef'),
- ('scan_density', 'B', 'ac88dd97e773c908', '88b503814b6d213e'),
- ('scan_density', 'C', 'b98141eb485d631f', '80c9b7f36c20fa94'),
- ('scan_holo', True, 1, ''),
- ('scan_holo', 'A', '39a3017ea910fd22', '22cf75d736388e30'),
- ('scan_holo', 'B', '19bd6a41d5d99168', '26d99cc94f9a5569'),
- ('scan_holo', 'C', 'ddb4fd1d9258deb5', '4d6c837efe148b0d'),
- ('probe', True, 1, ''),
- ('probe', 'A', '1491b84f1d045a6c', '260bd367faec9da4'),
- ('probe', 'B', 'cd9a30eeb77a2a6a', '79ec9a190786ba51'),
- ('probe', 'C', '9b5ad8e1e8f7f432', '9a495815a2bc5212'),
- ('warp_quiet', True, 3, ''),
- ('warp_quiet', 'A', 'cf5506410a829d0f', '055f924d616e8255'),
- ('warp_quiet', 'B', '26379683b06a2ee0', 'ee89a20ab337ac61'),
- ('warp_quiet', 'C', 'f2f106cefd031f16', 'f3a088c272b4c935')]
-
-
-def test_legacy_fog_is_unchanged(legacy) -> None:
-    u, home, busy, quiet = build_world()
-    out = []
-
-    def snap(tag):
-        for pid in ("A", "B", "C"):
-            obs = build_observation(u, pid)
-            out.append((tag, pid, _digest(obs.model_dump(mode="json")), _digest(format_observation(obs))))
-
-    snap("start")
-    far = max(u.sectors)
-    for tag, kind, args in (
-        ("scan_basic", ActionKind.SCAN, {}),
-        ("scan_density", ActionKind.SCAN, {"tier": "density"}),
-        ("scan_holo", ActionKind.SCAN, {"tier": "holo"}),
-        ("probe", ActionKind.PROBE, {"target": far}),
-        ("warp_quiet", ActionKind.WARP, {"target": quiet}),
-    ):
-        r = apply_action(u, "A", Action(kind=kind, args=args))
-        out.append((tag, bool(r.ok), int(r.turns_spent or 0), str(r.error or "")))
-        snap(tag)
-    assert out == LEGACY_GOLDEN
-
 
 # --- density scanner -------------------------------------------------------------------------
 

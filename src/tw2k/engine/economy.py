@@ -144,8 +144,7 @@ def haggle_room_pct(mcic: int, commodity: str | None = None) -> float:
 def haggle_experience(bargain: int, span: int) -> int:
     """Experience for one accepted counter that beat the list price.
 
-    Legacy is the credit gap, stopped at PORT_HAGGLE_XP_CAP.
-    Live (NOTE 87, HAGGLE_EXP_MODE) is +1 for a good haggle and +2 for a
+    NOTE 87: +1 for a good haggle and +2 for a
     great one. UNVERIFIED, searched: HardwareMenu.html lines 240-241 (better
     deal, more points, no amounts), S2_cabal_formulas.html (no split),
     S7_softdocs_slice-10.txt ("haggle for 2 points"), and Eugene Hung's
@@ -156,8 +155,6 @@ def haggle_experience(bargain: int, span: int) -> int:
     gap = int(bargain)
     if gap <= 0:
         return 0
-    if not K.haggle_exp_live():
-        return min(int(K.PORT_HAGGLE_XP_CAP), gap)
     if int(span) > 0 and gap >= int(span):
         return int(K.HAGGLE_EXP_GREAT)
     return int(K.HAGGLE_EXP_GOOD)
