@@ -12,7 +12,7 @@ pytestmark = pytest.mark.legacy_profile
 
 PORT_TOK = "fighters-port-token-p2-000000000000"
 DOCK_TOK = "fighters-dock-token-p2-000000000000"
-SHOTS = Path(__file__).resolve().parents[1] / "docs" / "playtests" / "cockpit-fighters-mines-v1"
+SHOTS = Path(__file__).resolve().parents[1] / "artifacts" / "playtests" / "cockpit-fighters-mines-v1"
 WIDTHS = ((1920, 1080, "1920"), (1366, 768, "1366"), (390, 844, "390"))
 
 

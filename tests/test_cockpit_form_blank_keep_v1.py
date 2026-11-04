@@ -22,7 +22,7 @@ pytestmark = pytest.mark.legacy_profile
 
 DOCK_TOK = "blank-dock-token-p2-0000000000000"
 PORT_TOK = "blank-port-token-p2-0000000000000"
-SHOTS = Path(__file__).resolve().parents[1] / "docs" / "playtests" / "cockpit-form-blank-keep-v1"
+SHOTS = Path(__file__).resolve().parents[1] / "artifacts" / "playtests" / "cockpit-form-blank-keep-v1"
 WIDTHS = ((1920, 1080, "1920"), (390, 844, "390"))
 
 

@@ -9,7 +9,7 @@ from tests._cu_host import VIEW_H, VIEW_W, CuHost
 
 TOK = "sector-visits-v1-token-p2-00000000000"
 MAP_TOP = {1440: 714, 1920: 927}
-SHOTS = Path(__file__).resolve().parents[1] / "docs" / "playtests" / "cockpit-polish-v1"
+SHOTS = Path(__file__).resolve().parents[1] / "artifacts" / "playtests" / "cockpit-polish-v1"
 
 
 def _open(page, host) -> None:

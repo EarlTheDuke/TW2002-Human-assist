@@ -33,7 +33,7 @@ from tw2k.server.runner import AgentSpec, MatchRunner, MatchSpec
 pytestmark = pytest.mark.legacy_profile
 
 REPO = Path(__file__).resolve().parents[1]
-SHOTS = REPO / "docs" / "playtests" / "cockpit-nav-and-map-v1"
+SHOTS = REPO / "artifacts" / "playtests" / "cockpit-nav-and-map-v1"
 
 
 def test_item0_validation_accepts_original_presets_and_custom_and_rejects_the_rest() -> None:

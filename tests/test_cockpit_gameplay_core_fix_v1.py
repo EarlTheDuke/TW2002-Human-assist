@@ -13,7 +13,7 @@ pytestmark = pytest.mark.legacy_profile
 
 DOCK_TOK = "core-dock-token-p2-000000000000"
 PORT_TOK = "core-port-token-p2-000000000000"
-SHOTS = Path(__file__).resolve().parents[1] / "docs" / "playtests" / "cockpit-gameplay-core-fix-v1"
+SHOTS = Path(__file__).resolve().parents[1] / "artifacts" / "playtests" / "cockpit-gameplay-core-fix-v1"
 
 
 def _page(pw, host, token):

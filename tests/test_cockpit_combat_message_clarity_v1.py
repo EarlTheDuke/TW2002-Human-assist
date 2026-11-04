@@ -15,7 +15,7 @@ from tests._cu_host import CuHost
 
 TOK = "note63-clarity-token-p2-0000000000"
 TOK1 = "note63-clarity-token-p1-0000000000"
-SHOTS = Path(__file__).resolve().parents[1] / "docs" / "playtests" / "combat-message-clarity-v1"
+SHOTS = Path(__file__).resolve().parents[1] / "artifacts" / "playtests" / "combat-message-clarity-v1"
 PROMPT = "surrender costs 5 cargo holds and all your cargo; with empty holds, 5 cargo holds and 10% of the credits on board"
 
 

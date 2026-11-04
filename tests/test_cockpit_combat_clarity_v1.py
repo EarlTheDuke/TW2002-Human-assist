@@ -19,7 +19,7 @@ from tw2k.engine.models import EventKind, ShipClass
 pytestmark = pytest.mark.legacy_profile
 
 TOK = "combat-token-p2-000000000000000000"
-SHOTS = Path(__file__).resolve().parents[1] / "docs" / "playtests" / "cockpit-combat-clarity-v1"
+SHOTS = Path(__file__).resolve().parents[1] / "artifacts" / "playtests" / "cockpit-combat-clarity-v1"
 
 
 def _page(pw, host):

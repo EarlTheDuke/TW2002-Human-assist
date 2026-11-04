@@ -17,7 +17,7 @@ from tw2k.engine.runner import _handle_hail
 pytestmark = pytest.mark.legacy_profile
 
 TOK = "note103-cockpit-token-p2-00000000"
-SHOTS = Path(__file__).resolve().parents[1] / "docs" / "playtests" / "note103-v1"
+SHOTS = Path(__file__).resolve().parents[1] / "artifacts" / "playtests" / "note103-v1"
 
 
 def _ready(host: CuHost):

@@ -15,7 +15,7 @@ from tw2k.engine.planets import _apply_one_day, planet_growth_status
 pytestmark = pytest.mark.legacy_profile
 
 TOK = "note49-polish-token-p2-00000000000"
-SHOTS = Path(__file__).resolve().parents[1] / "docs" / "playtests" / "note49-polish-v1"
+SHOTS = Path(__file__).resolve().parents[1] / "artifacts" / "playtests" / "note49-polish-v1"
 
 
 def _total(planet: Planet) -> int:

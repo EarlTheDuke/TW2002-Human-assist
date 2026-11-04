@@ -30,12 +30,12 @@ from pathlib import Path
 import httpx
 
 ROOT = Path(__file__).resolve().parents[1]
-OUT = ROOT / "docs" / "playtests" / "cockpit-ai-seat-v2"
+OUT = ROOT / "artifacts" / "playtests" / "cockpit-ai-seat-v2"
 V2 = OUT
 # NOTE 56: --v3 turns the cockpit block on in the server and writes cockpit-ai-seat-v3.
 V3 = "--v3" in sys.argv[1:]
 if V3:
-    OUT = ROOT / "docs" / "playtests" / "cockpit-ai-seat-v3"
+    OUT = ROOT / "artifacts" / "playtests" / "cockpit-ai-seat-v3"
 TAG = "v3" if V3 else "v2"
 PORTS = range(8020, 8031)
 SEED, DAYS, TURNS, CREDITS, SECTORS = 250925, 10, 100, 20_000, 200

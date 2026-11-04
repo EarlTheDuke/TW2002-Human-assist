@@ -144,7 +144,7 @@ def main() -> int:
     ap.add_argument("--lobby-port", type=int, default=8099)
     ap.add_argument("--game-ports", default="8100-8102")
     ap.add_argument("--root", default=str(REPO / "saves" / "selfhost-smoke"))
-    ap.add_argument("--shots", default=str(REPO / "docs" / "playtests" / "selfhost-beta-v1"))
+    ap.add_argument("--shots", default=str(REPO / "artifacts" / "playtests" / "selfhost-beta-v1"))
     ap.add_argument("--days", type=int, default=3)
     ap.add_argument("--max-minutes", type=float, default=16.0)
     args = ap.parse_args()

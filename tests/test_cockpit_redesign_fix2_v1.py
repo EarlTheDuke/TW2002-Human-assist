@@ -12,7 +12,7 @@ from tests._refresh import wait_refreshes
 pytestmark = pytest.mark.legacy_profile
 
 ROOT = Path(__file__).resolve().parents[1]
-SHOTS = ROOT / "docs" / "playtests" / "cockpit-redesign-fix2-v1"
+SHOTS = ROOT / "artifacts" / "playtests" / "cockpit-redesign-fix2-v1"
 TOK = "fix2-e2e-token-p2-00000000000000"
 
 

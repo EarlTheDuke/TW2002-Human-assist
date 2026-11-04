@@ -12,7 +12,7 @@ from tw2k.engine.models import Corporation
 pytestmark = pytest.mark.legacy_profile
 
 TOK = "corp-token-p2-0000000000000000000"
-SHOTS = Path(__file__).resolve().parents[1] / "docs" / "playtests" / "cockpit-corp-menu-v1"
+SHOTS = Path(__file__).resolve().parents[1] / "artifacts" / "playtests" / "cockpit-corp-menu-v1"
 
 
 def _page(pw, host):

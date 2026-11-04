@@ -22,7 +22,7 @@ from tw2k.engine.scanners import handle_probe
 pytestmark = pytest.mark.legacy_profile
 
 TOK = "hazard-token-p2-000000000000000000"
-SHOTS = Path(__file__).resolve().parents[1] / "docs" / "playtests" / "cockpit-hazards-scans-v1"
+SHOTS = Path(__file__).resolve().parents[1] / "artifacts" / "playtests" / "cockpit-hazards-scans-v1"
 
 
 def _page(pw, host):

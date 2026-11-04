@@ -18,7 +18,7 @@ from tests._cu_host import CuHost
 from tw2k.engine.victory import check_victory
 
 TOK = "note73-token-p2-00000000000000000000"
-SHOTS = Path(__file__).resolve().parents[1] / "docs" / "playtests" / "beta-playtest-addendum-v1"
+SHOTS = Path(__file__).resolve().parents[1] / "artifacts" / "playtests" / "beta-playtest-addendum-v1"
 
 
 def _box_in_view(page, selector: str) -> None:

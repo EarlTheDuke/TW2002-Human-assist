@@ -11,7 +11,7 @@ from tests._cu_host import VIEW_H, VIEW_W, CuHost
 
 TOK = "cargo-tip-v1-token-p2-000000000000000"
 MAP_TOP = {1440: 714, 1920: 927}
-SHOTS = Path(__file__).resolve().parents[1] / "docs" / "playtests" / "cockpit-polish-v1"
+SHOTS = Path(__file__).resolve().parents[1] / "artifacts" / "playtests" / "cockpit-polish-v1"
 KNOWN = "Fuel ore 10, Organics 0, Equipment 4, empty 6 of 20"
 
 

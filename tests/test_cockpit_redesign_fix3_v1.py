@@ -9,7 +9,7 @@ import pytest
 from tests._cu_host import CuHost
 
 ROOT = Path(__file__).resolve().parents[1]
-SHOTS = ROOT / "docs" / "playtests" / "cockpit-redesign-fix3-v1"
+SHOTS = ROOT / "artifacts" / "playtests" / "cockpit-redesign-fix3-v1"
 TOK = "fix3-e2e-token-p2-00000000000000"
 
 

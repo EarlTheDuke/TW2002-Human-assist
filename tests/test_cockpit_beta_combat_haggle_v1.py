@@ -18,7 +18,7 @@ from tw2k.engine.models import Corporation, EventKind, FighterDeployment, Fighte
 pytestmark = pytest.mark.legacy_profile
 
 TOK = "note71-haggle-token-p2-000000000000"
-SHOTS = Path(__file__).resolve().parents[1] / "docs" / "playtests" / "beta-combat-haggle-v1"
+SHOTS = Path(__file__).resolve().parents[1] / "artifacts" / "playtests" / "beta-combat-haggle-v1"
 
 
 def _open(browser, host):

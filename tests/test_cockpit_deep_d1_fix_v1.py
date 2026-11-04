@@ -15,7 +15,7 @@ pytestmark = pytest.mark.legacy_profile
 
 PORT_TOK = "deep-port-token-p2-000000000000"
 TURN_TOK = "deep-turn-token-p2-000000000000"
-SHOTS = Path(__file__).resolve().parents[1] / "docs" / "playtests" / "cockpit-deep-d1-fix-v1"
+SHOTS = Path(__file__).resolve().parents[1] / "artifacts" / "playtests" / "cockpit-deep-d1-fix-v1"
 WIDTHS = ((1920, 1080, "1920"), (390, 844, "390"))
 
 

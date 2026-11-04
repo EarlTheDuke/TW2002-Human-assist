@@ -13,7 +13,7 @@ from tw2k.engine.models import EventKind
 
 TOK = "paused-banner-v1-token-p2-00000000000"
 MAP_TOP = {1440: 714, 1920: 927}
-SHOTS = Path(__file__).resolve().parents[1] / "docs" / "playtests" / "cockpit-polish-v1"
+SHOTS = Path(__file__).resolve().parents[1] / "artifacts" / "playtests" / "cockpit-polish-v1"
 P2_LINE = "seat P2 disconnected - match paused"
 P3_LINE = "seat P3 disconnected - match paused"
 PRIVATE = "P3 holds 777701 credits and 424242 fighters"

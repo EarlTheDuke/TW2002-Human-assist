@@ -11,7 +11,7 @@ import tw2k.engine.constants as K
 from tests._cu_host import CuHost
 
 TOK = "info-audit-token-p2-0000000000000"
-SHOTS = Path(__file__).resolve().parents[1] / "docs" / "playtests" / "cockpit-info-audit-v1"
+SHOTS = Path(__file__).resolve().parents[1] / "artifacts" / "playtests" / "cockpit-info-audit-v1"
 
 
 def _page(pw, host):

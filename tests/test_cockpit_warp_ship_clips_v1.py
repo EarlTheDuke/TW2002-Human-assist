@@ -14,7 +14,7 @@ from tests._cu_host import CuHost
 from tw2k.engine.models import ShipClass
 
 ROOT = Path(__file__).resolve().parents[1]
-SHOTS = ROOT / "docs" / "playtests" / "cockpit-warp-ship-clips-v1"
+SHOTS = ROOT / "artifacts" / "playtests" / "cockpit-warp-ship-clips-v1"
 TOK = "warp-clips-v1-token-p2-0000000000"
 HULLS = tuple(cls.value for cls in ShipClass)
 

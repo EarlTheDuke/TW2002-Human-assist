@@ -25,7 +25,7 @@ from tw2k.engine.planets import (
 
 pytestmark = pytest.mark.legacy_profile
 
-SHOTS = Path(__file__).resolve().parents[1] / "docs" / "playtests" / "class-m-production-units-v1"
+SHOTS = Path(__file__).resolve().parents[1] / "artifacts" / "playtests" / "class-m-production-units-v1"
 # S1_planet_handbook_v1.01.html section VII, CITADEL ADVANCEMENT TABLES, rows L1..L6 as printed.
 S1_SECTION_VII = """
 M Colo 1000 2000 4000 6000 6000 6000 | F/O 300 200 500 1000 300 1000 | Org 200 50 250 1200 400 1200 | Equ 250 250 500 1000 1000 2000 | Days 4 4 5 10 5 15

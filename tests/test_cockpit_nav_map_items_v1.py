@@ -26,7 +26,7 @@ from tw2k.server.runner import AgentSpec, MatchSpec
 pytestmark = pytest.mark.legacy_profile
 
 REPO = Path(__file__).resolve().parents[1]
-SHOTS = REPO / "docs" / "playtests" / "cockpit-nav-and-map-v1"
+SHOTS = REPO / "artifacts" / "playtests" / "cockpit-nav-and-map-v1"
 TOK = "n" * 40
 PATH = [173, 975, 948, 445, 739, 1]
 

@@ -13,7 +13,7 @@ from pathlib import Path
 from tests._cu_host import CuHost
 
 TOK = "plot-execute-v2-token-p2-000000000000"
-SHOT = Path(__file__).resolve().parents[1] / "docs" / "playtests" / "cockpit-play-fixes" / "plan-only.png"
+SHOT = Path(__file__).resolve().parents[1] / "artifacts" / "playtests" / "cockpit-play-fixes" / "plan-only.png"
 COPY = Path(r"C:\Users\sugar\tw2002_reference\cockpit_assets\screens\plan-only.png")
 
 

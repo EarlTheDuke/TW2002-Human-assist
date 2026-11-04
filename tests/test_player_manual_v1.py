@@ -24,7 +24,7 @@ from tw2k.public.worker import rewrite_text
 from tw2k.server.app import create_app
 
 REPO = Path(__file__).resolve().parents[1]
-SHOTS = REPO / "docs" / "playtests" / "player-manual-v1"
+SHOTS = REPO / "artifacts" / "playtests" / "player-manual-v1"
 HEADINGS = [title for _sid, title in SECTIONS]
 
 

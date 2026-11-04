@@ -12,7 +12,7 @@ from pathlib import Path
 from tests._cu_host import CuHost
 
 TOK = "turn-regen-v1-token-p2-00000000000000"
-SHOT = Path(__file__).resolve().parents[1] / "docs" / "playtests" / "cockpit-turn-regen" / "turns-back.png"
+SHOT = Path(__file__).resolve().parents[1] / "artifacts" / "playtests" / "cockpit-turn-regen" / "turns-back.png"
 COPY = Path(r"C:\Users\sugar\tw2002_reference\cockpit_assets\screens\turns-back.png")
 
 

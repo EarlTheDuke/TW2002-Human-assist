@@ -70,3 +70,12 @@ web/media/clips/custom/*
 # Local cleanup archive and local-only notes that hold secrets
 _archive/
 docs/MIXED_LLM_ACCESS.md
+
+# Screenshots and video belong in artifacts/ (ignored), not in docs/.
+docs/**/*.png
+docs/**/*.jpg
+docs/**/*.jpeg
+docs/**/*.gif
+docs/**/*.webp
+docs/**/*.webm
+docs/**/*.mp4

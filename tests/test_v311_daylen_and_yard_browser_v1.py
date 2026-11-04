@@ -3,7 +3,7 @@
 One page per roster. The v3.11 page runs a 600 s day with 60 turns (a turn every 10 s):
 the shipyard on day 1, out of turns, the day-2 roll on the clock, a Citadel L1 built on
 day 2 and finished on day 6. The legacy page shows the old roster and the old lines.
-Screens: docs/playtests/v311-daylen-and-yard-v1/{1920,390}-*.png.
+Screens: artifacts/playtests/v311-daylen-and-yard-v1/{1920,390}-*.png.
 """
 
 from __future__ import annotations
@@ -21,7 +21,7 @@ from tw2k.engine.models import Commodity, Planet, PlanetClass
 pytestmark = pytest.mark.legacy_profile
 
 TOK = "daylen-token-p2-0000000000000000000"
-SHOTS = Path(__file__).resolve().parents[1] / "docs" / "playtests" / "v311-daylen-and-yard-v1"
+SHOTS = Path(__file__).resolve().parents[1] / "artifacts" / "playtests" / "v311-daylen-and-yard-v1"
 DAY_S = 600.0
 
 

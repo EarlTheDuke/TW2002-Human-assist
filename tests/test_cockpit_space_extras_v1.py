@@ -17,7 +17,7 @@ from tw2k.engine.models import Commodity, PortClass
 pytestmark = pytest.mark.legacy_profile
 
 TOK = "space-token-p2-0000000000000000000"
-SHOTS = Path(__file__).resolve().parents[1] / "docs" / "playtests" / "cockpit-space-extras-v1"
+SHOTS = Path(__file__).resolve().parents[1] / "artifacts" / "playtests" / "cockpit-space-extras-v1"
 GOODS = (Commodity.FUEL_ORE, Commodity.ORGANICS, Commodity.EQUIPMENT)
 
 

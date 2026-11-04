@@ -5,7 +5,7 @@ from __future__ import annotations
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
-SHOTS = ROOT / "docs" / "playtests" / "dashboard-cockpit-link-v1"
+SHOTS = ROOT / "artifacts" / "playtests" / "dashboard-cockpit-link-v1"
 REF = Path(r"C:\Users\sugar\tw2002_reference\dashboard_test\qc\dashboard-cockpit-link-v1")
 SPEC = "dash-cockpit-link-v1-secret"
 

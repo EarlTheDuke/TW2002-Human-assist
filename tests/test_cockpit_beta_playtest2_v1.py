@@ -19,7 +19,7 @@ from tw2k.engine.models import MineType
 pytestmark = pytest.mark.legacy_profile
 
 ROOT = Path(__file__).resolve().parents[1]
-SHOTS = ROOT / "docs" / "playtests" / "beta-playtest2-v1"
+SHOTS = ROOT / "artifacts" / "playtests" / "beta-playtest2-v1"
 TOK = "note106-playtest2-token-p2-00000000"
 VIEWPORTS = ((1280, 720), (1600, 1000), (390, 844))
 DAY_LINE = re.compile(r"Day \d+ ends in \d+:\d{2}(?::\d{2})?; turns refill at dawn")

@@ -11,7 +11,7 @@ import tw2k.engine.constants as K
 from tests._cu_host import CuHost
 
 TOK = "note47-polish-token-p2-00000000000"
-SHOTS = Path(__file__).resolve().parents[1] / "docs" / "playtests" / "note47-polish-v1"
+SHOTS = Path(__file__).resolve().parents[1] / "artifacts" / "playtests" / "note47-polish-v1"
 
 
 def _page(pw, host):

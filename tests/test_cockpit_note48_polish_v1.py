@@ -14,7 +14,7 @@ from tw2k.engine.planets import planet_growth_status
 pytestmark = pytest.mark.legacy_profile
 
 TOK = "note48-polish-token-p2-00000000000"
-SHOTS = Path(__file__).resolve().parents[1] / "docs" / "playtests" / "note48-polish-v1"
+SHOTS = Path(__file__).resolve().parents[1] / "artifacts" / "playtests" / "note48-polish-v1"
 
 
 def _page(pw, host):

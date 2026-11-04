@@ -17,7 +17,7 @@ from tests._refresh import wait_refreshes
 
 TOK = "note51-polish-token-p2-00000000000"
 TOK1 = "note51-polish-token-p1-00000000000"
-SHOTS = Path(__file__).resolve().parents[1] / "docs" / "playtests" / "note51-polish-v1"
+SHOTS = Path(__file__).resolve().parents[1] / "artifacts" / "playtests" / "note51-polish-v1"
 
 
 def _page(pw, host, token, seat):

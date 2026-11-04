@@ -16,7 +16,7 @@ from tests._cu_host import CuHost
 pytestmark = pytest.mark.legacy_profile
 
 ROOT = Path(__file__).resolve().parents[1]
-SHOTS = ROOT / "docs" / "playtests" / "cockpit-dashboard-custom-v1"
+SHOTS = ROOT / "artifacts" / "playtests" / "cockpit-dashboard-custom-v1"
 TOK = "deck-custom-v1-token-p2-00000000000"
 PANELS = ("sectorReport", "nav", "ship", "context", "term")
 

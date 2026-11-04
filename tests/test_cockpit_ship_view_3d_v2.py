@@ -14,7 +14,7 @@ from tw2k.engine.models import ShipClass
 pytestmark = pytest.mark.legacy_profile
 
 ROOT = Path(__file__).resolve().parents[1]
-SHOTS = ROOT / "docs" / "playtests" / "cockpit-ship-view-3d-v2"
+SHOTS = ROOT / "artifacts" / "playtests" / "cockpit-ship-view-3d-v2"
 JS = ROOT / "web" / "redesign.js"
 TOK = "ship-view-3d-v2-token-p2-0000000000"
 LABELS = ("Fighters", "Shields", "Holds", "armid mines", "limpet mines", "Cloaks", "Disruptors", "Towing nothing")

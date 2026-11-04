@@ -12,7 +12,7 @@ from tests._cu_host import CuHost
 pytestmark = pytest.mark.legacy_profile
 
 ROOT = Path(__file__).resolve().parents[1]
-SHOTS = ROOT / "docs" / "playtests" / "cockpit-redesign-gate-v1"
+SHOTS = ROOT / "artifacts" / "playtests" / "cockpit-redesign-gate-v1"
 TOK = "gate-e2e-token-p2-000000000000000"
 
 

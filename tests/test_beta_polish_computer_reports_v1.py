@@ -20,7 +20,7 @@ from tw2k.server.reference import game_reference
 pytestmark = pytest.mark.legacy_profile
 
 REPO = Path(__file__).resolve().parents[1]
-SHOTS = REPO / "docs" / "playtests" / "beta-polish-computer-reports-v1"
+SHOTS = REPO / "artifacts" / "playtests" / "beta-polish-computer-reports-v1"
 REDESIGN = (REPO / "web" / "redesign.js").read_text(encoding="utf-8")
 TOK = "n88-e2e-token-p2-000000000000000"
 

@@ -13,7 +13,7 @@ from tw2k.engine.models import EventKind, FerrengiShip, Planet, PlanetClass
 pytestmark = pytest.mark.legacy_profile
 
 TOK = "d8-combat-token-p2-000000000000000"
-SHOTS = Path(__file__).resolve().parents[1] / "docs" / "playtests" / "d8-combat-planet-fixes-v1"
+SHOTS = Path(__file__).resolve().parents[1] / "artifacts" / "playtests" / "d8-combat-planet-fixes-v1"
 
 
 def _page(pw, host):

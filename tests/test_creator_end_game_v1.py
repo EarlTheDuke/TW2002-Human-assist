@@ -38,7 +38,7 @@ REDESIGN = (ROOT / "web" / "redesign.js").read_text(encoding="utf-8")
 BOT_HTML = (ROOT / "web" / "bot.html").read_text(encoding="utf-8")
 BOT_JS = (ROOT / "web" / "bot.js").read_text(encoding="utf-8")
 BOT_PARITY = (ROOT / "web" / "bot-parity.js").read_text(encoding="utf-8")
-SHOTS = ROOT / "docs" / "playtests" / "creator-end-game-v1"
+SHOTS = ROOT / "artifacts" / "playtests" / "creator-end-game-v1"
 
 
 class _FakeWorker:

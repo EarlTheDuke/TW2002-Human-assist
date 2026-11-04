@@ -1,6 +1,6 @@
 """NOTE 97 cockpit. J is the class catalog, Z shows the reference, a landing names the reaction.
 
-Screens go to docs/playtests/note97-v1/ at 1366 and 390. The StarDock class on the
+Screens go to artifacts/playtests/note97-v1/ at 1366 and 390. The StarDock class on the
 sector line is a label: 8 while the class map is legacy, 9 while it is live.
 """
 
@@ -20,7 +20,7 @@ pytestmark = pytest.mark.legacy_profile
 
 TOK = "note97-cockpit-token-p2-000000000"
 PLANET_ID = 88097
-SHOTS = Path(__file__).resolve().parents[1] / "docs" / "playtests" / "note97-v1"
+SHOTS = Path(__file__).resolve().parents[1] / "artifacts" / "playtests" / "note97-v1"
 
 
 def _ready(host: CuHost):

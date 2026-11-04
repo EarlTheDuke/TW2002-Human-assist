@@ -10,7 +10,7 @@ from tests._cu_host import CuHost
 
 TOK = "visual-qc-v1-token-p2-00000000000"
 ROOT = Path(__file__).resolve().parents[1]
-OUT = ROOT / "docs" / "playtests" / "cockpit-visuals-v1"
+OUT = ROOT / "artifacts" / "playtests" / "cockpit-visuals-v1"
 REF = Path(r"C:\Users\sugar\tw2002_reference\cockpit_assets\screens")
 SIZES = ((1920, 1080), (1440, 900), (390, 844))
 SCREENS = ("lobby", "deep-space", "docked", "landed", "combat", "death-pod", "mid-video", "visuals-off")

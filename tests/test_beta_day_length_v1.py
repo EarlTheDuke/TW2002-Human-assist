@@ -18,7 +18,7 @@ from tw2k.public.security import DAY_PRESETS, parse_game_form
 from tw2k.server.runner import reported_turns_used
 
 REPO = Path(__file__).resolve().parents[1]
-SHOTS = REPO / "docs" / "playtests" / "beta-day-length-and-turns-v1"
+SHOTS = REPO / "artifacts" / "playtests" / "beta-day-length-and-turns-v1"
 TOK = "d" * 40
 
 

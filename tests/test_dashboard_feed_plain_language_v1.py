@@ -5,7 +5,7 @@ from __future__ import annotations
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
-SHOTS = ROOT / "docs" / "playtests" / "dashboard-feed-plain-language-v1"
+SHOTS = ROOT / "artifacts" / "playtests" / "dashboard-feed-plain-language-v1"
 REF = Path(r"C:\Users\sugar\tw2002_reference\dashboard_test\qc\dashboard-feed-plain-language-v1")
 
 

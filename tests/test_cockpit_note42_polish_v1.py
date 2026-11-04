@@ -10,7 +10,7 @@ from tw2k.engine.models import FighterDeployment, FighterMode, MineDeployment, M
 from tests._cu_host import CuHost
 
 TOK = "n42-polish-token-p2-00000000000000"
-SHOTS = Path(__file__).resolve().parents[1] / "docs" / "playtests" / "note42-polish-v1"
+SHOTS = Path(__file__).resolve().parents[1] / "artifacts" / "playtests" / "note42-polish-v1"
 
 
 def _page(pw, host):

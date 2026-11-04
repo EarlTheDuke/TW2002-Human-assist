@@ -27,7 +27,7 @@ from tw2k.public.security import FormError
 pytestmark = pytest.mark.legacy_profile
 
 REPO = Path(__file__).resolve().parents[1]
-SHOTS = REPO / "docs" / "playtests" / "terra-and-planet-ownership-v1"
+SHOTS = REPO / "artifacts" / "playtests" / "terra-and-planet-ownership-v1"
 OWN = "planet not owned by you or your corp"
 VERBS = (
     (ActionKind.ASSIGN_COLONISTS, {"from": "fuel_ore", "to": "equipment", "qty": 1}),

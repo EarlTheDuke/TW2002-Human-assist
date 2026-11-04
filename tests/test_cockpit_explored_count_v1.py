@@ -12,7 +12,7 @@ from tests.test_amz6_warp_codes import _replace_snapshot
 
 TOK = "explored-count-v1-token-p2-00000000000"
 MAP_TOP = {1440: 714, 1920: 927}
-SHOTS = Path(__file__).resolve().parents[1] / "docs" / "playtests" / "cockpit-polish-v1"
+SHOTS = Path(__file__).resolve().parents[1] / "artifacts" / "playtests" / "cockpit-polish-v1"
 
 
 def _open(page, host) -> None:

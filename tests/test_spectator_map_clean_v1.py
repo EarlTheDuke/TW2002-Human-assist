@@ -10,7 +10,7 @@ from tests._cu_host import CuHost
 from tw2k.engine.models import EventKind
 
 TOK = "spectator-map-v1-token-p2-000000000000"
-SHOTS = Path(__file__).resolve().parents[1] / "docs" / "playtests" / "cockpit-polish-v1"
+SHOTS = Path(__file__).resolve().parents[1] / "artifacts" / "playtests" / "cockpit-polish-v1"
 
 COUNTS = """() => {
   const all = document.querySelectorAll('#sectors-layer > g[data-id]').length;

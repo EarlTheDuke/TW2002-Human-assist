@@ -8,7 +8,7 @@ from pathlib import Path
 from tests._cu_host import CuHost
 
 TOK = "buy-list-v1-token-p2-000000000000000"
-SHOT = Path(__file__).resolve().parents[1] / "docs" / "playtests" / "cockpit-buy-list" / "order-cut.png"
+SHOT = Path(__file__).resolve().parents[1] / "artifacts" / "playtests" / "cockpit-buy-list" / "order-cut.png"
 COPY = Path(r"C:\Users\sugar\tw2002_reference\cockpit_assets\screens\order-cut.png")
 
 

@@ -11,7 +11,7 @@ from tests._cu_host import VIEW_H, VIEW_W, CuHost
 
 TOK = "tab-title-v1-token-p2-00000000000000"
 MAP_TOP = {1440: 714, 1920: 927}
-SHOTS = Path(__file__).resolve().parents[1] / "docs" / "playtests" / "cockpit-polish-v1"
+SHOTS = Path(__file__).resolve().parents[1] / "artifacts" / "playtests" / "cockpit-polish-v1"
 BASE = "TW2K - Grok Bot Cockpit"
 ON = f"* YOUR TURN - P2 - {BASE}"
 OFF = f"P2 - {BASE}"

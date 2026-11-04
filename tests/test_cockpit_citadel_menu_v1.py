@@ -11,7 +11,7 @@ from tw2k.engine.models import Commodity
 from tests._cu_host import CuHost
 
 TOK = "citadel-token-p2-000000000000000"
-SHOTS = Path(__file__).resolve().parents[1] / "docs" / "playtests" / "cockpit-citadel-menu-v1"
+SHOTS = Path(__file__).resolve().parents[1] / "artifacts" / "playtests" / "cockpit-citadel-menu-v1"
 
 
 def _page(pw, host):

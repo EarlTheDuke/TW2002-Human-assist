@@ -18,7 +18,7 @@ from fastapi.testclient import TestClient
 from tw2k.server.app import create_app
 
 ROOT = Path(__file__).resolve().parents[1]
-SHOTS = ROOT / "docs" / "playtests" / "dashboard-spectator-controls-v1"
+SHOTS = ROOT / "artifacts" / "playtests" / "dashboard-spectator-controls-v1"
 REF = Path(r"C:\Users\sugar\tw2002_reference\dashboard_test\qc\dashboard-spectator-controls-v1")
 SPEC = "dash-spec-controls-v1-secret"
 
