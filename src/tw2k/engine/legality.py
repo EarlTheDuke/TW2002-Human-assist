@@ -185,10 +185,7 @@ def planet_destroy_reason(universe: Universe, player, planet) -> str | None:
     allied = owner is not None and _are_allied(universe, player.id, owner)
     # NOTE 102 GAP 14.3: the owner may destroy the planet they just created.
     # A corp mate, an ally, and an unclaimed planet stay friendly.
-    if owner == player.id:
-        if not K.planet_bust_exp_live():
-            return "planet is friendly"
-    elif owner is None or same_corp or allied:
+    if owner != player.id and (owner is None or same_corp or allied):
         return "planet is friendly"
     if int(planet.fighters) > 0 or int(planet.shields) > 0:
         return "planet still has defenders"
@@ -842,24 +839,23 @@ def legal_actions(universe: Universe, player_id: str) -> list[LegalAction]:
                         swap_hull(trial, key, spec, net_cost_by[key], True)
                         nw_delta_by[key] = int(trial.net_worth) - before_nw
                     out[-1].params["ship_class"]["net_worth_delta_by"] = nw_delta_by
-                if K.yard_stats_on():
-                    # v311-daylen-and-yard-v1 item 5: the hull figures of the roster in play.
-                    out[-1].params["ship_class"]["stats_by"] = {
-                        key: {
-                            "name": str(spec.get("display_name") or key.replace("_", " ").title()),
-                            "cost": int(K.ship_cost(key)),
-                            "trade_in": int(trade_in),
-                            "holds": int(spec.get("holds", 0)),
-                            "max_holds": int(spec.get("max_holds", spec.get("holds", 0))),
-                            "max_fighters": int(spec.get("max_fighters", 0)),
-                            "max_shields": int(spec.get("max_shields", 0)),
-                            "turns_per_warp": int(spec.get("turns_per_warp", 0)),
-                            "offensive_odds": float(spec.get("offensive_odds", 1.0)),
-                            "photons": int(spec.get("max_photons", 0)) > 0,
-                            "transwarp": key in K.SHIP_TW_HULLS,
-                        }
-                        for key, spec in K.ship_specs().items()
+                # v311-daylen-and-yard-v1 item 5: the hull figures of the roster in play.
+                out[-1].params["ship_class"]["stats_by"] = {
+                    key: {
+                        "name": str(spec.get("display_name") or key.replace("_", " ").title()),
+                        "cost": int(K.ship_cost(key)),
+                        "trade_in": int(trade_in),
+                        "holds": int(spec.get("holds", 0)),
+                        "max_holds": int(spec.get("max_holds", spec.get("holds", 0))),
+                        "max_fighters": int(spec.get("max_fighters", 0)),
+                        "max_shields": int(spec.get("max_shields", 0)),
+                        "turns_per_warp": int(spec.get("turns_per_warp", 0)),
+                        "offensive_odds": float(spec.get("offensive_odds", 1.0)),
+                        "photons": int(spec.get("max_photons", 0)) > 0,
+                        "transwarp": key in K.SHIP_TW_HULLS,
                     }
+                    for key, spec in K.ship_specs().items()
+                }
                 if K.fleet_on():  # SHIP_FLEET.md fl4: optional trade_in=false buys a spare (legacy: no param)
                     from .fleet import spare_params
                     out[-1].params["trade_in"] = spare_params(universe, player_id)

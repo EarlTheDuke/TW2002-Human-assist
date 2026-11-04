@@ -1513,6 +1513,8 @@ def _v311_mode(_f: dict) -> str:
     for helper, (switch, _why) in K.V311_PROFILE_HELPERS.items():
         on = bool(getattr(K, helper)())
         rows.append((switch, _SWITCH_PLAIN[switch], "on" if on else "off"))
+    for switch in K.V311_RETIRED_SWITCHES:
+        rows.append((switch, _SWITCH_PLAIN[switch], "always"))
     return (
         f"<p>v3.11 mode is the profile for the whole game. In this process it is {profile}. "
         "On the new-game form, Rules shows Profile: legacy or Profile: v3.11. "

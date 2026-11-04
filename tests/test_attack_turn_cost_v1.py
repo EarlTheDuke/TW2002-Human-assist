@@ -38,7 +38,7 @@ def test_profile_row_is_228() -> None:
     text = PROFILE.read_text(encoding="utf-8")
     assert "| 228 | `ATTACK_TURN_MODE` | `attack_turn_live` |" in text
     assert "docs/playtests/twgs-live/attack-turn-cost-ven.txt" in text
-    assert "## The switch set (165 helpers)" in text
+    assert f"## The switch set ({len(K.V311_PROFILE_HELPERS)} helpers)" in text
 
 
 def _ship_attack(seed: int):

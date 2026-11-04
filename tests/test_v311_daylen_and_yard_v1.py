@@ -361,12 +361,8 @@ def _yard(monkeypatch, *, profile: bool):
 
 def test_item5_yard_stats_come_from_the_server_under_both_rosters(monkeypatch) -> None:
     u, legacy = _yard(monkeypatch, profile=False)
-    assert "stats_by" not in legacy.params["ship_class"]  # legacy params are unchanged
-    monkeypatch.setattr(K, "YARD_STATS_MODE", "live")
-    u, legacy = _yard(monkeypatch, profile=False)
     scout = legacy.params["ship_class"]["stats_by"]["scout_marauder"]
     assert (scout["holds"], scout["max_holds"], scout["max_fighters"]) == (25, 25, 150)  # legacy roster
-    monkeypatch.setattr(K, "YARD_STATS_MODE", "legacy")
     u, v311 = _yard(monkeypatch, profile=True)
     stats = v311.params["ship_class"]["stats_by"]
     assert set(stats) == set(v311.params["ship_class"]["net_cost_by"])
@@ -397,6 +393,5 @@ def test_item7_day_roll_wording_reads_the_server_rate() -> None:
 
 
 def test_defaults_stay_legacy() -> None:
-    assert K.YARD_STATS_MODE == "legacy" and K.yard_stats_on() is False
     assert K.TURN_REGEN_DAY_SECONDS == 86_400
     assert K.TURN_REGEN_DAY_SECONDS_ENV == "TW2K_TURN_REGEN_DAY_SECONDS"

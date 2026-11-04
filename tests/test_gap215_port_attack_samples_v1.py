@@ -37,9 +37,7 @@ def _port_combat(u):
     return next(e for e in reversed(u.events) if e.kind is EventKind.COMBAT and e.payload.get("vs") == "port")
 
 
-def test_switch_stays_legacy_and_samples_are_labeled() -> None:
-    assert K.PORT_ATTACK_MODE == "legacy"
-    assert K.port_attack_live() is False
+def test_samples_are_labeled() -> None:
     by_name = {row["name"]: row for row in K.PORT_ATTACK_GAMEA_SAMPLES}
     assert by_name["H'Catha"]["source"] == "Ven GameA 2026-10-24"
     assert by_name["Leipzig"]["source"] == "Ven GameA 2026-10-24"
@@ -98,7 +96,6 @@ def test_class_fallbacks_are_primary_samples_and_a_generated_name_does_not_inher
 def test_confirmed_pairs_fire_when_the_attack_flag_is_on(
     monkeypatch, class_id, rating, barrage, shields, dies,
 ) -> None:
-    monkeypatch.setattr(K, "PORT_ATTACK_MODE", "live")
     u, pilot = _cruiser(21501 + int(class_id) + shields, class_id)
     pilot.ship.shields = shields
     before = pilot.ship.fighters
@@ -114,15 +111,7 @@ def test_confirmed_pairs_fire_when_the_attack_flag_is_on(
     assert ev.payload["outcome"] == ("destroyed" if dies else "survived")
 
 
-def test_legacy_class_4_is_still_not_a_target() -> None:
-    u, pilot = _cruiser(21540, PortClass.CLASS_4_SSB)
-    res = _act(u, pilot.id, ActionKind.ATTACK, target="port", confirm=True, qty=30)
-    assert res.ok is False and "not found" in (res.error or "")
-    assert pilot.alignment == 0 and pilot.ship.fighters == 2500 and pilot.deaths == 0
-
-
 def test_zero_fighters_abort_before_combat(monkeypatch) -> None:
-    monkeypatch.setattr(K, "PORT_ATTACK_MODE", "live")
     u, pilot = _cruiser(21541, PortClass.CLASS_4_SSB)
     res = _act(u, pilot.id, ActionKind.ATTACK, target="port", confirm=True, qty=0)
     assert res.ok is False
@@ -132,7 +121,6 @@ def test_zero_fighters_abort_before_combat(monkeypatch) -> None:
 
 
 def test_named_variance_port_does_not_borrow_a_laser(monkeypatch) -> None:
-    monkeypatch.setattr(K, "PORT_ATTACK_MODE", "live")
     u, pilot = _cruiser(21542, PortClass.CLASS_1_BSS)
     u.sectors[pilot.sector_id].port.name = "Leipzig"
     pilot.ship.shields = 100
@@ -146,7 +134,6 @@ def test_named_variance_port_does_not_borrow_a_laser(monkeypatch) -> None:
 
 
 def test_variance_sample_can_blow_the_port_without_borrowing_a_laser(monkeypatch) -> None:
-    monkeypatch.setattr(K, "PORT_ATTACK_MODE", "live")
     monkeypatch.setattr(K, "PORT_ATTACK_ALL_CLASSES_MODE", "live")
     u, pilot = _cruiser(21543, PortClass.CLASS_3_SBB)
     u.sectors[pilot.sector_id].port.name = "Anaxagoras Primus"
@@ -165,7 +152,6 @@ def test_variance_sample_can_blow_the_port_without_borrowing_a_laser(monkeypatch
 
 
 def test_anaxagoras_def_is_not_the_peleus_fallback(monkeypatch) -> None:
-    monkeypatch.setattr(K, "PORT_ATTACK_MODE", "live")
     monkeypatch.setattr(K, "PORT_ATTACK_ALL_CLASSES_MODE", "live")
     u, pilot = _cruiser(21544, PortClass.CLASS_3_SBB)
     pilot.ship.ship_class = ShipClass.INTERDICTOR_CRUISER

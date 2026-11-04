@@ -100,15 +100,12 @@ def _install():
 world = _install()
 
 
-def test_kill_cash_stays_until_the_switch(world, monkeypatch) -> None:
+def test_a_kill_does_not_pay_the_killer(world, monkeypatch) -> None:
     universe = world["universe"]
     killer = universe.players["P2"]
     victim = universe.players["P1"]
     victim.credits = 1_000
     before = int(killer.credits)
-    assert K.KILL_CASH_MODE == "legacy"
-    assert K.kill_cash_held() is False
-    monkeypatch.setattr(K, "KILL_CASH_MODE", "tw2002")
     lost = on_ship_lost(universe, victim, "P2", True, "merchant_cruiser")
     assert lost == 1_000
     assert killer.credits == before

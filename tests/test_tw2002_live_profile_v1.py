@@ -36,7 +36,6 @@ HELPERS = (
     "planet_nw_live",
     "planet_prod_live",
     "planet_shields_active",
-    "port_attack_live",
     "port_class_live",
     "port_price_live",
     "port_regen_live",
@@ -70,7 +69,6 @@ HELPERS = (
     "port_stock_fidelity_live",
     "ship_exit_on",
     "rival_strength_live",
-    "kill_cash_held",
     "planet_landing_combat_on",
     "offensive_clash_held",
     "owner_hazard_notice_on",
@@ -83,7 +81,6 @@ HELPERS = (
     "cockpit_fields_on",
     "tax_v311",
     "pod_cash_live",
-    "yard_stats_on",
     "citadel_table_fix_live",
     "class_m_nw_units",
     "class_m_drop_units",
@@ -126,7 +123,6 @@ HELPERS = (
     "exp_sources_live",
     "special_port_defence_live",
     "planet_collision_live",
-    "planet_bust_exp_live",
     "bot_bank_float_live",
     "capture_credit_line_live",
     "mail_live",
@@ -145,7 +141,7 @@ def test_profile_stays_off_and_helpers_stay_false() -> None:
     assert K.TW2002_LIVE_PROFILE == "legacy"
     assert K.tw2002_live_profile() is False
     names = HELPERS
-    assert len(names) == 132
+    assert len(names) == 128  # Phase 2: four helpers retired (V311_RETIRED_SWITCHES)
     for name in names:
         assert getattr(K, name)() is False, name
 
@@ -158,7 +154,6 @@ def test_profile_on_turns_every_helper_on_without_moving_the_stored_flag(monkeyp
     assert K.TERRA_COLONIST_MODE == "legacy"
     assert K.SHIP_EXIT_MODE == "legacy"
     assert K.RIVAL_STRENGTH_MODE == "legacy"
-    assert K.KILL_CASH_MODE == "legacy"
     assert K.PLANET_LANDING_COMBAT_MODE == "legacy"
     assert K.OFFENSIVE_CLASH_MODE == "legacy"
     assert K.OWNER_HAZARD_NOTICE_MODE == "legacy"
@@ -172,7 +167,6 @@ def test_profile_on_turns_every_helper_on_without_moving_the_stored_flag(monkeyp
     assert K.TAX_RULE_MODE == "legacy"
     assert K.V311_PROFILE == "legacy"
     assert K.POD_CASH_MODE == "legacy"
-    assert K.YARD_STATS_MODE == "legacy"
     assert K.PORT_BUY_PRICE_ANCHOR_MODE == "legacy"
     assert K.START_COLONIST_NW_MODE == "legacy"
     assert K.COLONIST_UNITS_MODE == "legacy"
@@ -207,7 +201,6 @@ def test_profile_on_turns_every_helper_on_without_moving_the_stored_flag(monkeyp
     assert K.EXP_SOURCES_MODE == "legacy"
     assert K.SPECIAL_PORT_DEFENCE_MODE == "legacy"
     assert K.PLANET_COLLISION_MODE == "legacy"
-    assert K.PLANET_BUST_EXP_MODE == "legacy"
     assert K.CAPTURE_CREDIT_LINE_MODE == "legacy"
     assert K.ATOMIC_MINES_PORT_NUKE is True
     assert K.PLANET_TREASURY_CAP == 10_000_000

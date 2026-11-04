@@ -25,5 +25,5 @@ def test_quick_set_has_no_browser_file_and_no_slow_file() -> None:
 
 def test_every_pin_is_in_the_quick_set() -> None:
     pins = {path.name for path in TESTS.glob("test_*.py") if is_pin_file(path)}
-    assert pins, "no legacy pins found"
+    assert pins, "no pins found"
     assert pins <= {path.name for path in quick_files(TESTS)}

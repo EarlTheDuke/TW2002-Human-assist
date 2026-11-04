@@ -127,7 +127,6 @@ def test_friendly_planets_are_refused() -> None:
     sid = next(sector_id for sector_id in u.sectors if sector_id > 10)
     own = _plant(u, sid, attacker.id)
     _stand(u, attacker, sid, own.id)
-    assert _destroy(u, attacker, own.id).error == "planet is friendly"
     own.owner_id = owner.id
     own.corp_ticker = "ZZ"
     attacker.corp_ticker = "ZZ"
