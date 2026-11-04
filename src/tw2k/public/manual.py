@@ -278,8 +278,8 @@ def _walkthrough(f: dict) -> str:
     home = (
         f"When the home-planet rule is {_on(K.home_planet_live())}, you begin landed on a class M planet "
         f"outside FedSpace (sectors {_n(min(K.FEDSPACE_SECTORS))} through {_n(max(K.FEDSPACE_SECTORS))}) "
-        f"with {_n(K.HOME_PLANET_FUEL)} fuel, {_n(K.HOME_PLANET_ORGANICS)} organics and "
-        f"{_n(K.HOME_PLANET_EQUIPMENT)} equipment. Lift off, then come back."
+        f"with {_n(K.home_planet_count(K.HOME_PLANET_FUEL))} fuel, {_n(K.home_planet_count(K.HOME_PLANET_ORGANICS))} organics and "
+        f"{_n(K.home_planet_count(K.HOME_PLANET_EQUIPMENT))} equipment. Lift off, then come back."
     )
     return (
         "<ol>"
@@ -495,12 +495,14 @@ def _planets(f: dict) -> str:
         + f"<p>Class M, the home class, needs {_n(f['fuel_ratio'])} colonists per fuel unit, "
         f"{_n(f['org_ratio'])} per organics unit and {_n(f['eq_ratio'])} per equipment unit "
         "when that rule is on. A new home planet's stock is "
-        f"{_n(K.HOME_PLANET_FUEL)} fuel, {_n(K.HOME_PLANET_ORGANICS)} organics and "
-        f"{_n(K.HOME_PLANET_EQUIPMENT)} equipment when the home-planet rule is {_on(K.home_planet_live())}.</p>"
+        f"{_n(K.home_planet_count(K.HOME_PLANET_FUEL))} fuel, {_n(K.home_planet_count(K.HOME_PLANET_ORGANICS))} organics and "
+        f"{_n(K.home_planet_count(K.HOME_PLANET_EQUIPMENT))} equipment when the home-planet rule is {_on(K.home_planet_live())}.</p>"
         f"<p>A Genesis torpedo costs {_n(K.genesis_torpedo_cost())} credits and "
         f"{_n(K.GENESIS_DEPLOY_TURN_COST)} turns. It cannot be used within "
         f"{_n(K.GENESIS_MIN_HOPS_FROM_STARDOCK)} hops of StarDock. "
-        f"A sector holds at most {_n(K.PLANETS_PER_SECTOR_CAP)} planets.</p>"
+        f"A sector holds at most {_n(K.PLANETS_PER_SECTOR_CAP)} planets. "
+        "The Bible price is the switch GENESIS_BIBLE_PRICE_MODE. "
+        "The v3.11 profile turns it on. The string 1 does not.</p>"
         "<p>You can give a planet orders only when you or your corporation own it. "
         "Terra is not a planet you can claim.</p>"
         + _gated(
@@ -529,7 +531,9 @@ def _citadels(_f: dict) -> str:
     )
     return (
         "<p>A citadel is built on a planet you own. The table is colonists, fuel, organics, equipment and days "
-        f"for each class and level. The class-M fidelity rule is {_on(K.class_m_fidelity_live())}.</p>"
+        f"for each class and level. The class-M fidelity rule is {_on(K.class_m_fidelity_live())}. "
+        "Printed class M is the switch PRINTED_CLASS_M_MODE. "
+        "The v3.11 profile turns it on and keeps the handbook counts. The string 1 does not.</p>"
         + _table(("Class", "Level", "Colonists", "Fuel", "Organics", "Equipment", "Days"), rows)
         + f"<ul>{perks}</ul>"
         f"<p>The treasury pays {_n(K.PLANET_TREASURY_INTEREST_PCT)} percent a day. "
@@ -561,7 +565,9 @@ def _colonists(_f: dict) -> str:
     return (
         f"<p>Terra is in sector {_n(K.STARDOCK_SECTOR)}. It is not a planet, it cannot be claimed, and its colonists are free. "
         f"The pool starts at {_n(K.terra_start_pool())} and regrows {_n(K.TERRA_REGEN_PER_DAY)} a day. "
-        f"One hold takes {_n(K.colonists_per_hold())} colonists. Loading them costs {_n(K.TERRA_LOAD_TURNS)} turn.</p>"
+        f"One hold takes {_n(K.colonists_per_hold())} colonists. Loading them costs {_n(K.TERRA_LOAD_TURNS)} turn. "
+        "Printed Terra is the switch PRINTED_TERRA_MODE. "
+        "The v3.11 profile turns it on and keeps one colonist per hold. The string 1 does not.</p>"
         "<p>On a planet, population grows while it is under half the class cap and dies back while it is over half, "
         "when the live production rule is on. Moving colonists between the ship and the planet is an order you give while landed, "
         "and only on a planet you own.</p>"
@@ -1743,6 +1749,7 @@ _COVERS: dict[str, tuple[str, ...]] = {
         "load_planet_cargo", "dump_planet_cargo",
         "GENESIS_NAME_MODE", "GENESIS_START_MODE", "PLANET_PROD_MODE", "PLANET_COLLISION_MODE",
         "PLANET_BUST_EXP_MODE", "PLANET_COLONIST_CAP_MODE", "PLANET_GROWTH_MODE", "PLANET_NW_MODE",
+        "GENESIS_BIBLE_PRICE_MODE",
         "OWN_PLANET_TURN_MODE", "OWN_PLANET_FIGHTER_MODE", "LANDED_STATE_MODE", "PLANET_ZDY_MODE",
     ),
     "citadels": (
@@ -1750,12 +1757,14 @@ _COVERS: dict[str, tuple[str, ...]] = {
         "set_quasar_sector", "set_quasar_atm", "deposit_planet_defense", "withdraw_planet_defense",
         "CITADEL_DAYS_MODE", "CITADEL_COST_MODE", "CITADEL_PERK_MODE", "CITADEL_PARK_MODE",
         "CITADEL_TABLE_FIX_MODE", "TREASURY_CAP_MODE", "PLANET_SHIELD_ACTIVE_MODE",
+        "PRINTED_CLASS_M_MODE",
         "PLANET_SHIELD_MODE", "PLANET_DIVIDEND_PAY_MODE",
         "QUASAR_ATM_ORDER_MODE", "PLANET_INTERDICT_SAFE_MODE",
     ),
     "colonists": (
         "assign_colonists", "terra_colonists",
         "TERRA_COLONIST_MODE", "COLONIST_UNITS_MODE", "COLONIST_NW_UNITS_MODE",
+        "PRINTED_TERRA_MODE",
         "START_COLONIST_NW_MODE", "CLASS_M_DROP_MODE", "CLASS_M_FIDELITY_MODE",
         "CLASS_M_GENESIS_MODE", "CLASS_M_NW_MODE", "ASSIGN_POOL_FIX_MODE",
     ),

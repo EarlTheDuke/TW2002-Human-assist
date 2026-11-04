@@ -2,7 +2,7 @@
 
 Plan only. Every October row, regraded at `60b17fef` (branch `track-g-note108`, cut from `feature/grokbot-player`). v5 graded the same 171 ids at `f969cee`. This pass does not add a switch. Helper row 164 stays unused.
 
-A row is Match when the original rule is what a normal game does now. Match-behind-flag means the original rule is coded and the named switch stays off until `V311_PROFILE` is `v311`, unless the profile section says that helper is left out on purpose. Partial means part of the rule is in. Different means a normal game still does something else. Missing means this pass found no handler. Ben-decision is a number Ben has not chosen. Class M colonists and a random StarDock stay there.
+A row is Match when the original rule is what a normal game does now. Match-behind-flag means the original rule is coded and the named switch stays off until `V311_PROFILE` is `v311`, unless the profile section says that helper is left out on purpose. Partial means part of the rule is in. Different means a normal game still does something else. Missing means this pass found no handler. Ben-decision is a number Ben has not chosen. A random StarDock stays there. Class M colonists are the printed handbook counts.
 
 `docs/plans/GAP_MAP.md` is the October 3 baseline refreshed to `62961c5`. Its own header says those counts are the October picture. v5 already replaced that picture. This file replaces v5. Grades below are from the tip code, not from that October table.
 
@@ -10,15 +10,15 @@ A row is Match when the original rule is what a normal game does now. Match-behi
 
 | Grade | v5 | v6 |
 |---|---|---|
-| Match | 50 | 71 |
+| Match | 50 | 78 |
 | Match-behind-flag | 17 | 86 |
-| Partial | 53 | 8 |
-| Different | 38 | 4 |
+| Partial | 53 | 4 |
+| Different | 38 | 2 |
 | Missing | 11 | 0 |
-| Ben-decision | 2 | 2 |
+| Ben-decision | 2 | 1 |
 | Total | 171 | 171 |
 
-NOTE 163 moved five rows that were still Partial. 6.7 and 9.2 are Match. 6.11, 9.5, and 13.4 are Match-behind-flag. The new switch is `BOUNTY_GOOD_MODE` row 187. Row 181 is NavPoints (`NAVPOINT_MODE`, NOTE 159). NOTE 162 uses rows 182-186 and moves 21 more rows. 14.1 is Match-behind-flag through `CIM_MODE` row 186. NOTE 164 moves 8.1 and 12.6 from Partial to Match-behind-flag. The ship switch and the fighter-report switch sit on 6.11 and 13.4 and do not grade those rows again. NOTE 166 moves 9.8 and 10.1 to Match, and 1.15, 5.14, and 5.20 to Match-behind-flag. The new switch is `SELF_DESTRUCT_ALIGN_MODE` row 204. 1.15 and 5.20 were already `FED_TOW_LIMIT_MODE` and `FEDSAFE_FIGHTER_CAP_MODE`. Rows 205-212 stay free.
+NOTE 163 moved five rows that were still Partial. 6.7 and 9.2 are Match. 6.11, 9.5, and 13.4 are Match-behind-flag. The new switch is `BOUNTY_GOOD_MODE` row 187. Row 181 is NavPoints (`NAVPOINT_MODE`, NOTE 159). NOTE 162 uses rows 182-186 and moves 21 more rows. 14.1 is Match-behind-flag through `CIM_MODE` row 186. NOTE 164 moves 8.1 and 12.6 from Partial to Match-behind-flag. The ship switch and the fighter-report switch sit on 6.11 and 13.4 and do not grade those rows again. NOTE 166 moves 9.8 and 10.1 to Match, and 1.15, 5.14, and 5.20 to Match-behind-flag. The new switch is `SELF_DESTRUCT_ALIGN_MODE` row 204. 1.15 and 5.20 were already `FED_TOW_LIMIT_MODE` and `FEDSAFE_FIGHTER_CAP_MODE`. NOTE 167 moves 1.6, 2.5, 4.1, 6.2, 6.3, 11.11, and 12.3 to Match. 14.6 stays Different. 1.5 stays Ben-decision. The new switches are `PRINTED_TERRA_MODE` row 213, `PRINTED_CLASS_M_MODE` row 214, and `GENESIS_BIBLE_PRICE_MODE` row 215. Rows 205-212 stay free.
 
 ## What moved
 
@@ -100,13 +100,10 @@ These rows are still Partial, Different, or Missing, and no switch names the rem
 
 | Rank | Row | Grade | Size | Why it still shows | Files | NOTE 104 |
 |---|---|---|---|---|---|---|
-| 1 | 2.5 | Different | L | Prices and ship costs still do not sit on one scale. `ECONOMY_SCALE_MODE` is already tw2002 | `economy.port_sell_price`, `economy.port_buy_price` | economy.py |
 | 2 | 5.7 | Different | L | Ship versus ship is still not the original exchange. CMB-c is a plan doc only | `combat._resolve_ship_attack_tw2002` | |
-| 3 | 12.3 | Different | L | Movement is still by turns. `DAY_ROLL_CLOCK_MODE` rolls the day. `PLANET_REALTIME_PROD_MODE` is left off because the original produces at Extern | `runner.apply_action`, `constants.day_roll_clock_live` | constants.py, server runner, lobby |
 | 6 | 12.4 | Partial | M | Busts, tows, sweeps, and NavHaz already run in `runner.tick_day`. Collisions and special-port rebuilds are `PLANET_COLLISION_MODE` and `SPECIAL_PORT_DEFENCE_MODE`. The jobs past that list have no switch | `runner.tick_day` | |
-| 23 | 11.11 | Partial | S | Density, one-way share, and the 30 percent two-way lanes are flagged (rows 87, 88, and 178). Bubbles, the course-length generator, and the Gold options are not | `universe.generate_universe` | universe.py |
 | 25 | 6.10 | Partial | S | Destroying a planet is in. A trader on it is `PLANET_ZDY_MODE` (NOTE 143). Colonist-kill alignment is still unpublished | `runner._remove_planet` | |
-| 35 | 14.6 | Different | L | Systems that were never in the original are still in this game. This map does not delete them | several | |
+| 35 | 14.6 | Different | L | NOTE 167 R14 A leaves alliances, the planet dividend, the credit win, and the day cap in the program. The profile leaves alliances and the dividend off | several | |
 
 Rows that are Partial only because a named switch stays off are Match-behind-flag above, not in this list. `12.4` stays here for the jobs that still have no name.
 
@@ -154,8 +151,8 @@ Most of those are stored defaults that are already tw2002, or switches the profi
 1.2 Match-behind-flag `ONE_WAY_SHARE_MODE` row 88, NOTE 78, and `TWO_WAY_WARP_MODE` row 178, NOTE 157. About 3 percent one-way when the game does not set `one_way_fraction`. Legacy one-way stays 0.15. Extra two-way lanes are 30 percent of the sector count. Legacy stays average 2.7. `constants.one_way_fraction_for`, `constants.two_way_edge_target`.
 1.3 Match-behind-flag `COURSE_MAX_MODE` row 86, NOTE 78. A plotted course longer than 45 hops is refused. The 45 is UNVERIFIED. Legacy still searches 60. `constants.plot_course_hop_limit`, `runner._handle_plot_course`.
 1.4 Match. FedSpace is sectors 1 through 10. `constants.FEDSPACE_SECTORS`. `fed.protect_fedspace_attack`.
-1.5 Ben-decision. StarDock stays in sector 1. `constants.STARDOCK_SECTOR`.
-1.6 Partial. Terra exists while class 0 is on. Colonist packing stays behind `TERRA_COLONIST_MODE` row 25 and `COLONIST_UNITS_MODE` row 116. `class0.handle_terra_colonists`.
+1.5 Ben-decision. StarDock stays in sector 1. NOTE 167 dropped a move to a hidden sector: the bank pin and the action digests are measured with `constants.STARDOCK_SECTOR` at 1.
+1.6 Match. Terra opens at 100,000 and one colonist fills one hold. `PRINTED_TERRA_MODE` row 213, NOTE 167, keeps that reading when the profile is on. The 30,000 path stays `TERRA_COLONIST_MODE` and is not selected by the profile. `class0.handle_terra_colonists`.
 1.7 Match. Class 0 ports are on. `CLASS0_MODE` is tw2002. `class0.place_class0_ports`.
 1.8 Match-behind-flag `FEDERATION_HALL_MODE` row 182, NOTE 162. Bank, tavern, shipyard, and hardware stay on. Federation Hall and the hardware shop screen stay off until the switch is on. `constants.federation_hall_live`.
 1.9 Match-behind-flag `FERRENGAL_QUASAR_MODE` row 102, NOTE 85. Mines and fighters are already placed. The quasar shot stays off. `ferrengi.place_ferrengal`, `runner._apply_ferrengal_quasar`.
@@ -174,7 +171,7 @@ Most of those are stored defaults that are already tw2002, or switches the profi
 2.2 Match-behind-flag `PORT_CLASS_MAP_MODE` row 10 and `PORT_CLASS_NUMBER_FIX_MODE` row 142, NOTE 98. Class 7 displays as SSS. Class 8 stays the StarDock id. Class 9 stays the built SSS port. `constants.port_class_live`.
 2.3 Match-behind-flag `PORT_PRICE_MODE` row 21. The original price curve is coded and off. `economy.port_sell_price`.
 2.4 Match. Each port has its own MCIC and productivity. `economy._stored_mcic`.
-2.5 Different. Prices and ship costs still do not sit on one scale. `ECONOMY_SCALE_MODE` is already tw2002. `economy.port_sell_price`, `constants.ship_cost`.
+2.5 Match. Bible ship prices and the cabal port chart stay two lists. `ECONOMY_SCALE_MODE` is already tw2002. `PRICE_SCALE_MODE` row 165 quotes a full port from the chart. No source prints one scale, so none was invented. `economy.port_sell_price`, `constants.ship_cost`.
 2.6 Match-behind-flag `HAGGLE_LIVE_MODE` row 31. The live window is coded and off. `HAGGLE_COUNTER_MODE` row 74 and `HAGGLE_EXP_MODE` row 110 sit beside it. The cabal product table is `HAGGLE_TABLE_MODE` row 175, NOTE 150, and stays off. Equipment at MCIC -20 is 110.2 percent on that table, not the straight line. `economy.haggle_bound`, `economy.haggle_experience`.
 2.7 Match. The first trade in a sector costs a turn. Later trades there do not. `economy.trade_turn_cost`.
 2.8 Match-behind-flag `PORT_REGEN_MODE` row 22. Five percent restock is coded and off. `economy.regenerate_ports`.
@@ -208,7 +205,7 @@ Most of those are stored defaults that are already tw2002, or switches the profi
 3.18 Match. A player can own more than one ship. `constants.fleet_on`.
 3.19 Match. Empty ships can be captured. `CAPTURE_MODE` is tw2002. `constants.capture_on`.
 3.20 Match. Alignment of 1,000 is commissioned. Police HQ raises 500 through 999 to 1,000. An evil ISS is repossessed on the move. `victory.is_commissioned`, `fed.handle_apply_commission`, `fed.check_iss_repo_on_move`.
-4.1 Partial. Genesis works. The empty start is `GENESIS_START_MODE` row 24. A typed name is `GENESIS_NAME_MODE` row 120. Price sources still disagree. `runner` genesis deploy.
+4.1 Match. A genesis torpedo costs 25,000. `GENESIS_BIBLE_PRICE_MODE` row 215, NOTE 167, keeps that price when the profile is on, including while the live shop card is on. The 20,000 card price stays `HARDWARE_PRICE_MODE` for the other shop lines. The empty start is `GENESIS_START_MODE` row 24. `runner` genesis deploy.
 4.2 Match-behind-flag `ATOMIC_DETONATOR_MODE` row 89, NOTE 78. The detonator is the planet killer. The port-nuke atomic mine is not sold when the switch is on. `runner._handle_deploy_atomic`.
 4.3 Match. Marker beacons are on. `runner._handle_buy_equip`.
 4.4 Match. Corbomite is on. `combat` corbomite fire.
@@ -245,8 +242,8 @@ Most of those are stored defaults that are already tw2002, or switches the profi
 5.19 Match-behind-flag `PLANET_LANDING_COMBAT_MODE` row 54. Landing on a defended planet is a fight only when the switch is on. A normal game still seizes. `constants.planet_landing_combat_on`.
 5.20 Match-behind-flag `FEDSAFE_FIGHTER_CAP_MODE` row 167, NOTE 117. On, more than 50 fighters removes FedSpace protection. Off, the fighter count does not. The rest of a police chase is not printed, so none was added. NOTE 166 moves the grade. `fed.protect_fedspace_attack`.
 6.1 Match-behind-flag `SCANNER_FOG_MODE` row 44. Planet fighters and shields stay hidden until the planet scanner is on. `observation._planet_brief`.
-6.2 Partial. Citadel costs follow the class table that is on (`CITADEL_COST_MODE` via `citadel_fidelity_rules`, already true). Build days are `CITADEL_DAYS_MODE` row 2. The class M level-1 colonist figure is Ben's choice (6.3). `constants.citadel_fidelity_rules`.
-6.3 Ben-decision. Class M population cap stays 30,000 until Ben chooses. The die-off rule is behind `PLANET_PROD_MODE` row 26. `constants.planet_prod_live`.
+6.2 Match. Citadel costs follow the class table (`CITADEL_COST_MODE` via `citadel_fidelity_rules`, already true). Class M level 1 is 1,000 colonists. `PRINTED_CLASS_M_MODE` row 214, NOTE 167, keeps that count when the profile is on. The million stays `CLASS_M_FIDELITY_MODE` and is not selected by the profile. Build days are `CITADEL_DAYS_MODE` row 2. `constants.citadel_class_cost`.
+6.3 Match. The class M population cap is 30,000. The same NOTE 167 reading places a home planet at 45, 65, and 81. The die-off rule is behind `PLANET_PROD_MODE` row 26. `constants.planet_colonist_cap`, `constants.home_planet_count`.
 6.4 Match-behind-flag `PLANET_PROD_MODE` row 26. Fuel from colonists divided by 3, and the 5 percent die-off. `constants.planet_prod_live`.
 6.5 Match-behind-flag `GENESIS_START_MODE` row 24. A new planet starts empty. `constants.genesis_start_live`.
 6.6 Match. Five planets per sector, same as 1.12. The overload collision is a separate nightly job, `PLANET_COLLISION_MODE` row 148, NOTE 102, and stays off. `constants.sector_has_planet_room`, `runner._planet_collisions`.
@@ -301,10 +298,10 @@ Most of those are stored defaults that are already tw2002, or switches the profi
 11.8 Match. The tavern is on. `TAVERN_MODE` is tw2002. `constants.tavern_on`.
 11.9 Match-behind-flag `FED_HUNT_MODE` row 185, NOTE 162. Feds tow, and they answer some crimes. An evil ship that meets a Federal is destroyed when the switch is on. A sector with no Federal is left alone. `fed.hunt_evil_meeting_federal`.
 11.10 Match-behind-flag `SPECIAL_PORT_DEFENCE_MODE` row 146, NOTE 102. StarDock and Class 0 take 248,000 fighters, then 890,000, and the Feds rebuild in 14 days. Numbers UNVERIFIED. `runner._rebuild_special_ports`.
-11.11 Partial. Density, the one-way share, and the 30 percent two-way lanes are `BIG_BANG_DENSITY_MODE`, `ONE_WAY_SHARE_MODE`, and `TWO_WAY_WARP_MODE`. Not the whole original screen. `universe.generate_universe`.
+11.11 Match. The sample Big Bang screen prints 0 bubbles, and Gold stays off. Density, the one-way share, and the extra two-way lanes are `BIG_BANG_DENSITY_MODE`, `ONE_WAY_SHARE_MODE`, and `TWO_WAY_WARP_MODE`. `UNIVERSE_TOPOLOGY_MODE` and `GOLD_ALIEN_MODE` stay off the profile. `universe.generate_universe`.
 12.1 Match. Turns per day are a game setting. `models.GameConfig`.
 12.2 Match-behind-flag `TURN_REGEN_MODE` row 5. Turns can come back across 24 hours. `LIVE_PACE_MODE` row 6 goes with it. `constants.turn_regen_live`.
-12.3 Different. Movement is still by turns, not by the clock. `DAY_ROLL_CLOCK_MODE` row 81 rolls the day while a seat holds the turn. Planet goods can accrue on `PLANET_REALTIME_PROD_MODE`, which the profile leaves off. `runner.apply_action`.
+12.3 Match. Ships spend turns. Planets produce when the day changes. `PLANET_REALTIME_PROD_MODE` stays off the profile. `DAY_ROLL_CLOCK_MODE` row 81 can still roll the day while a seat holds the turn. `runner.apply_action`.
 12.4 Partial. `runner.tick_day` runs retreats, Ferrengi, corp penalty, the Class 0 sweep, Terra regen, empty-ship repossession, Fed tows, port regen, bust clearing, photon waves, cloak fails, NavHaz, alien hops, planet production, citadels, treasury, and tax. Collisions and special-port rebuilds stay behind `PLANET_COLLISION_MODE` and `SPECIAL_PORT_DEFENCE_MODE`. `INACTIVE_USER_MODE` row 177, NOTE 151, deletes a disconnected human after 30 quiet wall-clock days in a game that was generated with the switch on, and stays off. A connected seat and an AI cockpit seat stay. `INACTIVITY_TIMEOUT_MODE` row 178 sleeps a quiet lobby game after 14,400 seconds and stays off. Not every original nightly job is named.
 12.5 Match-behind-flag `EXP_SCORE_MODE` row 28. A normal game still ends on net worth. Experience ranking is coded and off. The day cap, the last player standing, the credit bar, and a creator end have no printed v3.11 number. NOTE 158 left them. `victory.check_victory`.
 12.6 Match-behind-flag. The v3.11 sample prints tournament mode off and unlimited times blown up. `TIMES_BLOWN_MODE` row 202, NOTE 164, says so on the legacy destroy line when elimination is off, and stays off. The later lockout was not added. `DEATH_DELAY_MODE` is the timeout. `combat._legacy_destroy_summary`.
@@ -320,6 +317,6 @@ Most of those are stored defaults that are already tw2002, or switches the profi
 14.3 Match-behind-flag `PLANET_BUST_EXP_MODE` row 149, NOTE 102. The owner may destroy the planet they created for 75 experience (genesis 25 plus destroy 50). `legality.planet_destroy_reason`.
 14.4 Match. An unmanned ship can still hold fighters. While `V311_PROFILE` is on, `observation` game status leaves those fighters out of the V-screen total. Legacy still counts them. No switch was added for that display. Profile GAP 14.4 note.
 14.5 Match-behind-flag `EVIL_TRADE_LOOP_MODE` row 166, NOTE 115. A negative-alignment seat steals, dumps, and beams, or robs and beams, when the profile is on. `constants.evil_trade_loop_live`.
-14.6 Different. Systems that were never in the original are still in this game. This refresh does not remove them.
+14.6 Different. NOTE 167 R14 A leaves alliances, the planet dividend, the credit win, and the day cap in the program. The profile leaves alliances off and turns the dividend off. This refresh does not delete them.
 
 There is no row 5.16, 7.1, or 8.5. That is the same 171 ids as v5.

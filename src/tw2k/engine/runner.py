@@ -418,9 +418,9 @@ def grant_starting_planet(universe: Universe, player) -> None:
             if player.id not in universe.sectors[sid].occupant_ids:
                 universe.sectors[sid].occupant_ids.append(player.id)
         colonists = {
-            Commodity.FUEL_ORE: K.HOME_PLANET_FUEL,
-            Commodity.ORGANICS: K.HOME_PLANET_ORGANICS,
-            Commodity.EQUIPMENT: K.HOME_PLANET_EQUIPMENT,
+            Commodity.FUEL_ORE: K.home_planet_count(K.HOME_PLANET_FUEL),
+            Commodity.ORGANICS: K.home_planet_count(K.HOME_PLANET_ORGANICS),
+            Commodity.EQUIPMENT: K.home_planet_count(K.HOME_PLANET_EQUIPMENT),
             Commodity.COLONISTS: 0,
         }
         custom = str(getattr(universe.config, "home_planet_name", None) or "").strip()
