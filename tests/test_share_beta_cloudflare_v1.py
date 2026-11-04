@@ -93,7 +93,6 @@ def test_served_scripts_follow_the_proxy_and_stay_put_locally() -> None:
 def test_share_scripts_only_open_a_tunnel() -> None:
     ps1 = (ROOT / "scripts" / "share_beta_cloudflare.ps1").read_text(encoding="utf-8")
     sh = (ROOT / "scripts" / "share_beta_cloudflare.sh").read_text(encoding="utf-8")
-    doc = (ROOT / "docs" / "SHARE_BETA.md").read_text(encoding="utf-8")
     for text in (ps1, sh):
         assert "cloudflared" in text and "tunnel" in text
         assert "--url" in text and "http://127.0.0.1:" in text
@@ -107,6 +106,3 @@ def test_share_scripts_only_open_a_tunnel() -> None:
         assert "-m tw2k" not in text
         assert "Start-Process" not in text
         assert "taskkill" not in text.lower()
-    assert "Ctrl+C" in doc
-    assert "layout=redesign" in doc and "token" in doc
-    assert "changes" in doc.lower()

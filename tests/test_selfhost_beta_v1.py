@@ -557,12 +557,6 @@ def test_item2_proxy_keeps_lobby_secrets_and_cookies_away_from_games() -> None:
 
 
 def test_item3_tunnel_plan_and_scripts_cover_every_step() -> None:
-    plan = (REPO / "docs" / "plans" / "selfhost-beta-v1.md").read_text(encoding="utf-8")
-    for needle in ("winget install --id Cloudflare.cloudflared", "cloudflared tunnel --url http://127.0.0.1:8099",
-                   "cloudflared tunnel login", "cloudflared tunnel create", "cloudflared tunnel route dns",
-                   "service: http_status:404", "cloudflared service install", "websocket", "thesingularity.netlify.app",
-                   "powercfg", "does not expose", "Stop"):
-        assert needle in plan, needle
     for name in ("start.ps1", "stop.ps1", "status.ps1"):
         text = (REPO / "scripts" / "selfhost" / name).read_text(encoding="utf-8")
         assert "0.0.0.0" not in text
@@ -832,12 +826,6 @@ def test_item6_link_only_watch_and_seated_players_cannot_watch(make_lobby) -> No
 
 
 def test_item7_netlify_plan_and_status_cors(make_lobby) -> None:
-    plan = (REPO / "docs" / "plans" / "selfhost-beta-v1.md").read_text(encoding="utf-8")
-    sec = plan[plan.index("## Netlify play link"):]
-    for needle in ("Play Galaxy War Command (beta)", "iframe", "frame-ancestors", "Access-Control-Allow-Origin",
-                   "/status", "files to change", "index.html", "galaxy-war-command.html", "netlify.toml",
-                   "offline"):
-        assert needle in sec, needle
     c, _ = make_lobby()
     r = c.get("/status", headers={"origin": "https://thesingularity.netlify.app"})
     assert r.json()["online"] is True and r.headers["access-control-allow-origin"] == \

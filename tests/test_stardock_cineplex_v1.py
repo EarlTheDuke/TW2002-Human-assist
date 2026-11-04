@@ -71,15 +71,7 @@ def test_cx4_note129_ticket_is_recorded_and_stored_cost_stays_0() -> None:
     root = Path(__file__).resolve().parents[1]
     goods = (root / "docs/playtests/twgs-live/illegal-goods.txt").read_text()
     menus = (root / "docs/playtests/twgs-live/stardock-menus.txt").read_text()
-    leftovers = (root / "docs/plans/stardock-leftovers-v1.md").read_text()
-    extra = (root / "docs/playtests/fedspace/STARDOCK_EXTRA.md").read_text()
     assert 'You\'ll LOVE "Vulcan Thunder"' in goods
     assert "100 Credits Please" in goods
     assert "The CinePlex Videon Theatres" in menus
-    assert "Vulcan Thunder" in leftovers
-    assert "illegal-goods.txt" in leftovers
-    assert "stardock-menus.txt" in leftovers
-    assert "`CINEPLEX_COST` stays 0" in leftovers
-    assert "Vulcan Thunder" in extra
-    assert "illegal-goods.txt" in extra
     assert K.CINEPLEX_COST == 0

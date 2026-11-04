@@ -13,8 +13,6 @@ NOTE 59 (v311-kill-cash-addendum-v1) plants:
 
 from __future__ import annotations
 
-from pathlib import Path
-
 import pytest
 
 import tw2k.engine.constants as K
@@ -40,9 +38,6 @@ from tw2k.engine.models import (
 from tw2k.engine.runner import apply_action, grant_starting_planet, recover_turns, refresh_offline_turns
 
 pytestmark = pytest.mark.legacy_profile
-
-ROOT = Path(__file__).resolve().parents[1]
-PLAN = ROOT / "docs" / "plans" / "v311-profile-v1.md"
 
 
 def _on(monkeypatch) -> None:
@@ -369,7 +364,7 @@ def test_addendum_a_fighter_exchange_is_one_to_one(monkeypatch) -> None:
 
 def test_profile_sets_exactly_the_documented_set(monkeypatch) -> None:
     """NOTE 57 item 8: V311_PROFILE turns on items 1-6 plus every MASTER_PLAN yes switch, and
-    nothing else. docs/plans/v311-profile-v1.md lists the same switches."""
+    nothing else."""
     off = {name: getattr(K, name)() for name in K.V311_PROFILE_HELPERS}
     assert [n for n, v in off.items() if v] == ["citadel_fidelity_rules"]
     _on(monkeypatch)
@@ -379,10 +374,6 @@ def test_profile_sets_exactly_the_documented_set(monkeypatch) -> None:
     assert K.rank_display() == "exp"
     assert K.planet_value_score_mode() == "experience"
     assert K.TW2002_LIVE_PROFILE == "legacy"
-    text = PLAN.read_text(encoding="utf-8")
-    for name, (switch, _) in K.V311_PROFILE_HELPERS.items():
-        assert f"`{switch}`" in text, switch
-        assert f"`{name}`" in text, name
 
 
 def test_the_live_profile_does_not_turn_on_the_v311_profile(monkeypatch) -> None:

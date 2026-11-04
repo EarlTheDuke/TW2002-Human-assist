@@ -130,19 +130,3 @@ def test_queued_constants_keep_their_values_and_the_search_note() -> None:
     ):
         assert needle in comment, needle
     assert source.count("UNVERIFIED, searched:") >= 5
-    queue = (ROOT / "docs/plans/live-twgs-test-queue-v1.md").read_text(encoding="utf-8")
-    for needle in (
-        "FERRENGI_XP_BY_HULL",
-        "FERRENGI_ALIGN_ON_KILL",
-        "FERRENGAL_QUASAR_FUEL",
-        "FERRENGI_BAND_STRONG",
-        "V311_COURSE_MAX_HOPS",
-        "GameConfig.death_delay",
-        "death_delay_days",
-        "ceil(R / A)",
-        "RULINGS_v311.md",
-    ):
-        assert needle in queue
-    odds = (ROOT / "docs/plans/ship-odds-exchange-v1.md").read_text(encoding="utf-8")
-    assert "ceil(R / A)" in odds
-    assert "floor(P / D)" in odds

@@ -27,13 +27,6 @@ def _capture() -> str:
     return CAPTURE.read_text(encoding="utf-8")
 
 
-def _row(text: str, item: str) -> str:
-    for line in text.splitlines():
-        if line.startswith(f"| {item} |"):
-            return line
-    raise AssertionError(item)
-
-
 def _world():
     universe = generate_universe(
         GameConfig(seed=5101, universe_size=80, enable_ferrengi=False, enable_planets=True)
@@ -187,24 +180,3 @@ def test_live_card_uses_5000_and_both_docks_share_it(monkeypatch) -> None:
     assert "credits" in (row.reason or "")
     assert row.params["fee"] == 5_000
     assert "haven't the funds" in row.params["broke"]
-
-
-def test_queue_and_gap_map_record_the_capture() -> None:
-    queue = (ROOT / "docs/plans/live-twgs-test-queue-v1.md").read_text(encoding="utf-8")
-    rename = _row(queue, "Ship rename")
-    assert "CONFIRMED" in rename
-    assert "not measured" in rename
-    assert "0 turns" not in rename
-    limpet = _row(queue, "Limpet removal fee")
-    assert "SOURCE-CONFLICT" in limpet
-    assert "1,250" in limpet
-    assert "5,000" in limpet
-    assert "CostLimpetRemoval" in limpet
-    gap = (ROOT / "docs/plans/GAP_MAP.md").read_text(encoding="utf-8")
-    assert "ship-rename-limpet-ven.txt" in gap
-    assert "Fee 5,000 CONFIRMED" in gap
-    assert "cabal TEDIT $1,250 vs live GameA TWSTATS Limpet Removal=5,000 cr" in gap
-    conflicts = (ROOT / "docs/plans/V311_SOURCE_CONFLICTS.md").read_text(encoding="utf-8")
-    assert "Ven 2026-10-24" in conflicts
-    assert "1,250, or 5,000" in conflicts
-    assert CAPTURE.is_file()

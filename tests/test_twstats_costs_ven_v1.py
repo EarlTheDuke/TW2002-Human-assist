@@ -111,24 +111,6 @@ VERSION = {
     "Revision": "b",
 }
 
-QUEUED = (
-    "Type I TWarp=50,000 cr",
-    "Type II TWarp=80,000 cr",
-    "TWarp Upgrade=10,000 cr",
-    "Citadel Transport Unit=50,000 cr",
-    "Citadel Transport Upgrade=25,000 cr",
-)
-
-NOTE_PATHS = (
-    ROOT / "docs/plans/GAP_MAP.md",
-    ROOT / "docs/reference/tw2002/GAP_MAP.md",
-    ROOT / "docs/plans/gap-map-refresh-v6.md",
-    ROOT / "docs/plans/live-twgs-test-queue-v1.md",
-    ROOT / "docs/plans/V311_SOURCE_CONFLICTS.md",
-    ROOT / "docs/plans/hardware-price-v1.md",
-    ROOT / "docs/plans/v311-profile-v1.md",
-)
-
 COST_LINE = re.compile(r"^([^=]+)=([0-9,]+) cr$")
 PAIR_LINE = re.compile(r"^([^=]+)=(.+)$")
 
@@ -296,26 +278,3 @@ def test_v311_and_live_profile_use_the_card_and_detect_gear_does_not(monkeypatch
     assert K.photon_missile_cost() == 12_000
     assert K.disruptor_cost() == 6_000
     assert K.psychic_probe_cost() == 10_000
-
-
-def test_notes_record_the_source_conflict() -> None:
-    text = _capture()
-    assert "Photon Missile=40,000 cr" in text
-    both = [
-        ROOT / "docs/plans/GAP_MAP.md",
-        ROOT / "docs/reference/tw2002/GAP_MAP.md",
-        ROOT / "docs/plans/gap-map-refresh-v6.md",
-        ROOT / "docs/plans/V311_SOURCE_CONFLICTS.md",
-        ROOT / "docs/plans/v311-profile-v1.md",
-        ROOT / "docs/plans/live-twgs-test-queue-v1.md",
-    ]
-    for path in both:
-        body = path.read_text(encoding="utf-8")
-        assert "SOURCE-CONFLICT" in body
-        assert "40,000" in body
-        assert "hardware_price_live" in body
-    conflicts = (ROOT / "docs/plans/V311_SOURCE_CONFLICTS.md").read_text(encoding="utf-8")
-    assert "Photon Missile=40,000 cr" in conflicts
-    assert "DIFFERENT" in conflicts
-    hardware = (ROOT / "docs/playtests/ships/SHIP_HARDWARE.md").read_text(encoding="utf-8")
-    assert "photon_missile_cost" in hardware

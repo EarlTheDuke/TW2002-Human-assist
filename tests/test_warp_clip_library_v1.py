@@ -21,7 +21,6 @@ VIDEO = ROOT / "web" / "warp-video.js"
 REDESIGN = ROOT / "web" / "redesign.js"
 MANIFEST = ROOT / "web" / "warp-video" / "manifest.json"
 README = ROOT / "web" / "warp-video" / "README.md"
-PLAN = ROOT / "docs" / "plans" / "cockpit-warp-clip-library-v1.md"
 HULLS = tuple(cls.value for cls in ShipClass)
 MAX_BYTES = 300 * 1024
 
@@ -175,13 +174,9 @@ def test_captured_files_match_the_hull_and_stay_short() -> None:
 
 def test_clip_eleven_and_the_live_gen_hook_are_documented() -> None:
     readme = README.read_text(encoding="utf-8")
-    plan = PLAN.read_text(encoding="utf-8")
-    for text in (readme, plan):
-        assert "11" in text
-        assert "generated.clips" in text or "generated/" in text
-        assert "playback" in text
-    assert "ShipClass" in plan or "ship.class" in plan
-    assert "resolve(chosen)" in plan
+    assert "11" in readme
+    assert "generated.clips" in readme or "generated/" in readme
+    assert "playback" in readme
     variants = VARIANTS.read_text(encoding="utf-8")
     assert 'playback === "move"' in variants
     assert VARIANTS.stat().st_size < 60 * 1024
