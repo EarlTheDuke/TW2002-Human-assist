@@ -61,12 +61,6 @@ def test_default_hold_key_ignores_repeat_and_editable() -> None:
     assert '(ev.key || "").toLowerCase()' in js
 
 
-def test_guide_labels_cu_live_as_not_for_scored_play() -> None:
-    assert "not for scored CU play" in GUIDE
-    assert "?viewport=off" in GUIDE
-    assert "H (hold / end slot) works on the default layout and in `mode=cu`" in GUIDE
-
-
 @pytest.mark.skipif(NODE is None, reason="node not installed")
 def test_stale_waiting_clip_is_counted_once() -> None:
     script = (

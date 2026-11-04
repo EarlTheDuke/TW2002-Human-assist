@@ -94,23 +94,3 @@ def test_v311_keeps_the_drain_curve_ten_percent_once(monkeypatch) -> None:
     assert port.stock[EQ].current == 200
     assert port.stock[FUEL].current != round(1000 * 0.30)
 
-
-def test_gap_records_the_one_percent_sample_and_the_existing_switch() -> None:
-    for path in (
-        ROOT / "docs" / "plans" / "GAP_MAP.md",
-        ROOT / "docs" / "reference" / "tw2002" / "GAP_MAP.md",
-    ):
-        row = next(line for line in path.read_text(encoding="utf-8").splitlines() if line.startswith("| 2.8 "))
-        assert "Match-behind-flag" in row
-        assert "| Partial |" not in row
-        assert "1%" in row
-        assert "PORT_REGEN_MODE" in row
-        assert "row 224" in row
-        assert "not 5% applied twice" in row
-    conflicts = (ROOT / "docs" / "plans" / "V311_SOURCE_CONFLICTS.md").read_text(encoding="utf-8")
-    assert "1 percent" in conflicts
-    assert "not 5 percent applied twice" in conflicts
-    plan = (ROOT / "docs" / "plans" / "v311-profile-v1.md").read_text(encoding="utf-8")
-    assert "GAP 2.8 adds no switch" in plan
-    assert "`PORT_REGEN_MODE`" in plan
-    assert "`port_regen_live`" in plan

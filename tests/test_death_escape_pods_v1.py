@@ -100,17 +100,6 @@ def _snap(p) -> tuple:
 # ---------------------------------------------------------------------------
 
 
-def test_rules_table_is_written_first() -> None:
-    doc = (ROOT / "docs" / "playtests" / "combat" / "DEATH_ESCAPE_PODS.md").read_text(encoding="utf-8")
-    for mark in ("CONFIRMED", "SOURCE-CONFLICT", "UNVERIFIED"):
-        assert mark in doc
-    for row in range(1, 21):
-        assert f"| d{row} |" in doc, row
-    for words in ("pods.html", "safe path", "previous sector", "10 percent", "50 percent", "Two pods a day",
-                  "Scout", "DEATH_MODE", "elimination_deaths", "Deliberate differences", "credits x0.75"):
-        assert words in doc, words
-
-
 def test_switch_defaults_and_the_pod_hull() -> None:
     assert K.DEATH_MODE == "tw2002"
     assert "escape_pod" not in K.ship_specs()

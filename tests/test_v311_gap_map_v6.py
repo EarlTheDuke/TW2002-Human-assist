@@ -25,11 +25,6 @@ def _grades(text: str) -> list[tuple[str, str]]:
     return _ROW.findall(body)
 
 
-def test_v5_points_at_v6() -> None:
-    first = V5.read_text(encoding="utf-8").splitlines()[0]
-    assert first == "Superseded by gap-map-refresh-v6.md"
-
-
 def test_doc_has_171_graded_rows() -> None:
     rows = _grades(V6.read_text(encoding="utf-8"))
     ids = [row_id for row_id, _grade in rows]

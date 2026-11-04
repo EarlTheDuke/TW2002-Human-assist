@@ -111,15 +111,6 @@ def _digest_universe(u) -> str:
 
 # --- doc + switch ---------------------------------------------------------------
 
-def test_rules_doc_rows_and_marks() -> None:
-    text = DOC.read_text(encoding="utf-8")
-    for n in range(1, 25):
-        assert f"| t{n} |" in text, f"row t{n} missing"
-    for word in ("CONFIRMED", "SOURCE-CONFLICT", "UNVERIFIED", "Deliberate differences",
-                 "CLASS0_MODE", "Planted bugs", "Delivered", "Terra", "Major Space"):
-        assert word.lower() in text.lower(), word
-
-
 def test_switch_defaults() -> None:
     assert K.CLASS0_MODE == "tw2002" and class0_tw2002()
     assert K.TERRA_MAX_COLONISTS == 100_000

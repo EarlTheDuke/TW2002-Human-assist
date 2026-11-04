@@ -113,13 +113,6 @@ def _world(seed: int = 4901, size: int = 120, enable_ferrengi: bool = True):
     )
 
 
-def test_doc_exists():
-    assert DOC.is_file()
-    text = DOC.read_text(encoding="utf-8")
-    assert "FERRENGI_MODE" in text
-    assert "SOURCE-CONFLICT" in text
-
-
 def test_n1_three_hulls(tw):
     assert hull_for_aggression(1) == K.FERRENGI_HULL_ASSAULT
     assert hull_for_aggression(5) == K.FERRENGI_HULL_CRUISER

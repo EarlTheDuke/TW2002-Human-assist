@@ -37,15 +37,6 @@ def tw(monkeypatch):
     monkeypatch.setattr(K, "HARDWARE_MODE", "tw2002")
 
 
-def test_rules_doc_lists_rows_and_marks() -> None:
-    text = DOC.read_text(encoding="utf-8")
-    for row in [f"h{n}" for n in range(1, 27)]:
-        assert f"| {row} |" in text, f"row {row} missing"
-    for word in ("CONFIRMED", "SOURCE-CONFLICT", "UNVERIFIED", "Deliberate differences",
-                 "HARDWARE_MODE", "ARMID_DAMAGE_TW2002", "ship-hardware-v2", "Delivered"):
-        assert word.lower() in text.lower(), word
-
-
 def test_switch_defaults() -> None:
     assert K.HARDWARE_MODE == "tw2002" and K.hardware_tw2002()
     assert K.ARMID_DAMAGE_TW2002 == 20

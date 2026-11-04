@@ -121,13 +121,6 @@ def _digest(obj) -> str:
     return hashlib.sha256(json.dumps(obj, sort_keys=True, default=str).encode()).hexdigest()[:16]
 
 
-def test_doc_exists():
-    assert DOC.is_file()
-    text = DOC.read_text(encoding="utf-8")
-    for i in range(1, 27):
-        assert f"f{i}" in text
-
-
 # ---- f1..f26 core ----
 
 

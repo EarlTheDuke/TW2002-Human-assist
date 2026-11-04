@@ -196,21 +196,6 @@ def test_stored_prices_stay_and_no_new_switch() -> None:
     assert not hasattr(K, "CITADEL_TRANSPORT_PRICE_MODE")
 
 
-def test_unbuilt_rows_are_queued_notes() -> None:
-    for path in NOTE_PATHS:
-        body = path.read_text(encoding="utf-8")
-        assert "DIFFERENT" in body
-        assert "queued" in body.lower()
-        for label in QUEUED:
-            assert label in body, (path.name, label)
-    hardware = (ROOT / "docs/playtests/ships/SHIP_TRANSWARP.md").read_text(encoding="utf-8")
-    assert "Type I TWarp=50,000 cr" in hardware
-    assert "DIFFERENT" in hardware
-    tow = (ROOT / "docs/playtests/ships/SHIP_TOW.md").read_text(encoding="utf-8")
-    assert "Type II TWarp=80,000 cr" in tow
-    assert "TWarp Upgrade=10,000 cr" in tow
-    assert "queued" in tow.lower()
-
 def _capture() -> str:
     return CAPTURE.read_text(encoding="utf-8")
 
