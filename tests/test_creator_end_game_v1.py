@@ -156,14 +156,16 @@ def test_non_creator_gets_403_and_nothing_changes(lobby) -> None:
     before = lob.store.game(gid)
     other = new_guest_cookie()
     lob.store.accept(sha256_hex(other))
-    saved = client.cookies.get("gwc_guest")
-    client.cookies.set("gwc_guest", other)
-    denied = client.post(f"/api/games/{gid}/end", json={"confirm": True})
+    # A separate client holding only the other guest's cookie. Swapping the
+    # cookie on the shared client left the creator's server-set cookie in the
+    # jar on CI's Linux runner, so the request still arrived as the creator.
+    # No `with`: the lobby's startup already ran for the shared client.
+    other_client = TestClient(client.app, cookies={"gwc_guest": other})
+    denied = other_client.post(f"/api/games/{gid}/end", json={"confirm": True})
     assert denied.status_code == 403
-    stranger = client.get("/").text
+    stranger = other_client.get("/").text
     assert "data-end-game" not in stranger
-    assert client.get(f"/api/games/{gid}/creator").json() == {"creator": False}
-    client.cookies.set("gwc_guest", saved)
+    assert other_client.get(f"/api/games/{gid}/creator").json() == {"creator": False}
     after = lob.store.game(gid)
     assert after["status"] == before["status"] == "running"
     assert after.get("ended_by") in (None, "")

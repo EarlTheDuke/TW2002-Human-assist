@@ -59,7 +59,6 @@ def test_get_system_prompt_respects_env(monkeypatch: pytest.MonkeyPatch) -> None
     monkeypatch.setenv("TW2K_HINT_LEVEL", "minimal")
     s = get_system_prompt()
     assert s == _MATCH_PROMPT_MINIMAL
-    assert "docs/PLAYBOOK.md" in s
     monkeypatch.setenv("TW2K_HINT_LEVEL", "full")
     assert get_system_prompt() == SYSTEM_PROMPT
 

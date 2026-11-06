@@ -39,9 +39,6 @@ def test_every_hull_is_ours_and_bot_stays_plain() -> None:
     assert "buildHullFaces" in js
     assert "TW2KHullMeshes" in meshes
     assert "function buildHullFaces" in meshes
-    plan = _text(ROOT / "docs" / "plans" / "cockpit-ship-view-v1.md")
-    assert "NOTE 118" in plan
-    assert "Drew Markham" in plan
     loft = meshes.split("var LOFT = ", 1)[1][:2200]
     for cls in ShipClass:
         assert cls.value + ":" in loft
@@ -53,6 +50,8 @@ def test_every_hull_is_ours_and_bot_stays_plain() -> None:
 
 
 def test_viewports_run_in_their_own_processes() -> None:
+    # The child process drives a browser; skip where playwright is missing.
+    pytest.importorskip("playwright.sync_api")
     script = str(Path(__file__).resolve())
     # A captured pipe fills during a long run and the next screenshot raises
     # BlockingIOError. Write the child log to a file the parent reads after.

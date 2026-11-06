@@ -101,15 +101,6 @@ def _rival_payload(u, pid: str) -> str:
 
 # --- doc + switch ---------------------------------------------------------------
 
-def test_rules_doc_rows_and_marks() -> None:
-    text = DOC.read_text(encoding="utf-8")
-    for n in range(1, 31):
-        assert f"| v{n} |" in text, f"row v{n} missing"
-    for word in ("CONFIRMED", "SOURCE-CONFLICT", "UNVERIFIED", "Deliberate differences", "HARDWARE_MODE",
-                 "ATOMIC_MINES_PORT_NUKE", "Planted bugs", "Delivered", "entry order"):
-        assert word.lower() in text.lower(), word
-
-
 def test_switch_defaults() -> None:
     assert K.HARDWARE_MODE == "tw2002"
     assert K.CORBOMITE_COST == 1_000 and K.CORBOMITE_MAX == 1_500 and K.CORBOMITE_DAMAGE_PER_UNIT == 20

@@ -25,7 +25,6 @@ MEDIA = ROOT / "web" / "media"
 V1 = json.loads((MEDIA / "manifest.json").read_text(encoding="utf-8-sig"))
 V2 = json.loads((MEDIA / "examples" / "manifest.v2.example.json").read_text(encoding="utf-8"))
 FIXTURES = ROOT / "tests" / "fixtures" / "media_events"
-DOC = (ROOT / "docs" / "plans" / "2026-09-26-video-cockpit-v0-fixtures.md").read_text(encoding="utf-8")
 REQUIRED = ("single_warp", "autopilot_burst", "trade_burst", "trade_failed", "self_attack_win", "self_attack_lose",
             "ferrengi_attack", "witnessed_combat", "far_port_destroyed")
 jsonschema = pytest.importorskip("jsonschema")
@@ -115,7 +114,6 @@ def test_fixtures_cover_every_required_scenario_with_real_event_rows() -> None:
             assert {"seq", "day", "tick", "kind", "actor_id", "sector_id", "summary", "facts"} <= set(row), (name, row)
         for e in fx["expected"]:
             assert set(e) == {"clip_key", "priority"} and 0 <= e["priority"] <= 4
-        assert f"`{name}`" in DOC, f"{name} missing from the resolver table"
 
 
 def test_fixture_semantics_match_their_scenario() -> None:

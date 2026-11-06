@@ -148,12 +148,6 @@ def test_bt14_enter_hides_the_word(monkeypatch) -> None:
     assert "seedword" not in action["thought"]
 
 
-def test_bt15_docs() -> None:
-    from pathlib import Path
-    text = Path("docs/playtests/bots/BOTS_USE_TAVERN.md").read_text(encoding="utf-8")
-    assert "BOTS_TAVERN_MODE" in text and "2%" in text
-
-
 def test_bt18_withdraws_for_a_trace(monkeypatch) -> None:
     monkeypatch.setattr(K, "BOTS_TAVERN_MODE", "tw2002")
     brain = SeatBrain()

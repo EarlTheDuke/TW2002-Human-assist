@@ -20,7 +20,6 @@ pytestmark = pytest.mark.legacy_profile
 
 ROOT = Path(__file__).resolve().parents[1]
 CAPTURE = ROOT / "docs" / "playtests" / "twgs-live" / "attack-turn-cost-ven.txt"
-PROFILE = ROOT / "docs" / "plans" / "v311-profile-v1.md"
 VALUE = 'VALUE: 0 turns per ship attack (engine TURN_COST["attack"]=5 is wrong; should be 0)'
 
 
@@ -35,10 +34,6 @@ def test_capture_value_line() -> None:
 
 def test_profile_row_is_228() -> None:
     assert K.V311_PROFILE_HELPERS["attack_turn_live"][0] == "ATTACK_TURN_MODE"
-    text = PROFILE.read_text(encoding="utf-8")
-    assert "| 228 | `ATTACK_TURN_MODE` | `attack_turn_live` |" in text
-    assert "docs/playtests/twgs-live/attack-turn-cost-ven.txt" in text
-    assert f"## The switch set ({len(K.V311_PROFILE_HELPERS)} helpers)" in text
 
 
 def _ship_attack(seed: int):

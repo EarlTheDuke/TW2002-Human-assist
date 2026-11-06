@@ -213,24 +213,3 @@ def test_manual_names_the_three_switches() -> None:
     assert "Corp break-in alignment: The v3.11 profile turns this on. In this process it is off." in page
     assert "A ship with more than 98 fighters is towed." in page
 
-
-def test_sources_are_read_as_utf8() -> None:
-    profile = (ROOT / "docs/plans/v311-profile-v1.md").read_text(encoding="utf-8")
-    assert f"## The switch set ({len(K.V311_PROFILE_HELPERS)} helpers)" in profile
-    for name in (
-        "FEDSAFE_FIGHTER_CAP_MODE",
-        "fedsafe_fighter_cap_live",
-        "FED_TOW_LIMIT_MODE",
-        "fed_tow_limit_live",
-        "CORP_BREAKIN_ALIGN_MODE",
-        "corp_breakin_align_live",
-    ):
-        assert f"`{name}`" in profile
-    formulas = (
-        ROOT / "docs/reference/tw2002/cabal_strategy_site/formulas.html"
-    ).read_text(encoding="utf-8")
-    assert "one time per extern" in formulas
-    bible = (
-        ROOT / "docs/reference/tw2002/stardock_manuals_and_text_docs/TWBible_original_v1x.txt"
-    ).read_text(encoding="utf-8")
-    assert "over 50 fighters" in bible

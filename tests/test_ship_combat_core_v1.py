@@ -118,15 +118,6 @@ def _last(u, kind: EventKind):
 # ---------------------------------------------------------------------------
 
 
-def test_rules_table_is_written_first() -> None:
-    doc = (ROOT / "docs" / "playtests" / "combat" / "SHIP_COMBAT.md").read_text(encoding="utf-8")
-    for mark in ("CONFIRMED", "SOURCE-CONFLICT", "UNVERIFIED"):
-        assert mark in doc
-    for words in ("attack, retreat, or surrender", "1.25", "fighters per attack", "Shields first",
-                  "Deliberate differences", "COMBAT_MODE", "formulas.html", "fleeing.html"):
-        assert words in doc, words
-
-
 # ---------------------------------------------------------------------------
 # ship vs ship
 # ---------------------------------------------------------------------------

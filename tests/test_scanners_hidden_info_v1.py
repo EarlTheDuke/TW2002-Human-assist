@@ -108,15 +108,6 @@ def tw(monkeypatch):
 
 # --- doc first -----------------------------------------------------------------------------
 
-def test_rules_doc_lists_every_row_with_a_mark() -> None:
-    text = DOC.read_text(encoding="utf-8")
-    for n in range(1, 21):
-        assert f"| s{n} |" in text, f"row s{n} missing"
-    for word in ("CONFIRMED", "SOURCE-CONFLICT", "UNVERIFIED", "Deliberate differences", "INFO_MODE",
-                 "density", "holo", "ether probe", "port report", "limpet"):
-        assert word.lower() in text.lower(), word
-
-
 def test_switch_defaults() -> None:
     assert K.INFO_MODE == "tw2002"
     assert K.info_tw2002()

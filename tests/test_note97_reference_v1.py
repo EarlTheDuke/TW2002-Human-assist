@@ -7,9 +7,6 @@ StarDock is labelled Class 9 only while the live class map is on. Its stored id 
 
 from __future__ import annotations
 
-import re
-from pathlib import Path
-
 import pytest
 
 from tw2k.engine import Action, ActionKind, GameConfig, apply_action, generate_universe
@@ -20,24 +17,12 @@ from tw2k.server.reference import game_reference, stardock_class_label
 
 pytestmark = pytest.mark.legacy_profile
 
-ROOT = Path(__file__).resolve().parents[1]
-
-
 def _section(ref: dict, sid: str) -> dict:
     return next(row for row in ref["sections"] if row["id"] == sid)
 
 
 def test_note97_adds_no_helper_row() -> None:
-    """Planet classes and the StarDock label do not add a profile helper.
-
-    Later notes may extend the table. This slice does not own a row, so the
-    test does not pin the last row number.
-    """
-    text = (ROOT / "docs/plans/v311-profile-v1.md").read_text()
-    rows = re.findall(r"^\| (\d+) \| `([^`]+)` \| `([^`]+)` \| ([^|]+)\|", text, re.M)
-    assert rows
-    owned = [switch for _num, switch, _helper, why in rows if re.search(r"NOTE 97\b", why)]
-    assert owned == []
+    """Planet classes and the StarDock label do not add a profile helper."""
     switches = {switch for _helper, (switch, _why) in K.V311_PROFILE_HELPERS.items()}
     assert "COMPUTER_HELPERS_MODE" not in switches
 

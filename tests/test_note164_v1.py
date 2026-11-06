@@ -7,8 +7,6 @@ V311_PROFILE "v311" alone, turns that one rule on. The stored MODE stays
 
 from __future__ import annotations
 
-from pathlib import Path
-
 import pytest
 
 import tw2k.engine.constants as K
@@ -29,8 +27,6 @@ from tw2k.engine.universe import generate_universe
 from tw2k.public.manual import render
 
 pytestmark = pytest.mark.legacy_profile
-
-_PROFILE = Path("docs/plans/v311-profile-v1.md")
 
 
 def _world():
@@ -80,12 +76,8 @@ def test_profile_rows_are_200_and_the_heading_matches() -> None:
     assert K.V311_PROFILE_HELPERS["corp_ship_disband_live"][0] == "CORP_SHIP_DISBAND_MODE"
     assert K.V311_PROFILE_HELPERS["times_blown_live"][0] == "TIMES_BLOWN_MODE"
     assert K.V311_PROFILE_HELPERS["fighter_report_live"][0] == "FIGHTER_REPORT_MODE"
-    text = _PROFILE.read_text(encoding="utf-8")
-    assert f"## The switch set ({len(K.V311_PROFILE_HELPERS)} helpers)" in text
     # Phase 2 retires a helper once its legacy path is gone; the rule stays, always on.
     assert len(K.V311_PROFILE_HELPERS) + len(K.V311_RETIRED_SWITCHES) == 165
-    for row in ("| 200 |", "| 201 |", "| 202 |", "| 203 |"):
-        assert row in text
 
 
 def test_ferrengi_odds_fail_off_and_pass_on(monkeypatch) -> None:

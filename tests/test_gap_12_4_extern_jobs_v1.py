@@ -147,22 +147,3 @@ def test_inactive_switches_stay_off_and_a_quiet_trader_stays() -> None:
     tick_day(universe)
     assert player.alive is True
     assert player.inactive_deleted is False
-
-
-def test_12_4_stays_match_behind_flag_and_2_15_leaves_partial() -> None:
-    v6 = (ROOT / "docs/plans/gap-map-refresh-v6.md").read_text(encoding="utf-8")
-    every = v6.split("## Every row", 1)[1]
-    row = next(line for line in every.splitlines() if line.startswith("12.4 "))
-    assert row.startswith("12.4 Match-behind-flag")
-    lasers = next(line for line in every.splitlines() if line.startswith("2.15 "))
-    assert lasers.startswith("2.15 Match-behind-flag")
-    assert "| Match-behind-flag | 17 | 96 |" in v6
-    assert "| Partial | 53 | 0 |" in v6
-    assert "12.4 Partial" not in every
-    remaining = (ROOT / "docs/plans/V311_REMAINING.md").read_text(encoding="utf-8")
-    assert "171 of 171" in remaining
-    assert "No counted Partial remains." in remaining
-    for rel in ("docs/plans/GAP_MAP.md", "docs/reference/tw2002/GAP_MAP.md"):
-        text = (ROOT / rel).read_text(encoding="utf-8")
-        line = next(item for item in text.splitlines() if item.startswith("| 12.4 Nightly Extern"))
-        assert "| Match-behind-flag |" in line

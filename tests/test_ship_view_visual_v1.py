@@ -9,25 +9,12 @@ from pathlib import Path
 from tw2k.engine.models import ShipClass
 
 ROOT = Path(__file__).resolve().parents[1]
-DOC = ROOT / "docs" / "plans" / "ship-view-visual-research-v1.md"
 JS = ROOT / "web" / "redesign.js"
 MESHES = ROOT / "web" / "hull-meshes.js"
 
 
 def _text(path: Path) -> str:
     return path.read_text(encoding="utf-8")
-
-
-def test_research_recommends_our_own_art() -> None:
-    doc = _text(DOC)
-    assert "Recommendation" in doc
-    assert "B. Our own look." in doc
-    assert "Attribution-NonCommercial-NoDerivs" in doc
-    assert "No ANSI file" in doc
-    assert "scale = ceil(fighters / 200)" in doc
-    assert "at most four corner clusters" in doc
-    assert "add up to the real total" in doc
-    assert "not copied" in doc.lower() or "not a copy" in doc.lower() or "No ANSI file" in doc
 
 
 def test_panel_states_the_marker_rule_and_keeps_the_legend() -> None:

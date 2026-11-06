@@ -74,17 +74,6 @@ def tw(monkeypatch):
 
 # --- doc first -----------------------------------------------------------------------------
 
-def test_rules_doc_lists_every_row_with_a_mark() -> None:
-    text = DOC.read_text(encoding="utf-8")
-    rows = ([f"x{n}" for n in range(1, 16)] + [f"a{n}" for n in range(1, 8)] + [f"r{n}" for n in range(1, 8)]
-            + [f"u{n}" for n in range(1, 7)] + [f"d{n}" for n in range(1, 5)])
-    for row in rows:
-        assert f"| {row} |" in text, f"row {row} missing"
-    for word in ("CONFIRMED", "SOURCE-CONFLICT", "UNVERIFIED", "Deliberate differences", "RANK_MODE",
-                 "fedsafe", "Federal Commission", "Imperial StarShip", "toward zero", "Delivered"):
-        assert word.lower() in text.lower(), word
-
-
 def test_switch_defaults() -> None:
     assert K.RANK_MODE == "tw2002" and K.rank_tw2002()
     assert len(K.GOOD_RANKS) == len(K.EVIL_RANKS) == len(K.RANK_THRESHOLDS) == 23

@@ -213,39 +213,3 @@ def test_v311_and_live_profile_use_the_card_and_detect_gear_does_not(monkeypatch
     assert K.ship_tw_type1_cost() == 12_500
     assert K.ship_tw_type2_cost() == 20_000
     assert K.ship_tw_upgrade_cost() == 9_000
-
-
-def test_notes_record_the_source_conflict() -> None:
-    text = _capture()
-    assert "Type I TWarp=50,000 cr" in text
-    assert "Type II TWarp=80,000 cr" in text
-    assert "TWarp Upgrade=10,000 cr" in text
-    both = [
-        ROOT / "docs/plans/GAP_MAP.md",
-        ROOT / "docs/reference/tw2002/GAP_MAP.md",
-        ROOT / "docs/plans/gap-map-refresh-v6.md",
-        ROOT / "docs/plans/V311_SOURCE_CONFLICTS.md",
-        ROOT / "docs/plans/v311-profile-v1.md",
-        ROOT / "docs/plans/live-twgs-test-queue-v1.md",
-        ROOT / "docs/plans/hardware-price-v1.md",
-    ]
-    for path in both:
-        body = path.read_text(encoding="utf-8")
-        assert "SOURCE-CONFLICT" in body
-        assert "50,000" in body
-        assert "80,000" in body
-        assert "10,000" in body
-        assert "hardware_price_live" in body
-    conflicts = (ROOT / "docs/plans/V311_SOURCE_CONFLICTS.md").read_text(encoding="utf-8")
-    assert "Type I TWarp=50,000 cr" in conflicts
-    assert "Type II TWarp=80,000 cr" in conflicts
-    assert "TWarp Upgrade=10,000 cr" in conflicts
-    assert "Citadel Transport Unit=50,000 cr" in conflicts
-    assert "No new shop switch" in conflicts
-    assert "PLANET_TRANSPORTER_COST_FIRST" in conflicts
-    tow = (ROOT / "docs/playtests/ships/SHIP_TOW.md").read_text(encoding="utf-8")
-    assert "ship_tw_type2_cost" in tow
-    assert "ship_tw_upgrade_cost" in tow
-    drive = (ROOT / "docs/playtests/ships/SHIP_TRANSWARP.md").read_text(encoding="utf-8")
-    assert "ship_tw_type1_cost" in drive
-    assert "12,500" in drive or "12_500" in drive

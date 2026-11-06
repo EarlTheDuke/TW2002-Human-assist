@@ -100,6 +100,8 @@ def test_bot_pages_do_not_grow_a_self_destruct_computer_key() -> None:
 
 
 def test_browsers_run_in_their_own_processes() -> None:
+    # The child process drives a browser; skip where playwright is missing.
+    pytest.importorskip("playwright.sync_api")
     script = str(Path(__file__).resolve())
     for spec in CASES:
         env = os.environ.copy()

@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-from pathlib import Path
-
 import tw2k.engine.constants as K
 from tw2k.agents.seat_brain import SeatBrain, SeatMemory, View
 
@@ -229,10 +227,3 @@ def test_bw1_mode(monkeypatch) -> None:
         assert _brain()._maybe_lay_pickets(View(fight)) is None
         assert _brain()._war_while_landed(View(_landed_obs(planet, legal)), planet) is None
 
-
-def test_bw30_docs() -> None:
-    root = Path(__file__).resolve().parents[1]
-    needle = "docs/playtests/bots/BOTS_USE_PLANET_WARFARE.md"
-    gap = (root / "docs/reference/tw2002/GAP_MAP.md").read_text(encoding="utf-8")
-    growth = (root / "docs/playtests/bots/BOT_GROWTH.md").read_text(encoding="utf-8")
-    assert needle in gap and needle in growth

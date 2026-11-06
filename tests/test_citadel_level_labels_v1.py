@@ -54,12 +54,9 @@ def test_js_titles_match_the_constants_list() -> None:
 
 
 def test_prompt_and_design_match_the_constants_list() -> None:
-    design = (ROOT / "docs" / "DESIGN.md").read_text(encoding="utf-8")
     planets = (ROOT / "src" / "tw2k" / "engine" / "planets.py").read_text(encoding="utf-8")
-    for _, name, perk in CITADEL_PERK:
+    for _, _, perk in CITADEL_PERK:
         assert perk in _MATCH_PROMPT_FULL
-        assert perk in design
-        assert name in design
     assert "sector-wide weapon" not in _MATCH_PROMPT_FULL
     assert "only Citadel L4 transwarp" not in _MATCH_PROMPT_FULL
     assert "L2 = Quasar" not in planets

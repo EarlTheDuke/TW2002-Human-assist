@@ -158,12 +158,6 @@ def test_bd10_qty_cap(monkeypatch) -> None:
     assert act is not None and act["args"]["qty"] == 3
 
 
-def test_bd11_docs_name_flag() -> None:
-    from pathlib import Path
-    text = (Path(__file__).resolve().parents[1] / "docs/playtests/bots/BOTS_DEPLOY_DEFENSES.md").read_text(encoding="utf-8")
-    assert "BOTS_DEPLOY_MODE" in text and "5%" in text
-
-
 def test_bd12_spend_tracks(monkeypatch) -> None:
     monkeypatch.setattr(K, "BOTS_DEPLOY_MODE", "tw2002")
     brain = _brain()

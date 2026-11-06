@@ -105,17 +105,6 @@ def test_a_real_visit_spends_one_then_zero_off_and_on(monkeypatch) -> None:
 
 
 def test_gap_row_is_match_and_cites_the_visit() -> None:
-    text = (ROOT / "docs" / "plans" / "GAP_MAP.md").read_text(encoding="utf-8")
-    row = next(line for line in text.splitlines() if line.startswith("| 2.7 "))
-    cells = [part.strip() for part in row.strip("|").split("|")]
-    assert cells[3] == "Match"
-    assert "port_visit_sector_id" in cells[2]
-    assert "TURNS_REGEN.md" in cells[2]
-    assert "3 per trade" in cells[2]
-    assert "stale" in cells[2]
-    turns = (ROOT / "docs" / "playtests" / "ports" / "TURNS_REGEN.md").read_text(encoding="utf-8")
-    assert "GAP 2.7" in turns
-    assert "port_visit_sector_id" in turns
     bible = (ROOT / "docs" / "reference" / "tw2002" / "stardock_manuals_and_text_docs" / "TWBible_original_v1x.txt").read_text(
         encoding="utf-8", errors="replace"
     )

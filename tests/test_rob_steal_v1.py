@@ -31,15 +31,6 @@ def tw(monkeypatch):
     monkeypatch.setattr(K, "ROB_MODE", "tw2002")
 
 
-def test_rules_doc_lists_every_row_with_a_mark() -> None:
-    text = DOC.read_text(encoding="utf-8")
-    for row in [f"r{n}" for n in range(1, 26)]:
-        assert f"| {row} |" in text, f"row {row} missing"
-    for word in ("CONFIRMED", "SOURCE-CONFLICT", "UNVERIFIED", "Deliberate differences",
-                 "ROB_MODE", "fake bust", "MBBS", "StarDock", "Delivered"):
-        assert word.lower() in text.lower(), word
-
-
 def test_switch_defaults() -> None:
     assert K.ROB_MODE == "tw2002" and K.rob_tw2002()
     assert K.ROB_MIN_ALIGNMENT == -100

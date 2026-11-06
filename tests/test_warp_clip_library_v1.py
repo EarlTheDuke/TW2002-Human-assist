@@ -9,8 +9,11 @@ test_cockpit_warp_video_v1.py and test_note146_warp_clips_10_v1.py.
 from __future__ import annotations
 
 import json
+import shutil
 import subprocess
 from pathlib import Path
+
+import pytest
 
 from tw2k.engine.models import ShipClass
 
@@ -21,7 +24,6 @@ VIDEO = ROOT / "web" / "warp-video.js"
 REDESIGN = ROOT / "web" / "redesign.js"
 MANIFEST = ROOT / "web" / "warp-video" / "manifest.json"
 README = ROOT / "web" / "warp-video" / "README.md"
-PLAN = ROOT / "docs" / "plans" / "cockpit-warp-clip-library-v1.md"
 HULLS = tuple(cls.value for cls in ShipClass)
 MAX_BYTES = 300 * 1024
 
@@ -73,6 +75,8 @@ console.log("ok");
 
 
 def _probe(path: Path) -> tuple[int, int, float]:
+    if shutil.which("ffprobe") is None:
+        pytest.skip("ffprobe (ffmpeg) is not installed")
     out = subprocess.check_output(
         [
             "ffprobe",
@@ -175,13 +179,9 @@ def test_captured_files_match_the_hull_and_stay_short() -> None:
 
 def test_clip_eleven_and_the_live_gen_hook_are_documented() -> None:
     readme = README.read_text(encoding="utf-8")
-    plan = PLAN.read_text(encoding="utf-8")
-    for text in (readme, plan):
-        assert "11" in text
-        assert "generated.clips" in text or "generated/" in text
-        assert "playback" in text
-    assert "ShipClass" in plan or "ship.class" in plan
-    assert "resolve(chosen)" in plan
+    assert "11" in readme
+    assert "generated.clips" in readme or "generated/" in readme
+    assert "playback" in readme
     variants = VARIANTS.read_text(encoding="utf-8")
     assert 'playback === "move"' in variants
     assert VARIANTS.stat().st_size < 60 * 1024

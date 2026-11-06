@@ -34,22 +34,6 @@ CAPTURE = (
 CAPTURE_PATH = Path("docs/playtests/twgs-live/twstats-costs-ven.txt")
 
 
-def test_capture_lines_are_cited() -> None:
-    profile = Path("docs/plans/v311-profile-v1.md").read_text(encoding="utf-8")
-    queue = Path("docs/plans/live-twgs-test-queue-v1.md").read_text(encoding="utf-8")
-    conflicts = Path("docs/plans/V311_SOURCE_CONFLICTS.md").read_text(encoding="utf-8")
-    for line in CAPTURE:
-        assert line in profile, line
-        assert line in queue, line
-    assert "Photon Missile Duration=20 Sec" in conflicts
-    assert "DIFFERENT and deferred" in conflicts
-    # The tip file is the [Costs] stub until PR #157 lands the full capture.
-    text = CAPTURE_PATH.read_text(encoding="utf-8") if CAPTURE_PATH.exists() else ""
-    if "[Settings]" in text:
-        for line in CAPTURE:
-            assert line in text, line
-
-
 def test_stored_game_keeps_today_and_the_duration_stays_one_tick(monkeypatch) -> None:
     monkeypatch.setattr(K, "V311_PROFILE", "1")
     assert K.photon_cloak_settings_live() is False

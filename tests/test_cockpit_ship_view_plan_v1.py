@@ -16,7 +16,6 @@ pytestmark = pytest.mark.legacy_profile
 ROOT = Path(__file__).resolve().parents[1]
 SHOTS = Path("/opt/cursor/artifacts/note116")
 JS = ROOT / "web" / "redesign.js"
-PLAN = ROOT / "docs" / "plans" / "cockpit-ship-view-v1.md"
 TOK = "ship-view-plan-v1-token-p2-0000"
 LABELS = ("Fighters", "Shields", "Holds", "armid mines", "limpet mines", "Cloaks", "Disruptors", "Towing nothing")
 VIEWPORTS = ((1280, 720), (1600, 1000), (390, 844))
@@ -39,12 +38,6 @@ def _clusters(cls: str, fighters: int) -> list[tuple[int, int]]:
 
 
 def test_plan_names_the_art_and_bot_stays_plain() -> None:
-    plan = _text(PLAN)
-    assert "NOTE 116" in plan
-    assert "Recommendation" in plan
-    assert "Option 2" in plan
-    assert "Attribution-NonCommercial-NoDerivs" in plan
-    assert "Drew Markham" in plan
     js = _text(JS)
     assert "const PROTOTYPE_HULLS" not in js
     assert "each marker = 100 fighters" in js

@@ -8,11 +8,14 @@ import threading
 from pathlib import Path
 
 import pytest
-from playwright.sync_api import sync_playwright
 
 from tests._cu_host import VIEW_H, VIEW_W, CuHost
 from tw2k.engine.models import EventKind
 from tw2k.media.custom_queue import current
+
+# Browser test: skip the module where playwright is not installed (CI's
+# dev deps leave it out), the same way the other browser tests do.
+sync_playwright = pytest.importorskip("playwright.sync_api").sync_playwright
 
 ROOT = Path(__file__).resolve().parents[1]
 CACHE = ROOT / "web" / "media" / "clips" / "custom"
