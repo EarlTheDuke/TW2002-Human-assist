@@ -9,8 +9,11 @@ test_cockpit_warp_video_v1.py and test_note146_warp_clips_10_v1.py.
 from __future__ import annotations
 
 import json
+import shutil
 import subprocess
 from pathlib import Path
+
+import pytest
 
 from tw2k.engine.models import ShipClass
 
@@ -72,6 +75,8 @@ console.log("ok");
 
 
 def _probe(path: Path) -> tuple[int, int, float]:
+    if shutil.which("ffprobe") is None:
+        pytest.skip("ffprobe (ffmpeg) is not installed")
     out = subprocess.check_output(
         [
             "ffprobe",

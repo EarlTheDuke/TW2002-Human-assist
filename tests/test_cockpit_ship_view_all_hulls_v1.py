@@ -50,6 +50,8 @@ def test_every_hull_is_ours_and_bot_stays_plain() -> None:
 
 
 def test_viewports_run_in_their_own_processes() -> None:
+    # The child process drives a browser; skip where playwright is missing.
+    pytest.importorskip("playwright.sync_api")
     script = str(Path(__file__).resolve())
     # A captured pipe fills during a long run and the next screenshot raises
     # BlockingIOError. Write the child log to a file the parent reads after.

@@ -8,6 +8,7 @@ still, and reduced motion keep the live scene. Skip hides the picture.
 from __future__ import annotations
 
 import json
+import shutil
 import subprocess
 from pathlib import Path
 
@@ -23,6 +24,8 @@ MAX_BYTES = 300 * 1024
 
 
 def _duration(path: Path) -> float:
+    if shutil.which("ffprobe") is None:
+        pytest.skip("ffprobe (ffmpeg) is not installed")
     out = subprocess.check_output(
         ["ffprobe", "-v", "error", "-show_entries", "format=duration", "-of", "csv=p=0", str(path)],
         text=True,
