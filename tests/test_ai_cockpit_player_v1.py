@@ -2387,6 +2387,9 @@ def test_windows_tree_kill_parent_poll_and_launch_flags(monkeypatch) -> None:
 
     monkeypatch.setattr(runner.os, "killpg", boom, raising=False)
     monkeypatch.setattr(runner, "_signal_many", lambda *_args, **_kwargs: None)
+    # The /proc walk builds a Path, which is a WindowsPath while os.name is
+    # faked to "nt" and cannot be made on Linux. Only killpg matters here.
+    monkeypatch.setattr(runner, "_targets", lambda *_args, **_kwargs: [])
     runner._signal_tree(77, signal.SIGTERM, own=False, leader=True)
 
     notes: list[str] = []
