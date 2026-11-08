@@ -198,6 +198,42 @@ def test_keys_are_redacted_and_a_missing_key_is_not_echoed(monkeypatch) -> None:
     assert "XAI_API_KEY" in message
     assert "sk-" not in message
     assert "xai-" not in message
+    assert caught.value.transient is False
+
+
+def test_a_slow_model_reply_is_a_retry_not_the_end_of_the_run(monkeypatch) -> None:
+    """A timeout, a dropped link, 429 and 5xx are transient; the timeout is configurable."""
+    import urllib.error
+
+    sys.path.insert(0, str(REPO / "scripts"))
+    from ai_cockpit import providers
+
+    seen: list[float] = []
+
+    def slow(request, timeout=0):
+        seen.append(timeout)
+        raise TimeoutError("slow")
+
+    monkeypatch.setenv("AI_COCKPIT_TIMEOUT_S", "180")
+    monkeypatch.setattr(providers.urllib.request, "urlopen", slow)
+    with pytest.raises(providers.ProviderError) as caught:
+        providers._post_json("http://model.test/v1/chat/completions", {}, {})
+    assert caught.value.transient is True
+    assert seen == [180.0]
+
+    for code, transient in ((429, True), (503, True), (401, False)):
+        def refused(request, timeout=0, code=code):
+            raise urllib.error.HTTPError("http://model.test", code, "x", {}, None)
+
+        monkeypatch.setattr(providers.urllib.request, "urlopen", refused)
+        with pytest.raises(providers.ProviderError) as caught:
+            providers._post_json("http://model.test/v1/chat/completions", {}, {})
+        assert caught.value.transient is transient, code
+
+    monkeypatch.delenv("AI_COCKPIT_TIMEOUT_S")
+    assert providers.request_timeout_s() == 60.0
+    monkeypatch.setenv("AI_COCKPIT_TIMEOUT_S", "9999")
+    assert providers.request_timeout_s() == 600.0
 
 
 def test_a_stop_file_ends_the_run_before_the_browser(tmp_path: Path) -> None:

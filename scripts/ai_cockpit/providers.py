@@ -54,7 +54,28 @@ CUSTOM_MODEL_ENVS = ("AI_COCKPIT_MODEL", "TW2K_CUSTOM_MODEL")
 
 
 class ProviderError(RuntimeError):
-    """A live provider could not answer. The message never includes a key."""
+    """A live provider could not answer. The message never includes a key.
+
+    ``transient`` marks a failure worth retrying on the next turn: a timeout,
+    a dropped connection, HTTP 429 or a 5xx. A missing key or URL is not.
+    """
+
+    def __init__(self, message: str, *, transient: bool = False) -> None:
+        super().__init__(message)
+        self.transient = transient
+
+
+def request_timeout_s() -> float:
+    """Seconds one model request may take. AI_COCKPIT_TIMEOUT_S, 10..600, default 60.
+
+    A reasoning model can think for a minute on one screen; a long run sets this higher.
+    """
+    raw = (os.environ.get("AI_COCKPIT_TIMEOUT_S") or "").strip()
+    try:
+        value = float(raw) if raw else 60.0
+    except ValueError:
+        value = 60.0
+    return max(10.0, min(600.0, value))
 
 
 @dataclass
@@ -317,14 +338,15 @@ def _post_json(url: str, body: dict, headers: dict[str, str]) -> dict:
     data = json.dumps(body).encode("utf-8")
     request = urllib.request.Request(url, data=data, headers=headers, method="POST")
     try:
-        with urllib.request.urlopen(request, timeout=60) as response:
+        with urllib.request.urlopen(request, timeout=request_timeout_s()) as response:
             return json.loads(response.read().decode("utf-8"))
     except urllib.error.HTTPError as exc:
-        raise ProviderError(f"model request failed with HTTP {exc.code}") from exc
+        busy = exc.code == 429 or exc.code >= 500
+        raise ProviderError(f"model request failed with HTTP {exc.code}", transient=busy) from exc
     except urllib.error.URLError as exc:
-        raise ProviderError(f"model request failed: {exc.__class__.__name__}") from exc
+        raise ProviderError(f"model request failed: {exc.__class__.__name__}", transient=True) from exc
     except TimeoutError as exc:
-        raise ProviderError("model request timed out") from exc
+        raise ProviderError("model request timed out", transient=True) from exc
 
 
 def _message_text(payload: dict, style: str) -> str:

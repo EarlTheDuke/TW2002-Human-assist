@@ -178,6 +178,18 @@ _CHIP = """
 """
 
 _HISTORY = 8
+# Transient model failures (timeout, dropped connection, 429/5xx) in a row before the run stops.
+_MODEL_FAIL_LIMIT = 5
+
+
+def _env_int(name: str, default: int, low: int, high: int) -> int:
+    """An int from the environment, clamped to low..high; the default when unset or bad."""
+    raw = (os.environ.get(name) or "").strip()
+    try:
+        value = int(raw) if raw else default
+    except ValueError:
+        value = default
+    return max(low, min(high, value))
 
 
 class RateGate:
@@ -737,6 +749,8 @@ def run_turns(
     history: list[str] = []
     code = 0
     idle = 0
+    model_fails = 0
+    no_turn_waits = _env_int("AI_COCKPIT_NO_TURN_WAITS", 8, 1, 10_000)
     harness = None
     if directives:
         seat = seat_from_url(url) or "SEAT"
@@ -772,7 +786,7 @@ def run_turns(
                 break
             if chip == "NO TURNS":
                 idle += 1
-                if idle > 8:
+                if idle > no_turn_waits:
                     _write_log(log_path, "the day did not roll")
                     code = 1
                     break
@@ -801,8 +815,15 @@ def run_turns(
         except (ProviderError, ActionError) as exc:
             _record(actions_path, step, Action("wait", ms=0), note=redact(str(exc)))
             _write_log(log_path, redact(str(exc)))
+            # One slow or dropped reply is not the end of a multi-day run: read the
+            # screen again and ask once more. A config error, or many in a row, still stops.
+            model_fails += 1
+            if getattr(exc, "transient", False) and model_fails < _MODEL_FAIL_LIMIT:
+                _write_log(log_path, f"retrying after a model failure ({model_fails} in a row)")
+                continue
             code = 1
             break
+        model_fails = 0
         usage = getattr(provider, "last_usage", None)
         if usage is not None:
             _write_log(log_path, usage.line())
