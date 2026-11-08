@@ -150,7 +150,23 @@ def _letters(trades: tuple[bool | None, bool | None, bool | None]) -> str:
     return "".join(out)
 
 
-def _facts(config) -> dict:
+def _stardock_where(universe) -> tuple[int | None, str]:
+    """StarDock's sector for this game, and the phrase that names it.
+
+    A v3.11 universe draws StarDock's sector, so the old fixed sector 1 is only right
+    for a universe generated with the location switch off. Without a game (the lobby
+    manual) a random placement has no number to print, so the phrase says where to look.
+    """
+    if universe is not None:
+        sector = int(K.stardock_sector_of(universe))
+        return sector, f"StarDock is sector {_n(sector)} in this game"
+    if K.stardock_location_live():
+        return None, ("StarDock is in a random sector each game, outside sectors 1 through 10. "
+                      "At Terra, in sector 1, the HERE panel offers a course to it")
+    return int(K.STARDOCK_SECTOR), f"StarDock is sector {_n(K.STARDOCK_SECTOR)}"
+
+
+def _facts(config, universe=None) -> dict:
     turns_asked = int(getattr(config, "turns_per_day", None) or K.STARTING_TURNS_PER_DAY)
     override = getattr(config, "starting_credits_override", None) if config is not None else None
     turns_override = getattr(config, "turns_per_day_override", None) if config is not None else None
@@ -163,7 +179,10 @@ def _facts(config) -> dict:
     fuel, organics, equipment = K.PLANET_PROD_PER_UNIT["M"]
     rate, over, align = K.tax_terms()
     max_days = int(getattr(config, "max_days", None) or 10)
+    dock_sector, dock_phrase = _stardock_where(universe)
     return {
+        "dock_sector": dock_sector,
+        "dock_phrase": dock_phrase,
         "credits": int(credits),
         "turns": int(turns),
         "fighters": int(fighters),
@@ -187,12 +206,13 @@ def _facts(config) -> dict:
     }
 
 
-def render(brand: str, config=None, *, lobby: bool = True) -> str:
+def render(brand: str, config=None, *, lobby: bool = True, universe=None) -> str:
     """The manual for this process, or for one game when config is that game's GameConfig.
 
     lobby=False is the per-game page: its links go back to that game's cockpit.
+    ``universe`` is that game's universe; it names this game's StarDock sector.
     """
-    f = _facts(config)
+    f = _facts(config, universe)
     scope = (
         "These numbers are this game's settings."
         if f["scoped"]
@@ -298,7 +318,7 @@ def _walkthrough(f: dict) -> str:
         "Engage Express only when the first hop costs no more than the turns you have left.</li>"
         "<li>Trade. A port letter B means the port buys that good from you. S means the port sells it to you. "
         "The three letters are fuel, organics, equipment. Sell where the port buys, buy where the next port sells.</li>"
-        f"<li>Colonists come from Terra in sector {_n(K.STARDOCK_SECTOR)}. "
+        "<li>Colonists come from Terra in sector 1. "
         f"The pool starts at {_n(K.terra_start_pool())} and grows {_n(K.TERRA_REGEN_PER_DAY)} a day. "
         f"One hold carries {_n(K.colonists_per_hold())} colonists and the load costs {_n(K.TERRA_LOAD_TURNS)} turn. "
         "They are free. Take them to your planet and set the population.</li>"
@@ -306,7 +326,7 @@ def _walkthrough(f: dict) -> str:
         f"{_n(f['hold_cost'])} credits.</li>"
         f"<li>Stay away from Ferrengi until you can pay or fight. FedSpace is sectors "
         f"{_n(min(K.FEDSPACE_SECTORS))} through {_n(max(K.FEDSPACE_SECTORS))}. "
-        f"StarDock is sector {_n(K.STARDOCK_SECTOR)}. Do not start a fight there.</li>"
+        f"{f['dock_phrase']}. Do not start a fight there.</li>"
         "</ol>"
         + _src("v3.11 new-trader opening: Merchant Cruiser, the measured credit and turn pocket, "
                "Terra as the colonist source, and the course card from the cockpit map work.")
@@ -417,7 +437,7 @@ def _trading(f: dict) -> str:
     )
 
 
-def _ports(_f: dict) -> str:
+def _ports(f: dict) -> str:
     rows = []
     for cid in range(0, 10):
         trades = K.port_class_trades(cid)
@@ -431,9 +451,7 @@ def _ports(_f: dict) -> str:
         "<p>Port class letters are read from the engine for this process. "
         f"The live class map is {_on(K.port_class_live())}.</p>"
         + _table(("Class", "What it trades"), rows)
-        + "<p>StarDock, in sector "
-        + _n(K.STARDOCK_SECTOR)
-        + ", sells hardware and ships and holds the bank. "
+        + "<p>" + f["dock_phrase"] + ". It sells hardware and ships and holds the bank. "
         + (
             "On the live class map it is shown as Class 9. Its stored id stays 8, and Class 9 in the trade book is still the built SSS port."
             if K.port_class_live()
@@ -621,7 +639,7 @@ def _citadels(_f: dict) -> str:
 
 def _colonists(_f: dict) -> str:
     return (
-        f"<p>Terra is in sector {_n(K.STARDOCK_SECTOR)}. It is not a planet, it cannot be claimed, and its colonists are free. "
+        "<p>Terra is in sector 1. It is not a planet, it cannot be claimed, and its colonists are free. "
         f"The pool starts at {_n(K.terra_start_pool())} and regrows {_n(K.TERRA_REGEN_PER_DAY)} a day. "
         f"One hold takes {_n(K.colonists_per_hold())} colonists. Loading them costs {_n(K.TERRA_LOAD_TURNS)} turn.</p>"
         "<p>On a planet, population grows while it is under half the class cap and dies back while it is over half, "
@@ -1175,7 +1193,7 @@ def _quasar_and_interdictor() -> str:
         "Classic Trade Wars 2002 v3.11 uses the one-shot order.</p>"
         "<p>An interdictor at StarDock is PLANET_INTERDICT_SAFE_MODE. "
         "The value v311 turns it on, and so does the v3.11 profile. The string 1 does not. "
-        f"While it is on, an interdictor does not hold a ship at StarDock, sector {_n(K.STARDOCK_SECTOR)}. "
+        f"While it is on, an interdictor does not hold a ship at StarDock. "
         "Terra's colonists are in that sector, so the generator is quiet there. "
         f"Anywhere else it still burns {_n(K.INTERDICTOR_FUEL)} fuel, and the sector cannon can still fire. "
         "While it is off, an interdictor in StarDock holds a ship the same as anywhere else. "
@@ -1675,8 +1693,7 @@ def _stardock_services(f: dict) -> str:
         "a bust blocks that port until the next day, and every day clears every bust.",
     )
     return (
-        "<p>StarDock, in sector "
-        f"{_n(K.STARDOCK_SECTOR)}, holds the shipyard, the tavern, the underground, the bank and Police HQ.</p>"
+        f"<p>{f['dock_phrase']}. It holds the shipyard, the tavern, the underground, the bank and Police HQ.</p>"
         + rename
         + f"<p>The tavern is {_on(K.tavern_on())}. An announcement costs {_n(K.TAVERN_ANNOUNCE_COST)} credits. "
         f"A drink costs {_n(K.tavern_drink_cost())} credits and a plate of food costs {_n(K.tavern_food_cost())} credits. "
@@ -1755,7 +1772,7 @@ def _stardock_services(f: dict) -> str:
             "the Libram and the singles bar are closed.",
         )
         + "<p>The bank takes deposits, withdrawals and transfers. The tax section states the interest.</p>"
-        + f"<p>Police HQ is in sector {_n(K.STARDOCK_SECTOR)}. "
+        + "<p>Police HQ is at StarDock. "
         f"Alignment must be at least {_n(K.POLICE_MIN_ALIGNMENT)}. "
         f"A commission is granted from alignment {_n(K.COMMISSION_APPLY_MIN)} up to, but not including, "
         f"{_n(K.COMMISSION_ALIGNMENT)}. It sets your alignment to {_n(K.COMMISSION_ALIGNMENT)}.</p>"

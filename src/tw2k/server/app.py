@@ -1007,7 +1007,7 @@ def create_app(
         if universe is not None:
             cfg = getattr(universe, "config", None)
         return HTMLResponse(
-            render(name, config=cfg, lobby=False),
+            render(name, config=cfg, lobby=False, universe=universe),
             headers={
                 "Cache-Control": "no-cache, no-store, must-revalidate",
                 "Pragma": "no-cache",

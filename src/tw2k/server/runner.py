@@ -128,6 +128,19 @@ def _is_day_done(player) -> bool:
     return remaining < warp_cost and remaining < trade_cost
 
 
+def wait_counts_toward_standdown(is_wait: bool, ok: bool, timed_out: bool) -> bool:
+    """Whether this turn's WAIT counts toward the four-in-a-row stand-down.
+
+    A WAIT the server inserted because the seat ran past its deadline (a person
+    reading, a model thinking) is not the seat choosing to wait. Under v3.11 turn
+    regen the stand-down throws away banked turns that only trickle back, and the
+    day already rolls on the clock, so those WAITs do not count. Legacy is unchanged.
+    """
+    if not (is_wait and ok):
+        return False
+    return not (timed_out and K.turn_regen_live())
+
+
 def note_wait_streak(
     waits: dict[str, int], streak_day: dict[str, int], player_id: str, day: int, ok_wait: bool
 ) -> int:
@@ -902,6 +915,7 @@ class MatchRunner:
 
                 passed_for_day = False
                 missed = False
+                timed_out = False
                 try:
                     if K.starting_package_live() and not K.live_pace():
                         from ..engine.runner import recover_turns
@@ -987,6 +1001,7 @@ class MatchRunner:
                                 finally:
                                     await self._end_turn_wait()
                         except TimeoutError as _texc:
+                            timed_out = True
                             if is_external and getattr(agent, "in_held_continuation", False):
                                 # Held slot left idle: end the slot, spend nothing.
                                 agent.hold_slot = False  # type: ignore[attr-defined]
@@ -1240,7 +1255,8 @@ class MatchRunner:
                 # toward today's stand-down (fullgame2 P7 stood down after 2 waits on day 2).
                 streak_day = getattr(self, "_wait_streak_day", {})
                 note_wait_streak(waits, streak_day, agent.player_id, int(universe.day),
-                                 action.kind == ActionKind.WAIT and bool(result.ok))
+                                 wait_counts_toward_standdown(action.kind == ActionKind.WAIT,
+                                                              bool(result.ok), timed_out))
                 self._wait_streak = waits
                 self._wait_streak_day = streak_day
                 if waits.get(agent.player_id, 0) >= 4:

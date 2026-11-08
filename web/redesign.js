@@ -3,6 +3,32 @@
   "use strict";
   const $ = (id) => document.getElementById(id);
   const fmt = (n) => Number(n || 0).toLocaleString("en-US");
+  // Holds in use. Colonists ride in cargo as people (1,000 to a hold under Terra live),
+  // so summing cargo counts reads 30,000 colonists as 30,000 holds. The server's
+  // cargo_free already applies the per-hold rule; fall back to the sum without it.
+  // The original planet screen names the type ("Class U, Gaseous"). Same names as the
+  // engine's PLANET_CLASS_NAMES (constants.py); a Gaseous world produces nothing.
+  const PLANET_TYPE_NAMES = { M: "Earth", K: "Desert", L: "Mountainous", O: "Oceanic", C: "Glacial", H: "Volcanic", U: "Gaseous" };
+  // Form labels. The server names its parameters in snake_case (ship_class, planet_id,
+  // fuel_ore); a player should read words. data-n keeps the raw name for scripts.
+  const FIELD_WORDS = { ship_class: "Ship", trade_in: "Trade in this ship", side: "Action", planet_id: "Planet",
+    qty: "Quantity", item: "Item", amount: "Amount", from: "From", to: "To", mode: "Mode", kind: "Kind" };
+  const fieldWords = (name) => {
+    const key = String(name || "");
+    if (FIELD_WORDS[key]) return FIELD_WORDS[key];
+    const words = key.replaceAll("_", " ");
+    return words.charAt(0).toUpperCase() + words.slice(1);
+  };
+  // A snake_case choice (fuel_ore) reads as words; ids, numbers and names stay as sent.
+  const choiceWords = (value) => {
+    const text = String(value);
+    return /^[a-z]+(_[a-z]+)+$/.test(text) ? text.replaceAll("_", " ") : text;
+  };
+  const holdsUsed = (ship) => {
+    const sh = ship || {};
+    if (sh.cargo_free != null && sh.holds != null) return Math.max(0, Number(sh.holds) - Number(sh.cargo_free));
+    return Object.values(sh.cargo || {}).reduce((a, b) => a + Number(b || 0), 0);
+  };
   function colonistWords(n, stored) {
     const count = Number(n || 0);
     if (stored === "people") return "Colonists (1000s) " + fmt(Math.floor(count / 1000)) + " (" + fmt(count) + " people)";
@@ -3124,7 +3150,7 @@
     $("shipName").textContent = def.name.toUpperCase();
     $("shipCls").textContent = String(sh.class || "ship").replaceAll("_", " ");
     paintShipView(sh, def);
-    const used = Object.values(sh.cargo || {}).reduce((a, b) => a + Number(b || 0), 0);
+    const used = holdsUsed(sh);
     const bar = (k, v, c, col) => '<div class="bar"><span>' + k + '</span><span class="t"><span class="f" style="width:' + (c ? Math.min(100, v / c * 100) : 0) + "%;background:" + col + '"></span></span><span class="w">' + fmt(v) + '<span class="dk">/' + fmt(c) + "</span></span></div>";
     const mines = sh.mines || {};
     const mineRow = (name, n) => '<div class="bar" data-mines="' + name + '"><span>' + name + ' mines</span><span class="w">' + fmt(n) + "</span></div>";
@@ -3164,7 +3190,7 @@
     const server = ((((LA("trade") || {}).params || {}).why) || {})[commodity];
     if (server) return server;
     const onboard = Number((ship.cargo || {})[commodity] || 0);
-    const used = Object.values(ship.cargo || {}).reduce((sum, n) => sum + Number(n || 0), 0);
+    const used = holdsUsed(ship);
     const cur = Number(stock.current || 0);
     const max = Number(stock.max || 0);
     const room = Math.max(0, max - cur);
@@ -3266,7 +3292,8 @@
         : (yours ? "Claimed by: " + (S.self_name || "you") + " (you)" : "Claimed by: " + traderName(landed.owner_id));
       const home = yours && landed.origin === "other" ? " Your home planet" : "";
       let body = '<div class="y">' + esc(landed.name || "planet") + "</div>";
-      body += '<div data-claim="owner">Class <span class="c">' + esc(landed.class || "?") + "</span>  " + esc(claim + home) + "</div>";
+      const typeName = PLANET_TYPE_NAMES[String(landed.class || "").toUpperCase()];
+      body += '<div data-claim="owner">Class <span class="c">' + esc(landed.class || "?") + "</span>" + (typeName ? " (" + esc(typeName) + ")" : "") + "  " + esc(claim + home) + "</div>";
       const building = landed.citadel_target && Number(landed.citadel_target) > Number(landed.citadel_level || 0);
       body += '<div data-citadel="level">Citadel <span class="c">' + (building ? "building toward " + landed.citadel_target : "level " + (landed.citadel_level || 0)) + "</span>";
       if (building && landed.citadel_complete_day) body += '  ready day <span class="y">' + landed.citadel_complete_day + "</span>";
@@ -3544,7 +3571,7 @@
     Object.entries(a.params || {}).forEach(([name, spec]) => {
       if (!spec || typeof spec !== "object" || !spec.type) return;
       const label = document.createElement("label");
-      label.appendChild(document.createTextNode(kind === "ship_rename" && name === "name" ? "New name " : name + " "));
+      label.appendChild(document.createTextNode(kind === "ship_rename" && name === "name" ? "New name " : fieldWords(name) + " "));
       let input;
       if (Array.isArray(spec.choices) && kind === "buy_ship" && name === "ship_class") {
         input = document.createElement("select");
@@ -3559,7 +3586,7 @@
           o.value = typeof choice === "object" ? (choice.id ?? "") : choice;
           o.textContent = kind === "attack" && name === "target" ? shipChoiceLabel(String(o.value))
             : (kind === "buy_equip" && name === "item" ? gearName(o.value)
-            : (kind === "ship_transport" && name === "ship_id" ? shipTransportLabel(o.value) : String(o.value) + codeBotSuffix(o.value)));
+            : (kind === "ship_transport" && name === "ship_id" ? shipTransportLabel(o.value) : choiceWords(o.value) + codeBotSuffix(o.value)));
           if (kind === "deposit_planet_defense" && name === "kind" && o.value === "shields" && Number((landedPlanet() || {}).citadel_level || 0) < 5) {
             o.disabled = true;
             o.textContent = "shields (needs a Level 5 citadel)";
@@ -3790,7 +3817,7 @@
         const ship = (S && S.ship) || {};
         const cargo = ship.cargo || {};
         const holds = Number(ship.holds || 0);
-        const used = Object.values(cargo).reduce((sum, n) => sum + Number(n || 0), 0);
+        const used = holdsUsed(ship);
         const empty = Math.max(0, holds - used);
         const carried = Number(cargo[com] || 0);
         const price = Number((listed[com] || {})[side] || 0);

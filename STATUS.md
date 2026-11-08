@@ -51,6 +51,14 @@ CI: `.github/workflows/ci.yml` (pytest on 3.11 and 3.12, plus ruff).
 
 ## Recent changes
 
+- 2026-11-08: Claude seat pilot (Claude playing the redesign cockpit in a browser,
+  1,000,000 cr, `docs/playtests/claude-seat-v1/pilot-log.md`). Fixed: the manual said
+  StarDock is sector 1 (v3.11 draws it per game; now names this game's sector); the
+  ship panel counted colonists as holds; the planet panel names the type ("Class U
+  (Gaseous)"); form labels were raw parameter names. Rule fix: under v3.11 turn regen a
+  WAIT the server inserts for a slow seat no longer counts toward the four-WAIT
+  stand-down, which threw away a seat's banked turns (`wait_counts_toward_standdown`).
+
 - 2026-11-07: North Star run (cockpit-only AI seat, kimi-k2.6, v3.11, 3 x 1h days):
   the trade loop runs fully from the cockpit, but the AI looped one route and finished
   3rd of 4. Findings in `docs/playtests/cockpit-ai-seat-v4/gaps.md`. Top one is a
