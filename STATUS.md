@@ -4,7 +4,7 @@ The one living status page for TW2K-AI. Update this file when the state of the
 project changes. Do not add new per-slice "readiness onto tip" or handoff docs;
 put a dated line under "Recent changes" here instead.
 
-_Last updated: 2026-11-02_
+_Last updated: 2026-11-07_
 
 ## Where things stand
 
@@ -49,6 +49,12 @@ CI: `.github/workflows/ci.yml` (pytest on 3.11 and 3.12, plus ruff).
 - Delete a work branch once it is merged.
 
 ## Recent changes
+
+- 2026-11-07: Merged the 7c test cleanup (#443) into `main`. Added `CLAUDE.md`
+  (working agreement for Claude Code sessions). Known red on `main`: three v3.11
+  switch tests (`test_note173_manual_v1`, `test_v311_exp_alignment_trade_gaps_v1`);
+  the 7c branch did not cause them. Pruned stale worktrees after archiving their
+  saves and uncommitted work (see `TW2002-worktree-archive-2026-11-07` next to this repo).
 
 - 2026-11-02: Repo cleanup. Landed the v3.11 default and Phase 2 batches 1-2
   on `main`; moved 515 unreferenced plan and process docs to `docs/archive/`;
