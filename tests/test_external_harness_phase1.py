@@ -257,7 +257,15 @@ def test_07_scheduler_blocks_on_external_seat_and_applies_submitted_warp(tmp_pat
     asyncio.run(_go())
 
 
-def test_08_timeout_applies_wait_emits_agent_error_and_streak_ends_day(tmp_path: Path) -> None:
+def test_08_timeout_applies_wait_emits_agent_error_and_streak_ends_day(tmp_path: Path, monkeypatch) -> None:
+    # Legacy rules: four timeout WAITs still end the day. Since 2026-11-08 a v3.11 game
+    # (turn regen) does not count server-inserted WAITs toward that stand-down; see
+    # tests/test_timeout_waits_keep_turns_v1.py.
+    import tw2k.engine.constants as K
+
+    monkeypatch.setattr(K, "V311_PROFILE", "legacy")
+    monkeypatch.setattr(K, "TURN_REGEN_MODE", "legacy")
+    monkeypatch.setattr(K, "TW2002_LIVE_PROFILE", "legacy")
     runner = MatchRunner(Broadcaster(), saves_root=tmp_path / "saves")
 
     async def _go() -> None:

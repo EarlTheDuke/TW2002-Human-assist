@@ -32,7 +32,9 @@ def test_day1_banks_once_and_does_not_shuttle(monkeypatch, seed: int) -> None:
     agent = HeuristicAgent("P5", "Bot")
     homeward = 0
     trades = 0
-    for _ in range(20):
+    # 30 actions: since 2026-11-08 a bot at a drawn StarDock also buys fighters and a
+    # holo scanner before heading out, then scans each new sector before warping in.
+    for _ in range(30):
         act = asyncio.run(agent.act(build_observation(u, "P5")))
         if act.kind is ActionKind.PLOT_COURSE and int((act.args or {}).get("target") or 0) == dock:
             homeward += 1
@@ -43,4 +45,6 @@ def test_day1_banks_once_and_does_not_shuttle(monkeypatch, seed: int) -> None:
     # A scouting warp back through StarDock may bank one more stage; a plotted trip may not.
     assert p.bank_balance >= int(K.BOT_BANK_DAY1_DEPOSIT)
     assert homeward == 0
-    assert trades >= 2
+    # With a scanner fitted the bot scans each new sector before warping in, so it
+    # covers less ground per action; it must still trade, not shuttle home.
+    assert trades >= 1

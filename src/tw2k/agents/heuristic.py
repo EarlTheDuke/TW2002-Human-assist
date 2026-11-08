@@ -354,8 +354,17 @@ class HeuristicAgent(BaseAgent):
         if opened is not None:
             return opened
 
-        # At StarDock: consider outfitting & upgrading before heading out
-        if obs.sector["id"] == 1 and obs.credits > 50_000:
+        # A drawn (v3.11) StarDock: park the day's nest egg before spending on gear, so
+        # outfitting never eats the deposit. Legacy keeps its old order (dock is sector 1).
+        dock_here = obs.sector["id"] == _observed_dock(obs)
+        if dock_here and _observed_dock(obs) != int(STARDOCK_SECTOR):
+            banked = self._h_bank(obs, recovery=False)
+            if banked is not None:
+                return banked
+
+        # At StarDock: consider outfitting & upgrading before heading out. Under v3.11
+        # StarDock is drawn per game (sector 1 is Terra), so ask the observation where it is.
+        if obs.sector["id"] == _observed_dock(obs) and obs.credits > 50_000:
             room = self._legal_max(obs, "buy_equip", "fighters")
             if obs.ship["fighters"] < 500 and obs.credits > 25_000 and room > 0:
                 qty = min(200, obs.credits // 50, room)  # never past the hull's cap (a Scout holds less)
@@ -405,7 +414,7 @@ class HeuristicAgent(BaseAgent):
             legal = self._legal(obs)
             buy = legal.get("buy_equip")
             here = int(obs.sector.get("id") or 0)
-            if here == 1 and buy and buy.get("legal"):
+            if here == _observed_dock(obs) and buy and buy.get("legal"):
                 items = ((buy.get("params") or {}).get("item") or {}).get("choices") or []
                 prices = ((buy.get("params") or {}).get("item") or {}).get("unit_price_by") or {}
                 room = scanner_room(str((obs.ship or {}).get("class") or getattr(obs.ship, "ship_class", "") or ""))

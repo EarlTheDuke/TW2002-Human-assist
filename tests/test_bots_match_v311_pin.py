@@ -18,9 +18,12 @@ from tests._pin_env import pin_env
 ROOT = Path(__file__).resolve().parents[1]
 
 # Recorded on phase2-v311-default (R-4 flip, parent 9dfe6487).
+# Re-pinned 2026-11-08 on purpose: the heuristic bot now outfits (fighters, scanner) at the
+# StarDock v3.11 draws, not only at sector 1, and banks before it shops there. H's play
+# changes; seed 4242's H-P1 ends day 3 at 162,532 net worth (was 84,310), no exceptions.
 V311_GOLDENS = {
-    ("N3,N2,N1,H", 3, 250925): "e9bfe5c4a5f9b16f17898b04",
-    ("H,N1,N3,H", 3, 4242): "928c35e031322bbc82c65bf7",
+    ("N3,N2,N1,H", 3, 250925): "cd6d92116551a7fb631f4750",
+    ("H,N1,N3,H", 3, 4242): "4a268968451f3a7dadcdf9b6",
 }
 
 

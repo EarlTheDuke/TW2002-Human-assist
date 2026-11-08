@@ -4219,6 +4219,11 @@
     const spec = (((LA("ship_transwarp") || {}).params || {}).sector_id) || {};
     const choices = spec.choices || [];
     const ore = spec.ore_by || {};
+    const hops = spec.hops_by || {};
+    // The legal action's cost is the jump's turn cost (one warp's turns in the stored
+    // mode); the point of TransWarp is that against the same trip flown lane by lane.
+    const jumpTurns = Number((LA("ship_transwarp") || {}).cost || 0);
+    const perWarp = Number(((S && S.ship) || {}).turns_per_warp || (HULL[((S && S.ship) || {}).class] || {}).tpw || 0);
     slot.innerHTML = "";
     const wrap = document.createElement("div");
     wrap.className = "frm";
@@ -4238,7 +4243,14 @@
     if (saved && saved.sector_id) target.value = String(saved.sector_id);
     const paint = () => {
       const n = ore[target.value];
-      cost.textContent = n != null ? "Fuel cost " + fmt(n) + " ore." : "Pick a locked sector.";
+      const h = Number(hops[target.value] || 0);
+      let turns = "";
+      if (jumpTurns) {
+        turns = " About " + fmt(jumpTurns) + " turns";
+        if (h && perWarp) turns += " (flying the " + fmt(h) + " hops lane by lane: " + fmt(h * perWarp) + ")";
+        turns += ".";
+      }
+      cost.textContent = n != null ? "Fuel cost " + fmt(n) + " ore." + turns : "Pick a locked sector.";
     };
     target.addEventListener("change", paint);
     paint();
@@ -5500,14 +5512,27 @@
       return rows[id];
     };
     const seen = new Set();
-    streamLog.concat((S && S.recent_events) || []).forEach((ev) => {
-      if (!ev || ev.actor_id !== S.self_id || seen.has(ev.seq)) return;
+    const ordered = streamLog.concat((S && S.recent_events) || []).filter(Boolean)
+      .slice().sort((a, b) => (a.seq || 0) - (b.seq || 0));
+    ordered.forEach((ev) => {
+      if (!ev || seen.has(ev.seq)) return;
+      const facts = ev.facts || {};
+      // Another ship hit my sector fighters: the engine reports how many stay.
+      if (ev.kind === "combat" && facts.vs === "fighter_sector" && facts.defender_owner === S.self_id && ev.actor_id !== S.self_id) {
+        seen.add(ev.seq);
+        const row = touch(ev.sector_id);
+        if (row && facts.defender_left != null) row.fighters = Number(facts.defender_left);
+        return;
+      }
+      if (ev.actor_id !== S.self_id) return;
       seen.add(ev.seq);
       const row = touch(ev.sector_id);
       if (!row) return;
-      const facts = ev.facts || {};
       const qty = Number(facts.qty || 0);
-      if (ev.kind === "deploy_fighters") {
+      if (ev.kind === "mine_detonated") {
+        // My mines went off under another ship: each hit spends one armid.
+        row.mines.armid = (row.mines.armid || 0) - Number(facts.hits || 0);
+      } else if (ev.kind === "deploy_fighters") {
         row.fighters += qty;
         if (facts.mode) row.mode = facts.mode;
       } else if (ev.kind === "deploy_mines") {
