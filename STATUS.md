@@ -14,8 +14,8 @@ _Last updated: 2026-11-07_
 - **Rule set:** v3.11 is the stored default (`V311_PROFILE = "v311"`). Phase 2
   is retiring the legacy switches in batches (batch 1: four switches, batch 2:
   ten more).
-- **Known red:** a bot banking loop is still open (see commit 9dfe6487, #436).
-  The test suite itself is green as of 2026-11-07.
+- **Known red:** none. The bot day-1 banking loop (#436) was fixed by #438
+  (c23ef387); confirmed 2026-11-07 (see Recent changes).
 - **Direction:** see `docs/NORTH_STAR.md` (cockpit-only AI player, then voice).
 
 ## Run the tests
@@ -51,6 +51,10 @@ CI: `.github/workflows/ci.yml` (pytest on 3.11 and 3.12, plus ruff).
 
 ## Recent changes
 
+- 2026-11-07: Closed the bot banking loop (#436). It was already fixed by #438:
+  traces on five seeds (days 1-3, v3.11, 100k credits) show one deposit and then
+  trading, and `test_two_humans_play_two_days_through_the_proxy` (the playtest that
+  was red, incl. the day-2 fight) passes locally in 2m50s.
 - 2026-11-07: Main is green again. Fixed the three red tests left by Phase 2
   batch 2 (they still expected the retired capped-gap haggle rule and a switch list
   without the retired switches); removed the dead `PORT_HAGGLE_XP_CAP`; the in-game
