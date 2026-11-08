@@ -120,8 +120,8 @@ Added in the build:
   Class 0 are refused.
 - An offer under the quote is paid at the offer (spec pt12). A ship sale under the list price still pays the list
   (economy.py unchanged); the difference is deliberate and only reachable by a seat that underbids itself.
-- Good-counter experience is the ship formula on the per-unit bargain: `min(PORT_HAGGLE_XP_CAP, round((offer -
-  quote) / qty))`.
+- Good-counter experience is the ship rule on the per-unit bargain: `haggle_experience`: +1 (`HAGGLE_EXP_GOOD`) for a counter that beats the quote, +2 (`HAGGLE_EXP_GREAT`) when it reaches the port's bound (NOTE 87; the
+  older capped-gap rule was retired in Phase 2 batch 2).
 - A refused counter (`We're not interested.`) is a `TRADE_FAILED` event (actor only) and does not open the port
   visit, exactly like a failed ship counter; it spends the visit turn if one was due.
 - An escape pod may negotiate (the ship-trade guards let a pod trade; pt3 says reuse them).

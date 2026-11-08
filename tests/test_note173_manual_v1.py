@@ -32,9 +32,11 @@ def test_v311_mode_lists_every_switch(monkeypatch) -> None:
     assert 'id="v311-mode"' in legacy
     assert "V311_PROFILE" in legacy
     assert "does not change the stored defaults" in legacy
-    listed = {row[0] for row in K.V311_PROFILE_HELPERS.values()}
-    assert set(_SWITCH_PLAIN) == listed
-    for switch in listed:
+    helpers = {row[0] for row in K.V311_PROFILE_HELPERS.values()}
+    retired = set(K.V311_RETIRED_SWITCHES)
+    assert not helpers & retired
+    assert set(_SWITCH_PLAIN) == helpers | retired
+    for switch in helpers | retired:
         assert f"<td>{switch}</td>" in legacy
         assert f"<td>{switch}</td>" in live
     assert "<td>NAVPOINT_MODE</td>" in legacy

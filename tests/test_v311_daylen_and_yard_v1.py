@@ -189,6 +189,19 @@ def test_item2_no_day_two_stall_the_day_rolls_on_the_clock(monkeypatch, tmp_path
 
     monkeypatch.setattr(engine_runner, "refresh_offline_turns", spy)
 
+    # Stamp each day roll where the runner makes it. Polling for it lags on a busy CI
+    # box, and the 50x fake clock turns 0.4 s of lag into a day ~20 s short.
+    stamped: dict[int, float] = {}
+    real_record = runner._record_day_tick
+
+    def stamp() -> None:
+        u = runner.state.universe
+        if u is not None:
+            stamped.setdefault(u.day, time.time())
+        real_record()
+
+    monkeypatch.setattr(runner, "_record_day_tick", stamp)
+
     async def _go() -> None:
         await runner.start(_spec(DAY_S))
         runner.state.speed_multiplier = SPEED  # start() resets the runner state
@@ -217,7 +230,8 @@ def test_item2_no_day_two_stall_the_day_rolls_on_the_clock(monkeypatch, tmp_path
         assert n >= 0.8 * span / turn_s, (pid, n, span)
     assert 3 in rolls and 4 in rolls, f"the game stalled: days seen {sorted(rolls)}"
     # Days 3 and 4 come on the clock, one day length apart (fake seconds).
-    gap = rolls[4] - rolls[3]
+    assert 3 in stamped and 4 in stamped, f"day rolls stamped: {sorted(stamped)}"
+    gap = stamped[4] - stamped[3]
     assert DAY_S - 2 <= gap <= DAY_S + 5, gap
     # Nobody sits at 0 of 250 past one turn interval (0.48 s on a 120 s day). The fake clock
     # also runs CPU time 50x (a day tick or a bot move of ~60 ms reads as ~3 s), so the

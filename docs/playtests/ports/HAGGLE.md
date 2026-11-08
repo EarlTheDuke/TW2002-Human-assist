@@ -26,7 +26,7 @@ When the player is selling, the counter may go up to that percent of the first o
 
 Omitting the counter, or naming a price that is not better for the player than the first offer, trades at the first offer. Seat bots that never haggle still trade.
 
-A counter that is accepted and is better than the first offer adds experience. The added amount is the credit gap, and it stops at `PORT_HAGGLE_XP_CAP` (10). The ordinary 1 point for any successful trade is unchanged. A failed counter adds none.
+A counter that is accepted and is better than the first offer adds experience. Since Phase 2 batch 2 (NOTE 87) the added amount is +1 for a good counter and +2 for one that reaches the port's bound; the older rule (the credit gap, capped at 10) is retired. The ordinary 1 point for any successful trade is unchanged. A failed counter adds none.
 
 The same port and the same MCIC always produce the same limit. There is no roll.
 

@@ -46,11 +46,10 @@ python -m pytest -q                    # full suite = what CI runs (~1 hour; run
 ```
 - CI: `.github/workflows/ci.yml` (pytest on 3.11 + 3.12, plus ruff). Full suite is slow —
   run it in the background, or run only the touched test files plus the quick tier.
-- **Known red (pre-existing on main as of 2026-11-07):**
-  `test_note173_manual_v1.py::test_v311_mode_lists_every_switch` and two tests in
-  `test_v311_exp_alignment_trade_gaps_v1.py` (haggle experience gap); also
-  `test_v311_daylen_and_yard_v1.py::test_item2_…` is timing-flaky on CI. Don't mistake
-  these for your regression; fixing them is welcome.
+- **When you retire a legacy switch**, also sweep its old-behaviour tests, the in-game
+  manual (`src/tw2k/public/manual.py`), the reference page (`src/tw2k/server/reference.py`)
+  and `docs/playtests/` for text describing the legacy rule. Phase 2 batch 2 missed these,
+  which left main red until 2026-11-07.
 - Don't add tests that only check doc wording (the 7c cleanup removed those).
 - Throwaway/debug harnesses get deleted before commit.
 

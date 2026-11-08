@@ -382,7 +382,8 @@ def _trading(f: dict) -> str:
         f"<p>{_profile('Private trades', K.trade_private_live(), only_v311=False)} "
         + ("Other traders in the sector do not see your trades or their prices.</p>" if K.trade_private_live()
            else "Other traders in the sector see each trade you make, with its quantity and price.</p>")
-        + f"<p>A successful trade gives {_n(K.XP_AWARDS['trade'])} experience, up to {_n(K.PORT_HAGGLE_XP_CAP)} from haggling. "
+        + f"<p>A successful trade gives {_n(K.XP_AWARDS['trade'])} experience. A haggle that beats the list price adds "
+        f"{_n(K.HAGGLE_EXP_GOOD)} more, or {_n(K.HAGGLE_EXP_GREAT)} when the counter reaches the port's limit. "
         f"Price also moves with experience, capped at {_n(K.PORT_PRICE_EXPERIENCE_CAP)}.</p>"
         f"<p>The live haggle window is {_on(K.haggle_window_live())} in this process. "
         f"When it is on, a counter has to sit between {_n(room)} and {_n(end)} percent of the quote. "

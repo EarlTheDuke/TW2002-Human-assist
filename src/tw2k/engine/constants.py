@@ -247,9 +247,6 @@ PORT_HAGGLE_MCIC_SPAN = 100
 # A counter past the limit wastes one turn (haggling.html). A successful
 # trade still costs TURN_COST["trade"].
 PORT_HAGGLE_FAIL_TURNS = 1
-# A good accepted counter earns experience. The library does not print the
-# amount. One deal stops at this cap.
-PORT_HAGGLE_XP_CAP = 10
 
 # Cabal haggling.html counter percent, in tenths (1494 means 149.4%).
 # Fuel prints -46 twice and skips -47. The unit prices step by 0.2, so the

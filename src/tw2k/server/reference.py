@@ -369,7 +369,6 @@ def game_reference(player=None, day: int = 1, max_days: int | None = None) -> di
                     {"name": "Offer window", "value": _haggle_band(), "source": "src/tw2k/engine/constants.py haggle window"},
                     {"name": "Good haggle", "value": int(K.HAGGLE_EXP_GOOD), "source": "src/tw2k/engine/constants.py HAGGLE_EXP_GOOD"},
                     {"name": "Great haggle", "value": int(K.HAGGLE_EXP_GREAT), "source": "src/tw2k/engine/constants.py HAGGLE_EXP_GREAT"},
-                    {"name": "Legacy cap", "value": int(K.PORT_HAGGLE_XP_CAP), "source": "src/tw2k/engine/constants.py PORT_HAGGLE_XP_CAP"},
                 ],
             },
             {

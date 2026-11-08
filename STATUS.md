@@ -15,6 +15,7 @@ _Last updated: 2026-11-07_
   is retiring the legacy switches in batches (batch 1: four switches, batch 2:
   ten more).
 - **Known red:** a bot banking loop is still open (see commit 9dfe6487, #436).
+  The test suite itself is green as of 2026-11-07.
 - **Direction:** see `docs/NORTH_STAR.md` (cockpit-only AI player, then voice).
 
 ## Run the tests
@@ -50,6 +51,11 @@ CI: `.github/workflows/ci.yml` (pytest on 3.11 and 3.12, plus ruff).
 
 ## Recent changes
 
+- 2026-11-07: Main is green again. Fixed the three red tests left by Phase 2
+  batch 2 (they still expected the retired capped-gap haggle rule and a switch list
+  without the retired switches); removed the dead `PORT_HAGGLE_XP_CAP`; the in-game
+  manual now states the +1/+2 haggle experience rule instead of "up to 10"; the
+  day-roll timing test stamps rolls at the runner instead of polling (CI flake).
 - 2026-11-07: Merged the 7c test cleanup (#443) into `main`. Added `CLAUDE.md`
   (working agreement for Claude Code sessions). Known red on `main`: three v3.11
   switch tests (`test_note173_manual_v1`, `test_v311_exp_alignment_trade_gaps_v1`);
