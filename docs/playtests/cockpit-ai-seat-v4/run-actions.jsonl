@@ -1,0 +1,134 @@
+{"step": 1, "at": 1794114949.6687202, "note": "read the player manual", "op": "click", "label": "Manual", "selector": "", "text": "", "key": "", "ms": 0}
+{"step": 2, "at": 1794114984.8512177, "note": "", "op": "click", "label": "QLift off", "selector": "", "text": "", "key": "", "ms": 0}
+{"step": 3, "at": 1794115028.1003242, "note": "", "op": "press", "label": "", "selector": "", "text": "", "key": "s", "ms": 0}
+{"step": 4, "at": 1794115055.359506, "note": "", "op": "click", "label": "1:102 (3t)", "selector": "", "text": "", "key": "", "ms": 0}
+{"step": 5, "at": 1794115091.3166175, "note": "", "op": "click", "label": "2:431 (3t)", "selector": "", "text": "", "key": "", "ms": 0}
+{"step": 6, "at": 1794115159.08898, "note": "", "op": "click", "label": "SLong Range Scan", "selector": "", "text": "", "key": "", "ms": 0}
+{"step": 7, "at": 1794115199.3772385, "note": "", "op": "click", "label": "2:231 (3t)", "selector": "", "text": "", "key": "", "ms": 0}
+{"step": 8, "at": 1794115240.0915573, "note": "", "op": "click", "label": "CComputer", "selector": "", "text": "", "key": "", "ms": 0}
+{"step": 9, "at": 1794115262.7860544, "note": "", "op": "press", "label": "", "selector": "", "text": "", "key": "r", "ms": 0}
+{"step": 10, "at": 1794115338.4405613, "note": "", "op": "press", "label": "", "selector": "", "text": "", "key": "Escape", "ms": 0}
+{"step": 11, "at": 1794115402.2892516, "note": "", "op": "click", "label": "1:431 (3t)", "selector": "", "text": "", "key": "", "ms": 0}
+{"step": 12, "at": 1794115427.0634115, "note": "", "op": "click", "label": "3:269 (3t)", "selector": "", "text": "", "key": "", "ms": 0}
+{"step": 13, "at": 1794115450.214271, "note": "", "op": "click", "label": "1:58 (3t)", "selector": "", "text": "", "key": "", "ms": 0}
+{"step": 14, "at": 1794115535.5150652, "note": "", "op": "click", "label": "BUY 20", "selector": "", "text": "", "key": "", "ms": 0}
+{"step": 15, "at": 1794115589.504968, "note": "", "op": "click", "label": "1:198 (3t)", "selector": "", "text": "", "key": "", "ms": 0}
+{"step": 16, "at": 1794115607.1732738, "note": "", "op": "click", "label": "SELL 20", "selector": "", "text": "", "key": "", "ms": 0}
+{"step": 17, "at": 1794115640.0056715, "note": "", "op": "click", "label": "1:58 (3t)", "selector": "", "text": "", "key": "", "ms": 0}
+{"step": 18, "at": 1794115757.5845835, "note": "", "op": "click", "label": "BUY 20", "selector": "", "text": "", "key": "", "ms": 0}
+{"step": 19, "at": 1794115782.8978586, "note": "", "op": "click", "label": "1:198 (3t)", "selector": "", "text": "", "key": "", "ms": 0}
+{"step": 20, "at": 1794115804.1693487, "note": "", "op": "click", "label": "SELL 20", "selector": "", "text": "", "key": "", "ms": 0}
+{"step": 21, "at": 1794115832.5251749, "note": "", "op": "click", "label": "1:58 (3t)", "selector": "", "text": "", "key": "", "ms": 0}
+{"step": 22, "at": 1794115843.5664282, "note": "", "op": "click", "label": "BUY 20", "selector": "", "text": "", "key": "", "ms": 0}
+{"step": 23, "at": 1794115889.5579598, "note": "", "op": "click", "label": "1:198 (3t)", "selector": "", "text": "", "key": "", "ms": 0}
+{"step": 24, "at": 1794115904.7491255, "note": "", "op": "click", "label": "SELL 20", "selector": "", "text": "", "key": "", "ms": 0}
+{"step": 25, "at": 1794115946.3695345, "note": "", "op": "click", "label": "1:58 (3t)", "selector": "", "text": "", "key": "", "ms": 0}
+{"step": 26, "at": 1794115988.4320168, "note": "", "op": "click", "label": "BUY 20", "selector": "", "text": "", "key": "", "ms": 0}
+{"step": 27, "at": 1794116009.429432, "note": "", "op": "click", "label": "1:198 (3t)", "selector": "", "text": "", "key": "", "ms": 0}
+{"step": 28, "at": 1794116036.5177119, "note": "", "op": "click", "label": "SELL 20", "selector": "", "text": "", "key": "", "ms": 0}
+{"step": 29, "at": 1794116064.7406883, "note": "", "op": "click", "label": "1:58 (3t)", "selector": "", "text": "", "key": "", "ms": 0}
+{"step": 30, "at": 1794116110.1937819, "note": "", "op": "click", "label": "BUY 20", "selector": "", "text": "", "key": "", "ms": 0}
+{"step": 31, "at": 1794116134.7793548, "note": "", "op": "click", "label": "1:198 (3t)", "selector": "", "text": "", "key": "", "ms": 0}
+{"step": 32, "at": 1794116146.4154508, "note": "", "op": "click", "label": "SELL 20", "selector": "", "text": "", "key": "", "ms": 0}
+{"step": 33, "at": 1794116192.4776475, "note": "", "op": "click", "label": "1:58 (3t)", "selector": "", "text": "", "key": "", "ms": 0}
+{"step": 34, "at": 1794116244.7916844, "note": "", "op": "click", "label": "BUY 20", "selector": "", "text": "", "key": "", "ms": 0}
+{"step": 35, "at": 1794116305.6635985, "note": "", "op": "click", "label": "1:198 (3t)", "selector": "", "text": "", "key": "", "ms": 0}
+{"step": 36, "at": 1794116319.8420956, "note": "", "op": "click", "label": "SELL 20", "selector": "", "text": "", "key": "", "ms": 0}
+{"step": 37, "at": 1794116377.427116, "note": "", "op": "click", "label": "1:58 (3t)", "selector": "", "text": "", "key": "", "ms": 0}
+{"step": 38, "at": 1794116465.5304193, "note": "", "op": "click", "label": "BUY 20", "selector": "", "text": "", "key": "", "ms": 0}
+{"step": 39, "at": 1794116527.649899, "note": "", "op": "click", "label": "1:198 (3t)", "selector": "", "text": "", "key": "", "ms": 0}
+{"step": 40, "at": 1794116545.2995539, "note": "", "op": "click", "label": "SELL 20", "selector": "", "text": "", "key": "", "ms": 0}
+{"step": 41, "at": 1794116573.3680444, "note": "", "op": "click", "label": "1:58 (3t)", "selector": "", "text": "", "key": "", "ms": 0}
+{"step": 42, "at": 1794116614.1431124, "note": "", "op": "click", "label": "BUY 20", "selector": "", "text": "", "key": "", "ms": 0}
+{"step": 43, "at": 1794116633.6274798, "note": "", "op": "click", "label": "1:198 (3t)", "selector": "", "text": "", "key": "", "ms": 0}
+{"step": 44, "at": 1794116650.0057843, "note": "", "op": "click", "label": "SELL 20", "selector": "", "text": "", "key": "", "ms": 0}
+{"step": 45, "at": 1794116709.3771694, "note": "", "op": "click", "label": "1:58 (3t)", "selector": "", "text": "", "key": "", "ms": 0}
+{"step": 46, "at": 1794116893.3712287, "note": "", "op": "click", "label": "BUY 20", "selector": "", "text": "", "key": "", "ms": 0}
+{"step": 47, "at": 1794116980.8859413, "note": "", "op": "click", "label": "1:198 (3t)", "selector": "", "text": "", "key": "", "ms": 0}
+{"step": 48, "at": 1794116995.601154, "note": "", "op": "click", "label": "SELL 20", "selector": "", "text": "", "key": "", "ms": 0}
+{"step": 49, "at": 1794117028.4751468, "note": "", "op": "click", "label": "1:58 (3t)", "selector": "", "text": "", "key": "", "ms": 0}
+{"step": 50, "at": 1794117066.8932116, "note": "", "op": "click", "label": "BUY 20", "selector": "", "text": "", "key": "", "ms": 0}
+{"step": 51, "at": 1794117092.9617507, "note": "", "op": "click", "label": "1:198 (3t)", "selector": "", "text": "", "key": "", "ms": 0}
+{"step": 52, "at": 1794117115.145223, "note": "", "op": "click", "label": "SELL 20", "selector": "", "text": "", "key": "", "ms": 0}
+{"step": 53, "at": 1794117146.2168207, "note": "", "op": "click", "label": "1:58 (3t)", "selector": "", "text": "", "key": "", "ms": 0}
+{"step": 54, "at": 1794117181.0718331, "note": "", "op": "click", "label": "BUY 20", "selector": "", "text": "", "key": "", "ms": 0}
+{"step": 55, "at": 1794117274.6144798, "note": "", "op": "click", "label": "1:198 (3t)", "selector": "", "text": "", "key": "", "ms": 0}
+{"step": 56, "at": 1794117295.779935, "note": "", "op": "click", "label": "SELL 20", "selector": "", "text": "", "key": "", "ms": 0}
+{"step": 57, "at": 1794117340.1131594, "note": "", "op": "click", "label": "1:58 (3t)", "selector": "", "text": "", "key": "", "ms": 0}
+{"step": 58, "at": 1794117441.7176638, "note": "", "op": "click", "label": "BUY 20", "selector": "", "text": "", "key": "", "ms": 0}
+{"step": 59, "at": 1794117478.3003454, "note": "", "op": "click", "label": "1:198 (3t)", "selector": "", "text": "", "key": "", "ms": 0}
+{"step": 60, "at": 1794117506.3120909, "note": "", "op": "click", "label": "SELL 20", "selector": "", "text": "", "key": "", "ms": 0}
+{"step": 61, "at": 1794117533.6487634, "note": "", "op": "click", "label": "1:58 (3t)", "selector": "", "text": "", "key": "", "ms": 0}
+{"step": 62, "at": 1794117639.8202116, "note": "Error", "op": "click", "label": "BUY 20", "selector": "button:contains('BUY 20'):first", "text": "", "key": "", "ms": 0}
+{"step": 63, "at": 1794117699.2842538, "note": "", "op": "click", "label": "BUY 20", "selector": "", "text": "", "key": "", "ms": 0}
+{"step": 64, "at": 1794117854.6272495, "note": "", "op": "click", "label": "2:245 (3t)", "selector": "", "text": "", "key": "", "ms": 0}
+{"step": 65, "at": 1794117874.612532, "note": "", "op": "click", "label": "SELL 20", "selector": "", "text": "", "key": "", "ms": 0}
+{"step": 66, "at": 1794118117.2966766, "note": "model request timed out", "op": "wait", "label": "", "selector": "", "text": "", "key": "", "ms": 0}
+{"step": 66, "at": 1794118172.587709, "note": "", "op": "click", "label": "4:58 (3t)", "selector": "", "text": "", "key": "", "ms": 0}
+{"step": 67, "at": 1794118300.2744627, "note": "", "op": "click", "label": "BUY 20", "selector": "", "text": "", "key": "", "ms": 0}
+{"step": 68, "at": 1794118338.1350732, "note": "", "op": "click", "label": "2:245 (3t)", "selector": "", "text": "", "key": "", "ms": 0}
+{"step": 69, "at": 1794118352.0352814, "note": "", "op": "click", "label": "SELL 20", "selector": "", "text": "", "key": "", "ms": 0}
+{"step": 70, "at": 1794118381.0904808, "note": "", "op": "click", "label": "4:58 (3t)", "selector": "", "text": "", "key": "", "ms": 0}
+{"step": 71, "at": 1794118545.7005265, "note": "", "op": "click", "label": "BUY 20", "selector": "", "text": "", "key": "", "ms": 0}
+{"step": 72, "at": 1794118723.2701812, "note": "", "op": "click", "label": "2:245 (3t)", "selector": "", "text": "", "key": "", "ms": 0}
+{"step": 73, "at": 1794118739.2539077, "note": "", "op": "click", "label": "SELL 20", "selector": "", "text": "", "key": "", "ms": 0}
+{"step": 74, "at": 1794118851.5178347, "note": "", "op": "click", "label": "4:58 (3t)", "selector": "", "text": "", "key": "", "ms": 0}
+{"step": 75, "at": 1794119095.3132062, "note": "model request timed out", "op": "wait", "label": "", "selector": "", "text": "", "key": "", "ms": 0}
+{"step": 75, "at": 1794119288.0792954, "note": "", "op": "click", "label": "BUY 20", "selector": "", "text": "", "key": "", "ms": 0}
+{"step": 76, "at": 1794119317.2773888, "note": "", "op": "click", "label": "2:245 (3t)", "selector": "", "text": "", "key": "", "ms": 0}
+{"step": 77, "at": 1794119356.9591236, "note": "", "op": "click", "label": "SELL 20", "selector": "", "text": "", "key": "", "ms": 0}
+{"step": 78, "at": 1794119395.7558005, "note": "", "op": "click", "label": "4:58 (3t)", "selector": "", "text": "", "key": "", "ms": 0}
+{"step": 79, "at": 1794119639.284876, "note": "model request timed out", "op": "wait", "label": "", "selector": "", "text": "", "key": "", "ms": 0}
+{"step": 79, "at": 1794119706.7165773, "note": "", "op": "click", "label": "1:198 (3t)", "selector": "", "text": "", "key": "", "ms": 0}
+{"step": 80, "at": 1794119862.065407, "note": "", "op": "click", "label": "1:58 (3t)", "selector": "", "text": "", "key": "", "ms": 0}
+{"step": 81, "at": 1794119900.1977441, "note": "", "op": "click", "label": "BUY 20", "selector": "", "text": "", "key": "", "ms": 0}
+{"step": 82, "at": 1794120006.1142418, "note": "", "op": "click", "label": "2:245 (3t)", "selector": "", "text": "", "key": "", "ms": 0}
+{"step": 83, "at": 1794120037.683157, "note": "", "op": "click", "label": "SELL 20", "selector": "", "text": "", "key": "", "ms": 0}
+{"step": 84, "at": 1794120138.3595831, "note": "", "op": "click", "label": "4:58 (3t)", "selector": "", "text": "", "key": "", "ms": 0}
+{"step": 85, "at": 1794120349.2040367, "note": "", "op": "click", "label": "BUY 20", "selector": "", "text": "", "key": "", "ms": 0}
+{"step": 86, "at": 1794120376.3622336, "note": "", "op": "click", "label": "2:245 (3t)", "selector": "", "text": "", "key": "", "ms": 0}
+{"step": 87, "at": 1794120398.701144, "note": "", "op": "click", "label": "SELL 20", "selector": "", "text": "", "key": "", "ms": 0}
+{"step": 88, "at": 1794120525.0569105, "note": "", "op": "click", "label": "4:58 (3t)", "selector": "", "text": "", "key": "", "ms": 0}
+{"step": 89, "at": 1794120765.2961373, "note": "model request timed out", "op": "wait", "label": "", "selector": "", "text": "", "key": "", "ms": 0}
+{"step": 89, "at": 1794121005.4502954, "note": "model request timed out", "op": "wait", "label": "", "selector": "", "text": "", "key": "", "ms": 0}
+{"step": 89, "at": 1794121245.5946012, "note": "model request timed out", "op": "wait", "label": "", "selector": "", "text": "", "key": "", "ms": 0}
+{"step": 89, "at": 1794121405.646324, "note": "", "op": "click", "label": "BUY 20", "selector": "", "text": "", "key": "", "ms": 0}
+{"step": 90, "at": 1794121440.971924, "note": "", "op": "click", "label": "2:245 (3t)", "selector": "", "text": "", "key": "", "ms": 0}
+{"step": 91, "at": 1794121486.8269272, "note": "", "op": "click", "label": "SELL 20", "selector": "", "text": "", "key": "", "ms": 0}
+{"step": 92, "at": 1794121529.3775094, "note": "", "op": "click", "label": "4:58 (3t)", "selector": "", "text": "", "key": "", "ms": 0}
+{"step": 93, "at": 1794121773.27496, "note": "model request timed out", "op": "wait", "label": "", "selector": "", "text": "", "key": "", "ms": 0}
+{"step": 93, "at": 1794121986.185044, "note": "", "op": "click", "label": "CComputer", "selector": "", "text": "", "key": "", "ms": 0}
+{"step": 94, "at": 1794122059.3849971, "note": "", "op": "press", "label": "", "selector": "", "text": "", "key": "Escape", "ms": 0}
+{"step": 95, "at": 1794122299.547978, "note": "model request timed out", "op": "wait", "label": "", "selector": "", "text": "", "key": "", "ms": 0}
+{"step": 95, "at": 1794122371.215698, "note": "", "op": "click", "label": "BUY 20", "selector": "", "text": "", "key": "", "ms": 0}
+{"step": 96, "at": 1794122429.9701262, "note": "", "op": "click", "label": "2:245 (3t)", "selector": "button:has-text('2:245 (3t)')", "text": "", "key": "", "ms": 0}
+{"step": 97, "at": 1794122453.8168635, "note": "", "op": "click", "label": "SELL 20", "selector": "", "text": "", "key": "", "ms": 0}
+{"step": 98, "at": 1794122525.8392432, "note": "", "op": "click", "label": "4:58 (3t)", "selector": "", "text": "", "key": "", "ms": 0}
+{"step": 99, "at": 1794122952.5575, "note": "", "op": "click", "label": "BUY 20", "selector": "", "text": "", "key": "", "ms": 0}
+{"step": 100, "at": 1794122987.9750726, "note": "", "op": "click", "label": "2:245 (3t)", "selector": "", "text": "", "key": "", "ms": 0}
+{"step": 101, "at": 1794123019.2664342, "note": "", "op": "click", "label": "SELL 20", "selector": "", "text": "", "key": "", "ms": 0}
+{"step": 102, "at": 1794123058.3196995, "note": "", "op": "click", "label": "4:58 (3t)", "selector": "", "text": "", "key": "", "ms": 0}
+{"step": 103, "at": 1794123301.315264, "note": "model request timed out", "op": "wait", "label": "", "selector": "", "text": "", "key": "", "ms": 0}
+{"step": 103, "at": 1794123371.0187664, "note": "", "op": "click", "label": "BUY 20", "selector": "", "text": "", "key": "", "ms": 0}
+{"step": 104, "at": 1794123615.3025854, "note": "model request timed out", "op": "wait", "label": "", "selector": "", "text": "", "key": "", "ms": 0}
+{"step": 104, "at": 1794123653.4862235, "note": "", "op": "click", "label": "2:245 (3t)", "selector": "", "text": "", "key": "", "ms": 0}
+{"step": 105, "at": 1794123712.4970908, "note": "", "op": "click", "label": "SELL 20", "selector": "", "text": "", "key": "", "ms": 0}
+{"step": 106, "at": 1794123764.9361372, "note": "", "op": "click", "label": "4:58 (3t)", "selector": "", "text": "", "key": "", "ms": 0}
+{"step": 107, "at": 1794123798.4822288, "note": "", "op": "click", "label": "BUY 20", "selector": "button:has-text('BUY 20'):near(:has-text('Fuel Ore'))", "text": "", "key": "", "ms": 0}
+{"step": 108, "at": 1794123869.7670588, "note": "", "op": "click", "label": "2:245 (3t)", "selector": "", "text": "", "key": "", "ms": 0}
+{"step": 109, "at": 1794123914.6200697, "note": "", "op": "click", "label": "SELL 20", "selector": "", "text": "", "key": "", "ms": 0}
+{"step": 110, "at": 1794123963.8832672, "note": "", "op": "click", "label": "4:58 (3t)", "selector": "", "text": "", "key": "", "ms": 0}
+{"step": 111, "at": 1794124116.4774516, "note": "", "op": "click", "label": "BUY 20", "selector": "", "text": "", "key": "", "ms": 0}
+{"step": 112, "at": 1794124193.1036184, "note": "", "op": "click", "label": "2:245 (3t)", "selector": "", "text": "", "key": "", "ms": 0}
+{"step": 113, "at": 1794124234.36807, "note": "", "op": "click", "label": "SELL 20", "selector": "", "text": "", "key": "", "ms": 0}
+{"step": 114, "at": 1794124374.621813, "note": "", "op": "click", "label": "4:58 (3t)", "selector": "", "text": "", "key": "", "ms": 0}
+{"step": 115, "at": 1794124534.3459554, "note": "", "op": "click", "label": "BUY 20", "selector": "", "text": "", "key": "", "ms": 0}
+{"step": 116, "at": 1794124584.0331573, "note": "", "op": "click", "label": "2:245 (3t)", "selector": "", "text": "", "key": "", "ms": 0}
+{"step": 117, "at": 1794124604.9441915, "note": "", "op": "click", "label": "SELL 20", "selector": "", "text": "", "key": "", "ms": 0}
+{"step": 118, "at": 1794124655.2908282, "note": "", "op": "click", "label": "4:58 (3t)", "selector": "", "text": "", "key": "", "ms": 0}
+{"step": 119, "at": 1794124899.2976065, "note": "model request timed out", "op": "wait", "label": "", "selector": "", "text": "", "key": "", "ms": 0}
+{"step": 119, "at": 1794125139.4802308, "note": "model request timed out", "op": "wait", "label": "", "selector": "", "text": "", "key": "", "ms": 0}
+{"step": 119, "at": 1794125379.629699, "note": "model request timed out", "op": "wait", "label": "", "selector": "", "text": "", "key": "", "ms": 0}
+{"step": 119, "at": 1794125619.774529, "note": "model request timed out", "op": "wait", "label": "", "selector": "", "text": "", "key": "", "ms": 0}
+{"step": 119, "at": 1794125692.2534428, "note": "TimeoutError", "op": "click", "label": "BUY 20", "selector": "", "text": "", "key": "", "ms": 0}
+{"step": 120, "at": 1794125847.3104577, "note": "TimeoutError", "op": "click", "label": "BUY 20", "selector": "", "text": "", "key": "", "ms": 0}

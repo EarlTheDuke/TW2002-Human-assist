@@ -51,6 +51,12 @@ CI: `.github/workflows/ci.yml` (pytest on 3.11 and 3.12, plus ruff).
 
 ## Recent changes
 
+- 2026-11-07: North Star run (cockpit-only AI seat, kimi-k2.6, v3.11, 3 x 1h days):
+  the trade loop runs fully from the cockpit, but the AI looped one route and finished
+  3rd of 4. Findings in `docs/playtests/cockpit-ai-seat-v4/gaps.md`. Top one is a
+  server rule: four timeout auto-WAITs in a row throw away a seat's saved turns. The
+  xAI and Anthropic keys in `.env` are invalid. The player now retries a slow model reply.
+
 - 2026-11-07: Retired `scripts/smoke_phase_abc.py` from CI and the repo. It was
   unchanged since the first commit, failed under both rule sets, and duplicated
   `tests/test_phase_abc.py`. CI had never passed before: pytest failing first hid it.

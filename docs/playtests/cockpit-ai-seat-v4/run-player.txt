@@ -1,0 +1,288 @@
+process started
+seat page is open http://127.0.0.1:8101/bot?seat=P1&mode=cu&token=[redacted]&layout=redesign
+screen day=1 turns=250 left=- credits=300 cr nw=23,950 chip=YOUR MOVE sector=235
+step 1 click Manual
+screen day=1 turns=250 left=- credits=300 cr nw=23,950 chip=YOUR MOVE sector=235
+step 2 click QLift off
+screen day=1 turns=249 left=- credits=300 cr nw=23,950 chip=YOUR MOVE sector=235
+step 3 press s
+screen day=1 turns=249 left=- credits=300 cr nw=23,950 chip=YOUR MOVE sector=235
+step 4 click 1:102 (3t)
+screen day=1 turns=248 left=- credits=300 cr nw=23,950 chip=YOUR MOVE sector=102
+step 5 click 2:431 (3t)
+screen day=1 turns=247 left=- credits=300 cr nw=23,950 chip=YOUR MOVE sector=431
+step 6 click SLong Range Scan
+screen day=1 turns=247 left=- credits=300 cr nw=23,950 chip=YOUR MOVE sector=431
+step 7 click 2:231 (3t)
+screen day=1 turns=248 left=- credits=300 cr nw=23,950 chip=YOUR MOVE sector=231
+step 8 click CComputer
+screen day=1 turns=248 left=- credits=300 cr nw=23,950 chip=YOUR MOVE sector=231
+step 9 press r
+screen day=1 turns=248 left=- credits=300 cr nw=23,950 chip=YOUR MOVE sector=231
+step 10 press Escape
+screen day=1 turns=249 left=- credits=300 cr nw=23,950 chip=YOUR MOVE sector=231
+step 11 click 1:431 (3t)
+screen day=1 turns=248 left=- credits=300 cr nw=23,950 chip=YOUR MOVE sector=431
+step 12 click 3:269 (3t)
+screen day=1 turns=246 left=- credits=300 cr nw=23,950 chip=YOUR MOVE sector=269
+step 13 click 1:58 (3t)
+screen day=1 turns=245 left=- credits=300 cr nw=23,950 chip=YOUR MOVE sector=58
+step 14 click BUY 20
+screen day=1 turns=249 left=- credits=40 cr nw=23,950 chip=YOUR MOVE sector=58
+step 15 click 1:198 (3t)
+screen day=1 turns=248 left=- credits=40 cr nw=23,950 chip=YOUR MOVE sector=198
+step 16 click SELL 20
+screen day=1 turns=248 left=- credits=700 cr nw=24,350 chip=YOUR MOVE sector=198
+step 17 click 1:58 (3t)
+screen day=1 turns=247 left=- credits=700 cr nw=24,350 chip=YOUR MOVE sector=58
+step 18 click BUY 20
+screen day=1 turns=249 left=- credits=440 cr nw=24,350 chip=YOUR MOVE sector=58
+step 19 click 1:198 (3t)
+screen day=1 turns=247 left=- credits=440 cr nw=24,350 chip=YOUR MOVE sector=198
+step 20 click SELL 20
+screen day=1 turns=248 left=- credits=1,100 cr nw=24,750 chip=YOUR MOVE sector=198
+step 21 click 1:58 (3t)
+screen day=1 turns=247 left=- credits=1,100 cr nw=24,750 chip=YOUR MOVE sector=58
+step 22 click BUY 20
+screen day=1 turns=246 left=- credits=840 cr nw=24,750 chip=YOUR MOVE sector=58
+step 23 click 1:198 (3t)
+screen day=1 turns=246 left=- credits=840 cr nw=24,750 chip=YOUR MOVE sector=198
+step 24 click SELL 20
+screen day=1 turns=247 left=- credits=1,500 cr nw=25,150 chip=YOUR MOVE sector=198
+step 25 click 1:58 (3t)
+screen day=1 turns=246 left=- credits=1,500 cr nw=25,150 chip=YOUR MOVE sector=58
+step 26 click BUY 20
+screen day=1 turns=248 left=- credits=1,240 cr nw=25,150 chip=YOUR MOVE sector=58
+step 27 click 1:198 (3t)
+screen day=1 turns=247 left=- credits=1,240 cr nw=25,150 chip=YOUR MOVE sector=198
+step 28 click SELL 20
+screen day=1 turns=248 left=- credits=1,900 cr nw=25,550 chip=YOUR MOVE sector=198
+step 29 click 1:58 (3t)
+screen day=1 turns=247 left=- credits=1,900 cr nw=25,550 chip=YOUR MOVE sector=58
+step 30 click BUY 20
+screen day=1 turns=249 left=- credits=1,640 cr nw=25,550 chip=YOUR MOVE sector=58
+step 31 click 1:198 (3t)
+screen day=1 turns=248 left=- credits=1,640 cr nw=25,550 chip=YOUR MOVE sector=198
+step 32 click SELL 20
+screen day=1 turns=247 left=- credits=2,300 cr nw=25,950 chip=YOUR MOVE sector=198
+step 33 click 1:58 (3t)
+screen day=1 turns=248 left=- credits=2,300 cr nw=25,950 chip=YOUR MOVE sector=58
+step 34 click BUY 20
+screen day=1 turns=249 left=- credits=2,040 cr nw=25,950 chip=YOUR MOVE sector=58
+step 35 click 1:198 (3t)
+screen day=1 turns=247 left=- credits=2,040 cr nw=25,950 chip=YOUR MOVE sector=198
+step 36 click SELL 20
+screen day=1 turns=247 left=- credits=2,700 cr nw=26,350 chip=YOUR MOVE sector=198
+step 37 click 1:58 (3t)
+screen day=1 turns=247 left=- credits=2,700 cr nw=26,350 chip=YOUR MOVE sector=58
+step 38 click BUY 20
+screen day=1 turns=249 left=- credits=2,420 cr nw=26,350 chip=YOUR MOVE sector=58
+step 39 click 1:198 (3t)
+screen day=1 turns=247 left=- credits=2,420 cr nw=26,350 chip=YOUR MOVE sector=198
+step 40 click SELL 20
+screen day=1 turns=247 left=- credits=3,080 cr nw=26,730 chip=YOUR MOVE sector=198
+step 41 click 1:58 (3t)
+screen day=1 turns=246 left=- credits=3,080 cr nw=26,730 chip=YOUR MOVE sector=58
+step 42 click BUY 20
+screen day=1 turns=248 left=- credits=2,800 cr nw=26,730 chip=YOUR MOVE sector=58
+step 43 click 1:198 (3t)
+screen day=1 turns=246 left=- credits=2,800 cr nw=26,730 chip=YOUR MOVE sector=198
+step 44 click SELL 20
+screen day=1 turns=246 left=- credits=3,460 cr nw=27,110 chip=YOUR MOVE sector=198
+step 45 click 1:58 (3t)
+screen day=1 turns=247 left=- credits=3,460 cr nw=27,110 chip=YOUR MOVE sector=58
+step 46 click BUY 20
+screen day=1 turns=249 left=- credits=3,180 cr nw=27,110 chip=YOUR MOVE sector=58
+step 47 click 1:198 (3t)
+screen day=1 turns=247 left=- credits=3,180 cr nw=27,110 chip=YOUR MOVE sector=198
+step 48 click SELL 20
+screen day=1 turns=247 left=- credits=3,840 cr nw=27,490 chip=YOUR MOVE sector=198
+step 49 click 1:58 (3t)
+screen day=1 turns=247 left=- credits=3,840 cr nw=27,490 chip=YOUR MOVE sector=58
+step 50 click BUY 20
+screen day=1 turns=248 left=- credits=3,560 cr nw=27,490 chip=YOUR MOVE sector=58
+step 51 click 1:198 (3t)
+screen day=1 turns=247 left=- credits=3,560 cr nw=27,490 chip=YOUR MOVE sector=198
+step 52 click SELL 20
+screen day=1 turns=248 left=- credits=4,220 cr nw=27,870 chip=YOUR MOVE sector=198
+step 53 click 1:58 (3t)
+screen day=1 turns=247 left=- credits=4,220 cr nw=27,870 chip=YOUR MOVE sector=58
+step 54 click BUY 20
+screen day=1 turns=248 left=- credits=3,940 cr nw=27,870 chip=YOUR MOVE sector=58
+step 55 click 1:198 (3t)
+screen day=1 turns=247 left=- credits=3,940 cr nw=27,870 chip=YOUR MOVE sector=198
+step 56 click SELL 20
+screen day=1 turns=247 left=- credits=4,600 cr nw=28,250 chip=YOUR MOVE sector=198
+step 57 click 1:58 (3t)
+screen day=1 turns=247 left=- credits=4,600 cr nw=28,250 chip=YOUR MOVE sector=58
+step 58 click BUY 20
+screen day=1 turns=249 left=- credits=4,320 cr nw=28,250 chip=YOUR MOVE sector=58
+step 59 click 1:198 (3t)
+screen day=1 turns=247 left=- credits=4,320 cr nw=28,250 chip=YOUR MOVE sector=198
+step 60 click SELL 20
+screen day=1 turns=248 left=- credits=4,980 cr nw=28,630 chip=YOUR MOVE sector=198
+step 61 click 1:58 (3t)
+screen day=1 turns=247 left=- credits=4,980 cr nw=28,630 chip=YOUR MOVE sector=58
+step 62 did not land: Error
+step 62 click BUY 20
+screen day=1 turns=247 left=- credits=4,980 cr nw=28,630 chip=YOUR MOVE sector=58
+step 63 click BUY 20
+screen day=1 turns=249 left=- credits=4,700 cr nw=28,630 chip=YOUR MOVE sector=58
+step 64 click 2:245 (3t)
+screen day=1 turns=247 left=- credits=4,700 cr nw=28,630 chip=YOUR MOVE sector=245
+step 65 click SELL 20
+screen day=1 turns=247 left=- credits=5,460 cr nw=29,110 chip=YOUR MOVE sector=245
+model request timed out
+retrying after a model failure (1 in a row)
+screen day=1 turns=249 left=- credits=5,460 cr nw=29,110 chip=YOUR MOVE sector=245
+step 66 click 4:58 (3t)
+screen day=1 turns=247 left=- credits=5,460 cr nw=29,110 chip=YOUR MOVE sector=58
+step 67 click BUY 20
+screen day=1 turns=249 left=- credits=5,180 cr nw=29,110 chip=YOUR MOVE sector=58
+step 68 click 2:245 (3t)
+screen day=1 turns=248 left=- credits=5,180 cr nw=29,110 chip=YOUR MOVE sector=245
+step 69 click SELL 20
+screen day=1 turns=248 left=- credits=5,940 cr nw=29,590 chip=YOUR MOVE sector=245
+step 70 click 4:58 (3t)
+screen day=1 turns=247 left=- credits=5,940 cr nw=29,590 chip=YOUR MOVE sector=58
+step 71 click BUY 20
+screen day=2 turns=249 left=- credits=5,680 cr nw=31,486 chip=YOUR MOVE sector=58
+step 72 click 2:245 (3t)
+screen day=2 turns=247 left=- credits=5,680 cr nw=31,486 chip=YOUR MOVE sector=245
+step 73 click SELL 20
+screen day=2 turns=247 left=- credits=6,440 cr nw=31,986 chip=YOUR MOVE sector=245
+step 74 click 4:58 (3t)
+screen day=2 turns=247 left=- credits=6,440 cr nw=31,986 chip=YOUR MOVE sector=58
+model request timed out
+retrying after a model failure (1 in a row)
+screen day=2 turns=249 left=- credits=6,440 cr nw=31,986 chip=YOUR MOVE sector=58
+step 75 click BUY 20
+screen day=2 turns=250 left=- credits=6,180 cr nw=31,986 chip=YOUR MOVE sector=58
+step 76 click 2:245 (3t)
+screen day=2 turns=248 left=- credits=6,180 cr nw=31,986 chip=YOUR MOVE sector=245
+step 77 click SELL 20
+screen day=2 turns=249 left=- credits=6,940 cr nw=32,486 chip=YOUR MOVE sector=245
+step 78 click 4:58 (3t)
+screen day=2 turns=247 left=- credits=6,940 cr nw=32,486 chip=YOUR MOVE sector=58
+model request timed out
+retrying after a model failure (1 in a row)
+screen day=2 turns=249 left=- credits=6,940 cr nw=32,486 chip=YOUR MOVE sector=58
+step 79 click 1:198 (3t)
+screen day=2 turns=248 left=- credits=6,940 cr nw=32,486 chip=YOUR MOVE sector=198
+step 80 click 1:58 (3t)
+screen day=2 turns=247 left=- credits=6,940 cr nw=32,486 chip=YOUR MOVE sector=58
+step 81 click BUY 20
+screen day=2 turns=249 left=- credits=6,680 cr nw=32,486 chip=YOUR MOVE sector=58
+step 82 click 2:245 (3t)
+screen day=2 turns=247 left=- credits=6,680 cr nw=32,486 chip=YOUR MOVE sector=245
+step 83 click SELL 20
+screen day=2 turns=249 left=- credits=7,440 cr nw=32,986 chip=YOUR MOVE sector=245
+step 84 click 4:58 (3t)
+screen day=2 turns=248 left=- credits=7,440 cr nw=32,986 chip=YOUR MOVE sector=58
+step 85 click BUY 20
+screen day=2 turns=249 left=- credits=7,180 cr nw=32,986 chip=YOUR MOVE sector=58
+step 86 click 2:245 (3t)
+screen day=2 turns=247 left=- credits=7,180 cr nw=32,986 chip=YOUR MOVE sector=245
+step 87 click SELL 20
+screen day=2 turns=248 left=- credits=7,920 cr nw=33,466 chip=YOUR MOVE sector=245
+step 88 click 4:58 (3t)
+screen day=2 turns=249 left=- credits=7,920 cr nw=33,466 chip=YOUR MOVE sector=245
+model request timed out
+retrying after a model failure (1 in a row)
+screen day=2 turns=249 left=- credits=7,920 cr nw=33,466 chip=YOUR MOVE sector=58
+model request timed out
+retrying after a model failure (2 in a row)
+screen day=2 turns=249 left=- credits=7,920 cr nw=33,466 chip=YOUR MOVE sector=58
+model request timed out
+retrying after a model failure (3 in a row)
+screen day=2 turns=10 left=- credits=7,920 cr nw=33,466 chip=YOUR MOVE sector=58
+step 89 click BUY 20
+screen day=2 turns=25 left=- credits=7,660 cr nw=33,466 chip=YOUR MOVE sector=58
+step 90 click 2:245 (3t)
+screen day=2 turns=24 left=- credits=7,660 cr nw=33,466 chip=YOUR MOVE sector=245
+step 91 click SELL 20
+screen day=2 turns=26 left=- credits=8,400 cr nw=33,946 chip=YOUR MOVE sector=245
+step 92 click 4:58 (3t)
+screen day=2 turns=26 left=- credits=8,400 cr nw=33,946 chip=YOUR MOVE sector=58
+model request timed out
+retrying after a model failure (1 in a row)
+screen day=2 turns=34 left=- credits=8,400 cr nw=33,946 chip=YOUR MOVE sector=58
+step 93 click CComputer
+screen day=2 turns=49 left=- credits=8,400 cr nw=33,946 chip=YOUR MOVE sector=58
+step 94 press Escape
+screen day=2 turns=3 left=- credits=8,400 cr nw=33,946 chip=YOUR MOVE sector=58
+model request timed out
+retrying after a model failure (1 in a row)
+screen day=3 turns=18 left=- credits=8,400 cr nw=35,852 chip=YOUR MOVE sector=58
+step 95 click BUY 20
+screen day=3 turns=22 left=- credits=8,140 cr nw=35,852 chip=YOUR MOVE sector=58
+step 96 click 2:245 (3t)
+screen day=3 turns=23 left=- credits=8,140 cr nw=35,852 chip=YOUR MOVE sector=245
+step 97 click SELL 20
+screen day=3 turns=23 left=- credits=8,900 cr nw=36,352 chip=YOUR MOVE sector=245
+step 98 click 4:58 (3t)
+screen day=3 turns=25 left=- credits=8,900 cr nw=36,352 chip=YOUR MOVE sector=58
+step 99 click BUY 20
+screen day=3 turns=51 left=- credits=8,640 cr nw=36,352 chip=YOUR MOVE sector=58
+step 100 click 2:245 (3t)
+screen day=3 turns=50 left=- credits=8,640 cr nw=36,352 chip=YOUR MOVE sector=245
+step 101 click SELL 20
+screen day=3 turns=52 left=- credits=9,400 cr nw=36,852 chip=YOUR MOVE sector=245
+step 102 click 4:58 (3t)
+screen day=3 turns=51 left=- credits=9,400 cr nw=36,852 chip=YOUR MOVE sector=58
+model request timed out
+retrying after a model failure (1 in a row)
+screen day=3 turns=59 left=- credits=9,400 cr nw=36,852 chip=YOUR MOVE sector=58
+step 103 click BUY 20
+screen day=3 turns=70 left=- credits=9,140 cr nw=36,852 chip=YOUR MOVE sector=58
+model request timed out
+retrying after a model failure (1 in a row)
+screen day=3 turns=78 left=- credits=9,140 cr nw=36,852 chip=YOUR MOVE sector=58
+step 104 click 2:245 (3t)
+screen day=3 turns=85 left=- credits=9,140 cr nw=36,852 chip=YOUR MOVE sector=245
+step 105 click SELL 20
+screen day=3 turns=88 left=- credits=9,900 cr nw=37,352 chip=YOUR MOVE sector=245
+step 106 click 4:58 (3t)
+screen day=3 turns=88 left=- credits=9,900 cr nw=37,352 chip=YOUR MOVE sector=58
+step 107 click BUY 20
+screen day=3 turns=90 left=- credits=9,640 cr nw=37,352 chip=YOUR MOVE sector=58
+step 108 click 2:245 (3t)
+screen day=3 turns=92 left=- credits=9,640 cr nw=37,352 chip=YOUR MOVE sector=245
+step 109 click SELL 20
+screen day=3 turns=94 left=- credits=10,380 cr nw=37,832 chip=YOUR MOVE sector=245
+step 110 click 4:58 (3t)
+screen day=3 turns=94 left=- credits=10,380 cr nw=37,832 chip=YOUR MOVE sector=58
+step 111 click BUY 20
+screen day=3 turns=103 left=- credits=10,120 cr nw=37,832 chip=YOUR MOVE sector=58
+step 112 click 2:245 (3t)
+screen day=3 turns=105 left=- credits=10,120 cr nw=37,832 chip=YOUR MOVE sector=245
+step 113 click SELL 20
+screen day=3 turns=107 left=- credits=10,860 cr nw=38,312 chip=YOUR MOVE sector=245
+step 114 click 4:58 (3t)
+screen day=3 turns=113 left=- credits=10,860 cr nw=38,312 chip=YOUR MOVE sector=58
+step 115 click BUY 20
+screen day=3 turns=122 left=- credits=10,600 cr nw=38,312 chip=YOUR MOVE sector=58
+step 116 click 2:245 (3t)
+screen day=3 turns=122 left=- credits=10,600 cr nw=38,312 chip=YOUR MOVE sector=245
+step 117 click SELL 20
+screen day=3 turns=123 left=- credits=11,340 cr nw=38,792 chip=YOUR MOVE sector=245
+step 118 click 4:58 (3t)
+screen day=3 turns=123 left=- credits=11,340 cr nw=38,792 chip=YOUR MOVE sector=58
+model request timed out
+retrying after a model failure (1 in a row)
+screen day=3 turns=131 left=- credits=11,340 cr nw=38,792 chip=YOUR MOVE sector=58
+model request timed out
+retrying after a model failure (2 in a row)
+screen day=3 turns=146 left=- credits=11,340 cr nw=38,792 chip=YOUR MOVE sector=58
+model request timed out
+retrying after a model failure (3 in a row)
+screen day=3 turns=10 left=- credits=11,340 cr nw=38,792 chip=YOUR MOVE sector=58
+model request timed out
+retrying after a model failure (4 in a row)
+screen day=3 turns=25 left=- credits=11,340 cr nw=38,792 chip=YOUR MOVE sector=58
+step 119 did not land: TimeoutError
+step 119 click BUY 20
+screen day=3 turns=3 left=- credits=11,340 cr nw=38,792 chip=YOUR MOVE sector=58
+step 120 did not land: TimeoutError
+step 120 click BUY 20
+game over
