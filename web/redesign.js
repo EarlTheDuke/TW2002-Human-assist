@@ -138,6 +138,8 @@
   // cockpit-gaps-v1: the server's cockpit block (verdict, haggle, port notes, hold quote).
   // Null unless COCKPIT_FIELDS_MODE is on, so the legacy cockpit is unchanged.
   let CK = null;
+  // The last trade offer sent, so a counter can be answered without retyping the quantity.
+  let lastTradeArgs = null;
   // v311-daylen-and-yard-v1: the server's turn clock (next turn, next day). Null unless turn regen
   // is live, so the legacy lines are unchanged.
   let TC = null;
@@ -242,6 +244,10 @@
     let s = dropSeat(String(text || "").replace(/^\[[^\]]+\]\s*/, ""));
     s = s.replace(/pool=fuel_ore/g, "fuel ore").replace(/pool=organics/g, "organics").replace(/pool=equipment/g, "equipment");
     s = s.replace(/buy_equip/g, "buy gear").replace(/_/g, " ");
+    // "Lock" is engine shorthand. A ship TransWarp jumps only to a sector that already
+    // holds your own fighters (or FedSpace with a Fed lock), within the drive's range.
+    s = s.replace(/^no TransWarp lock in range$/i,
+      "no TransWarp lock: a jump needs your own fighters already posted in the target sector, within the drive's range. Leave fighters there first (F), then jump back");
     s = s.replace(/no photon missiles loaded \(buy gear photon missiles at StarDock\)/gi, () => {
       const cls = (S && S.ship && S.ship.class) || "";
       if (cls === "missile_frigate" || cls === "imperial_starship") return "No photon missiles on board. Buy them at StarDock.";
@@ -3806,7 +3812,21 @@
       wrap.appendChild(hint);
       const qtyEl = fields.find((el) => el.dataset.n === "qty");
       if (CK) haggleLines(wrap, listed, sideEl, comEl, qtyEl, priceEl, saved);
-      else if (a.params && a.params.counter) counterField(wrap, a.params.counter, qtyEl);
+      else if (a.params && a.params.counter) {
+        // The original port asks "Your offer?" right after its counter. Without the cockpit
+        // block the form still knows the counter: put it in the price box (and the last
+        // quantity back) so taking it is one CONFIRM, unless the player already typed one.
+        const ctr = a.params.counter;
+        const sameDeal = (!ctr.side || !sideEl || sideEl.value === ctr.side) && (!ctr.commodity || !comEl || comEl.value === ctr.commodity);
+        if (sameDeal && priceEl && Number(ctr.counter) > 0 && !(saved && saved.unit_price != null && saved.unit_price !== "")) {
+          priceEl.value = String(ctr.counter);
+        }
+        const prev = lastTradeArgs;
+        if (sameDeal && qtyEl && !qtyEl.value && prev && prev.side === ctr.side && prev.commodity === ctr.commodity && prev.qty) {
+          qtyEl.value = String(prev.qty);
+        }
+        counterField(wrap, ctr, qtyEl);
+      }
       const capNote = document.createElement("div");
       capNote.className = "c";
       capNote.dataset.trade = "cap";
@@ -6984,6 +7004,7 @@
         if (!row || row.kind === "cockpit_note") return;
         if ((row.seq || 0) > maxSeq) maxSeq = row.seq || 0;
       });
+      if (kind === "trade" && args) lastTradeArgs = { side: args.side, commodity: args.commodity, qty: args.qty };
       const resp = await api("/" + state.seat + "/action", { method: "POST", body: JSON.stringify({ turn_seq: state.turnSeq, action: { kind, args: args || {} } }) });
       state.awaiting = false;
       justActed = true;
@@ -7028,11 +7049,13 @@
       }
       const ev = latestAfter(before - 1);
       const raw = ev && ev.summary ? String(ev.summary) : "";
-      const counter = /counter (\d+)/i.exec(raw);
+      // The engine says "port countered at 22" (engine/runner.py); older builds said "counter 22".
+      const counter = /counter(?:ed at)? (\d[\d,]*)/i.exec(raw);
       const retry = { side: (args || {}).side, commodity: (args || {}).commodity, qty: (args || {}).qty };
       if (kind === "trade" && counter) {
-        setResult("The port counters at " + fmt(counter[1]) + " cr. Enter that price, or try another" + tail, true);
-        openForm("trade", Object.assign({}, retry, { unit_price: counter[1] }));
+        const each = String(counter[1]).replace(/,/g, "");
+        setResult("The port counters at " + fmt(each) + " cr. CONFIRM takes it, or offer another price" + tail, true);
+        openForm("trade", Object.assign({}, retry, { unit_price: each }));
         $("err").hidden = true;
         return;
       }
@@ -7421,6 +7444,15 @@
         opt.textContent = String(trader.name || trader.id || "");
         target.appendChild(opt);
       });
+      if (!here.length) {
+        // A hail reaches a trader in this sector only (as the original). Say so instead of an empty list.
+        const none = document.createElement("option");
+        none.value = "";
+        none.disabled = true;
+        none.selected = true;
+        none.textContent = "Nobody in this sector to hail";
+        target.appendChild(none);
+      }
       if (picked && Array.from(target.options).some((opt) => opt.value === picked)) target.value = picked;
     }
     const corp = $("commsKind") && $("commsKind").querySelector('option[value="corp"]');
@@ -7438,24 +7470,29 @@
     if (tune) tune.hidden = kind !== "radio";
     if (target) target.hidden = kind !== "hail";
   }
-  function sendComms() {
+  async function sendComms() {
     const kind = ($("commsKind") && $("commsKind").value) || "fed";
-    const message = ($("commsMessage") && $("commsMessage").value) || "";
+    const box = $("commsMessage");
+    const message = (box && box.value) || "";
     if (kind === "radio") {
       const channel = Number(($("commsChannel") && $("commsChannel").value) || 0);
-      act("radio", { channel: channel, message: message }, "sub-space radio");
-      return;
-    }
-    if (kind === "hail") {
+      await act("radio", { channel: channel, message: message }, "sub-space radio");
+    } else if (kind === "hail") {
       const target = ($("commsTarget") && $("commsTarget").value) || "";
-      act("hail", { target: target, message: message }, "hail");
-      return;
+      await act("hail", { target: target, message: message }, "hail");
+    } else if (kind === "corp") {
+      await act("corp_memo", { message: message }, "corporation memo");
+    } else {
+      await act("broadcast", { link: "fed", message: message }, "Fed Comm");
     }
-    if (kind === "corp") {
-      act("corp_memo", { message: message }, "corporation memo");
-      return;
+    // Sent: clear the line and hand the keys back to the command line, as the original
+    // returns to its prompt. A refused send keeps the text so it can be fixed and resent.
+    const res = $("lastResult");
+    const refused = res && res.classList.contains("bad");
+    if (box && message && !refused) {
+      box.value = "";
+      box.blur();
     }
-    act("broadcast", { link: "fed", message: message }, "Fed Comm");
   }
   function bindComms() {
     const form = $("commsForm");

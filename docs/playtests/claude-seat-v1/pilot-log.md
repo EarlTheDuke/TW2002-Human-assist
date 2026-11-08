@@ -33,8 +33,9 @@ screens say, not in what the buttons do.
 3. ~~Raw field names on forms~~ — fixed (4th live fix): labels and snake_case choices now read as words.
 4. **Shop flow**: the gear form closes after each purchase and sits below the fold;
    7 items = 7 reopen-scroll-pick cycles. No total for fighters/shields once a qty is typed.
-5. **Hover-only reasons**: TransWarp did nothing; "not enough fuel ore" was only a
-   tooltip. The shop sold the drive without saying it burns fuel ore.
+5. **TransWarp needs fuel ore and a lock, and nothing says so up front.** (Correction:
+   a refused click does print the reason in the result line; I first misread it as
+   tooltip-only.) The shop sold the drive without saying it burns 3 fuel ore per hop.
 6. **Net worth drops a third when you arm** (1,023,650 → 691,942, rank to 4th). Check
    against the original; at least explain it on screen.
 7. Small: Terra's load form text is a mangled template; landing on your own empty planet
@@ -58,7 +59,7 @@ Each row: what I wanted, where I looked, found or not, friction.
 | 12 | Check the ship | I (Ship Info) | Yes | Clear. 3 turns per warp, matching the catalog and the yard. |
 | 13 | — | Header | — | **Net worth fell 1,023,650 → 691,942 and rank to 4th of 4** after buying fighters/shields. A player reads that as "arming is punished". Check whether the original values gear this way; at least say why on screen. |
 | 14 | Bank surplus | StarDock → Bank | Yes | Clean: balance, room (500,000 cap), Deposit/Withdraw, amount prefilled with all credits. Raw label `side` again. |
-| 15 | TransWarp to Terra | HERE → TransWarp | No | Button does nothing visible; the reason ("not enough fuel ore") is only a hover tooltip. The shop sold me the drive without saying it burns fuel ore from the holds, and StarDock doesn't sell fuel. |
+| 15 | TransWarp to Terra | HERE → TransWarp | No | Refused: "not enough fuel ore". (I first logged "the button does nothing, reason only in a tooltip" — wrong: a click prints "TransWarp: <reason>" in the result line at the bottom; I only checked for a form. Corrected in session 2.) The shop sold the drive without saying it burns 3 fuel ore per hop, and StarDock doesn't sell fuel. |
 | 16 | Load colonists | Terra HERE → Load colonists | Yes | Prefilled 30 holds = whole pool. Text "Terra holds Colonists (1000s) 30 (30,000 people) of Colonists (1000s) 100 (100,000 people)" is a mangled template. |
 | 17 | — | Ship panel | — | **Bug (fixed live):** "Holds 30,000/50": colonists counted as people, not holds (1,000 per hold). Same miscount fed the trade "no empty holds" check and the shop's "You only have N empty holds". Now uses the server's `cargo_free`. |
 | 18 | Make a planet | U (Genesis) outside FedSpace, named it | Yes | Smooth: name field prefilled, one confirm, clear result. +25 experience. |
