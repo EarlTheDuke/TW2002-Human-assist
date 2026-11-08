@@ -4222,7 +4222,8 @@
     const hops = spec.hops_by || {};
     // The legal action's cost is the jump's turn cost (one warp's turns in the stored
     // mode); the point of TransWarp is that against the same trip flown lane by lane.
-    const jumpTurns = Number((LA("ship_transwarp") || {}).cost || 0);
+    const twLa = LA("ship_transwarp") || {};
+    const jumpTurns = Number(twLa.turn_cost != null ? twLa.turn_cost : (twLa.cost || 0));
     const perWarp = Number(((S && S.ship) || {}).turns_per_warp || (HULL[((S && S.ship) || {}).class] || {}).tpw || 0);
     slot.innerHTML = "";
     const wrap = document.createElement("div");
@@ -6238,7 +6239,8 @@
   function upgradeForm(saved) {
     const rows = ((LA("port_upgrade") || {}).params || {}).commodities || {};
     const choices = Object.entries(rows).filter((pair) => Number(pair[1].max_units) >= 1);
-    const note = choices.map((pair) => (COM[pair[0]] || [pair[0]])[0] + " " + fmt(pair[1].unit_cost) + " cr a unit, " + fmt(pair[1].holds_per_unit) + " holds").join(". ") + ".";
+    // "10 holds" read as cargo holds; it is the port's capacity: each unit adds that much stock room.
+    const note = choices.map((pair) => (COM[pair[0]] || [pair[0]])[0] + ": " + fmt(pair[1].unit_cost) + " cr a unit, each unit adds " + fmt(pair[1].holds_per_unit) + " to the port's capacity").join(". ") + ".";
     dockForm("portUpgrade", "UPGRADE THIS PORT", note, [
       { n: "commodity", label: "Commodity", choices: choices.map((pair) => ({ value: pair[0], label: (COM[pair[0]] || [pair[0]])[0] })) },
       { n: "units", label: "Units", type: "number", min: 1, value: "1" },

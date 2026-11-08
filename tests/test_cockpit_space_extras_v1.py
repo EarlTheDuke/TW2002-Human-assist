@@ -242,7 +242,7 @@ def test_upgrade_shows_the_price_and_posts(world) -> None:
     page.wait_for_selector("[data-screen=portUpgrade]")
     note = page.locator("[data-price=dock]").inner_text()
     assert "cr a unit" in note
-    assert "holds" in note
+    assert "to the port's capacity" in note  # each unit is port room, not cargo holds
     _shoot(page, "upgrade", "[data-screen=portUpgrade]")
     posted = _form_post(page)
     assert posted["kind"] == "port_upgrade"
