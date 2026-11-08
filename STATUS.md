@@ -51,6 +51,11 @@ CI: `.github/workflows/ci.yml` (pytest on 3.11 and 3.12, plus ruff).
 
 ## Recent changes
 
+- 2026-11-08: Claude seat session 3 (`docs/playtests/claude-seat-v1/session3-log.md`):
+  bots now arm (630 fighters, from 30); ether probes show a per-sector report; the attack
+  result names a kill; TransWarp form shows turns saved; port-upgrade wording. Still open:
+  a fight with an armed bot (scanner-equipped bots avoid sectors holding your fighters).
+
 - 2026-11-08: Claude seat session 2 (`docs/playtests/claude-seat-v1/session2-log.md`).
   Fixed: haggle counters were dropped (cockpit matched "counter 22", engine says
   "countered at 22"); comms box kept focus after Send; Deployed Fighters ignored

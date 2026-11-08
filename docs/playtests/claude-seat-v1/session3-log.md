@@ -9,6 +9,19 @@ Game: lobby `1664d115`, 1 seat + 3 bots, 500 sectors, v3.11, 1-hour days, 5 days
 Goals: confirm bots now arm; fight an armed bot; TransWarp turn cost on the form; dawn
 messages at the day roll; ether probe; port build/upgrade; anything left on the menu.
 
+## Session 3 result
+
+- **Bots now arm** (630 fighters each, from 30) — the session-2 bot fix works live.
+- Ship-to-ship combat works and reads well; the kill is now named in the result line.
+- Ether probes now show what they saw (the most useful fix this session).
+- TransWarp form shows the turn saving; port upgrade wording fixed.
+- **Not done:** a fight with an armed bot. With holo scanners the bots steer clear of
+  sectors holding my fighters, and they move every round, so chasing missed each time.
+  Next try: sit in a sector *without* deployed fighters on a bot's trade lane, or open a
+  second human seat and fight another player.
+- Not reached: the day-roll messages (no day ended while I played this session), build a
+  port (needs a planet in a port-less sector), Ferrengi (none seen in three sessions).
+
 | # | Wanted | Looked at | Found? | Friction / note |
 | --- | --- | --- | --- | --- |
 | 1 | Outfit (scripted clicks) | Shipyard + 7 gear buys | Yes | Same as session 2; StarDock 221 from the manual. |

@@ -147,6 +147,12 @@ def test_runner_smoke_stamps_sha_and_updates_live_summary(tmp_path: Path) -> Non
         rows = _wait_lines(log_dir / "turns.jsonl", 1, proc)
         first = json.loads(rows[0])
         summary_path = log_dir / "live_summary.json"
+        # The runner writes turns.jsonl first and live_summary.json just after; on a slow
+        # CI box the read could land in between (py3.12 run 42516940286). Wait for it.
+        for _ in range(100):
+            if summary_path.exists():
+                break
+            time.sleep(0.05)
         snap1 = json.loads(summary_path.read_text(encoding="utf-8"))
         _write_pending(pending, 2, _obs(day=2, credits=12_500, net_worth=51_000, sector={"id": 40}))
         rows = _wait_lines(log_dir / "turns.jsonl", 2, proc)
