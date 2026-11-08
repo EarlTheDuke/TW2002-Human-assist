@@ -6867,7 +6867,15 @@
     const leftNum = Number(String(leftF == null ? 0 : leftF).replace(/,/g, ""));
     const remain = fightCount(leftF) + (Math.abs(leftNum) === 1 ? " fighter remains" : " fighters remain");
     const theirs = theirName + " lost " + countPhrase(theirF, "fighter", "fighters") + " and " + countPhrase(theirS, "shield", "shields");
-    if (youAttacked) return "You lost " + countPhrase(mineF, "fighter", "fighters") + " and " + countPhrase(mineS, "shield", "shields") + ", " + remain + ". " + theirs;
+    if (youAttacked) {
+      // The kill is its own event ("Guest 1 destroyed Loro"); say it here too, as the
+      // original does, instead of leaving it to the log.
+      const needle = ("destroyed " + String(theirName)).toLowerCase();
+      const killed = streamLog.concat((S && S.recent_events) || []).some((row) => row && (row.seq || 0) >= (ev.seq || 0)
+        && String(row.summary || "").toLowerCase().includes(needle));
+      return "You lost " + countPhrase(mineF, "fighter", "fighters") + " and " + countPhrase(mineS, "shield", "shields") + ", " + remain + ". " + theirs
+        + (killed ? ". " + theirName + " is destroyed" : "");
+    }
     const sector = ev.sector_id || ((/Combat in (\d+)/.exec(summary) || [])[1] || "");
     return theirName + " attacked you in " + sector + ": you lost " + countPhrase(mineF, "fighter", "fighters") + " and " + countPhrase(mineS, "shield", "shields") + " (" + countPhrase(leftF, "fighter", "fighters") + " and " + countPhrase(leftS, "shield", "shields") + " left). " + theirs;
   }
@@ -7102,6 +7110,37 @@
           return bits.join(", ");
         });
         if (rows.length) body = body + ". " + rows.join("; ");
+      }
+      if (kind === "probe") {
+        // The original prints each sector the probe passes. The engine keeps those
+        // readouts in probe_log; show the ones this probe just took, in route order.
+        // The event's facts stay fogged (no route; tests/test_scanners_qc_v1.py), but each
+        // probe_log row carries the tick it was taken on: this probe's rows share its tick.
+        const facts = eventFacts(ev);
+        const tick = ev && ev.tick;
+        const seen = {};
+        const route = [];
+        ((S && S.probe_log) || []).forEach((row) => {
+          if (!row || row.sector_id == null || (tick != null && row.tick !== tick)) return;
+          const intel = row.intel || {};
+          if (intel.probe_destroyed) { facts.destroyed_at = facts.destroyed_at || row.sector_id; return; }
+          seen[Number(row.sector_id)] = intel;
+          route.push(Number(row.sector_id));
+        });
+        const lines = route.map((sid) => {
+          const it = seen[Number(sid)] || {};
+          const bits = [];
+          if (it.port) bits.push("Port " + (it.port.name || "") + " " + (it.port.code || ""));
+          (it.planets || []).forEach((pl) => bits.push("Planet " + (pl.name || "") + (pl.class ? " (" + pl.class + ")" : "")));
+          (it.traders || []).forEach((tr) => bits.push("Trader " + (tr.name || tr.id || "") + (tr.fighters != null ? ", " + fmt(tr.fighters) + " fighters" : "")));
+          (it.ferrengi || []).forEach((f) => bits.push("Ferrengi " + (f.name || "") + ", " + fmt(f.fighters || 0) + " fighters"));
+          (it.aliens || []).forEach((a) => bits.push((a.name || "Alien") + (a.fighters != null ? ", " + fmt(a.fighters) + " fighters" : "")));
+          if (it.fighters) bits.push("Fighters " + fmt(it.fighters.count || 0) + (it.fighters.owner_id ? " (" + traderName(it.fighters.owner_id) + ")" : ""));
+          (it.mines || []).forEach((m) => bits.push((m.kind || "mines") + " mines " + fmt(m.count || 0)));
+          return "Sector " + sid + ": " + (bits.length ? bits.join("; ") : "empty");
+        });
+        if (facts.destroyed_at) lines.push("Sector " + facts.destroyed_at + ": the probe was shot down here.");
+        if (lines.length) overlay("Ether probe report", lines.map((line) => '<div class="row">' + esc(line) + "</div>").join(""));
       }
       if (kind === "warp") {
         const seen = new Set();
