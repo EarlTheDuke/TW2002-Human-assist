@@ -325,14 +325,42 @@
     const visible = feed ? feed.activityFeed(rows) : rows;
     const box = $("log");
     box.innerHTML = "";
-    visible.slice(0, 40).forEach((ev) => {
+    // A seat left idle gets two lines per server auto-WAIT ("[external timeout] ..." and
+    // "... timed out (120s) — auto-WAIT."). An hour away buried every real event, so a
+    // run of them collapses into one line with the count.
+    const waitLine = /^\[external (timeout|idle)\]|timed out \(\d+s\)|idle auto-WAIT|auto-WAIT: no human input/i;
+    const counted = /timed out \(\d+s\)|idle auto-WAIT|auto-WAIT: no human input/i;
+    let shown = 0;
+    let run = null;
+    const flush = () => {
+      if (!run) return;
+      const d = document.createElement("div");
+      d.dataset.seq = String(run.seq);
+      d.dataset.waits = String(run.n);
+      d.textContent = run.n === 1 ? "1 automatic wait: no move before the turn deadline."
+        : run.n + " automatic waits in a row: no move before the turn deadline.";
+      box.appendChild(d);
+      shown += 1;
+      run = null;
+    };
+    visible.forEach((ev) => {
+      if (shown >= 40) return;
       const line = plainEvent(ev);
       if (!line) return;
+      if (waitLine.test(line)) {
+        if (!run) run = { seq: ev.seq || 0, n: 0 };
+        if (counted.test(line)) run.n += 1;
+        return;
+      }
+      if (run && run.n) flush(); else run = null;
+      if (shown >= 40) return;
       const d = document.createElement("div");
       d.dataset.seq = String(ev.seq || 0);
       d.textContent = line;
       box.appendChild(d);
+      shown += 1;
     });
+    if (run && run.n && shown < 40) flush();
     box.scrollTop = 0;
   }
   let noteFrac = 0;
