@@ -51,6 +51,9 @@ CI: `.github/workflows/ci.yml` (pytest on 3.11 and 3.12, plus ruff).
 
 ## Recent changes
 
+- 2026-11-07: Retired `scripts/smoke_phase_abc.py` from CI and the repo. It was
+  unchanged since the first commit, failed under both rule sets, and duplicated
+  `tests/test_phase_abc.py`. CI had never passed before: pytest failing first hid it.
 - 2026-11-07: Closed the bot banking loop (#436). It was already fixed by #438:
   traces on five seeds (days 1-3, v3.11, 100k credits) show one deposit and then
   trading, and `test_two_humans_play_two_days_through_the_proxy` (the playtest that

@@ -1,7 +1,7 @@
 """Pytest suite covering Phase A/B/C features.
 
-Complements `scripts/smoke_phase_abc.py` — the latter prints a pretty report,
-this file lets CI treat each check as a proper unit test.
+Its old companion, `scripts/smoke_phase_abc.py`, was retired on 2026-11-07;
+this file is the maintained version of those checks.
 """
 
 from __future__ import annotations

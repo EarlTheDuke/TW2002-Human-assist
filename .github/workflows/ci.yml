@@ -40,7 +40,6 @@ jobs:
       - name: Run offline smoke scripts
         run: |
           python scripts/smoke_watch_scorecard.py
-          python scripts/smoke_phase_abc.py
           python scripts/smoke_external_harness.py
 
   lint:

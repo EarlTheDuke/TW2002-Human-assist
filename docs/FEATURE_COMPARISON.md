@@ -12,7 +12,7 @@ Priority for completion: **P0** (game-defining; spectator-visible drama), **P1**
 
 ## ✅ Post-implementation status (Phases A + B + C)
 
-As of the Phase A/B/C implementation pass, **every P0 and most P1 items below are now implemented** in code and covered by `tests/test_phase_abc.py` + `scripts/smoke_phase_abc.py`:
+As of the Phase A/B/C implementation pass, **every P0 and most P1 items below are now implemented** in code and covered by `tests/test_phase_abc.py` (the companion `scripts/smoke_phase_abc.py` was retired on 2026-11-07; it had drifted from the engine):
 
 **Phase A — "Make the late game exist"** (all complete):
 - `assign_colonists` wired — ship↔planet pool transfers for F/O/E/fighters.
