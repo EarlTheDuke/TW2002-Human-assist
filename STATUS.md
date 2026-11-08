@@ -51,6 +51,15 @@ CI: `.github/workflows/ci.yml` (pytest on 3.11 and 3.12, plus ruff).
 
 ## Recent changes
 
+- 2026-11-08: Claude seat session 2 (`docs/playtests/claude-seat-v1/session2-log.md`).
+  Fixed: haggle counters were dropped (cockpit matched "counter 22", engine says
+  "countered at 22"); comms box kept focus after Send; Deployed Fighters ignored
+  detonations; **heuristic bots never outfitted under v3.11** (checked `sector == 1`
+  for StarDock) — v3.11 pins re-pinned on purpose. Open for Ben: citadels are
+  unreachable under v3.11 (Terra's 30,000 stored as people, not thousands — see the log
+  for evidence and a one-line recommendation); a mine kill passes no killer, so the mine
+  owner is never told.
+
 - 2026-11-08: Claude seat pilot (Claude playing the redesign cockpit in a browser,
   1,000,000 cr, `docs/playtests/claude-seat-v1/pilot-log.md`). Fixed: the manual said
   StarDock is sector 1 (v3.11 draws it per game; now names this game's sector); the
